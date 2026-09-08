@@ -54,7 +54,7 @@ export default async function DashboardPage() {
           title="Today's priorities"
           className="xl:col-span-2"
           action={
-            <Button variant="ghost" size="sm" render={<Link href="/ai-assistant" />}>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/ai-assistant" />}>
               View all recommendations
             </Button>
           }
