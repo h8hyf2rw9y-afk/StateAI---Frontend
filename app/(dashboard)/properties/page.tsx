@@ -2,14 +2,13 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { PropertiesGrid } from "@/features/properties/components/properties-grid";
-import { mockProperties } from "@/features/properties/mock-data";
 
 export default function PropertiesPage() {
   return (
     <>
       <PageHeader
         title="Properties"
-        description="Every listing your team is currently managing."
+        description="Every listing in your organization's CRM."
         actions={
           <Button disabled>
             <Plus />
@@ -17,7 +16,7 @@ export default function PropertiesPage() {
           </Button>
         }
       />
-      <PropertiesGrid properties={mockProperties} />
+      <PropertiesGrid />
     </>
   );
 }

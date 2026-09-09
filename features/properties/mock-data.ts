@@ -1,11 +1,14 @@
-import type { Property } from "./types";
+import type { MockProperty } from "./types";
 
 /**
  * Realistic placeholder data only — nothing here is fetched from a backend.
- * Replace with a call to lib/api/properties.ts once the FastAPI backend
+ * Still used by app/(dashboard)/dashboard/page.tsx's property count; the
+ * real Properties page (features/properties/components/properties-grid.tsx)
+ * no longer reads this — see lib/api/properties.ts and features/properties/types.ts's
+ * Property/MockProperty split for why.
  * exists; components should not need to change shape when that happens.
  */
-export const mockProperties: Property[] = [
+export const mockProperties: MockProperty[] = [
   {
     id: "prop_001",
     name: "Skyline Loft at Harbor View",
