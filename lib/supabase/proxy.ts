@@ -8,6 +8,7 @@ const PROTECTED_PREFIXES = [
   "/leads",
   "/properties",
   "/pipeline",
+  "/tasks",
   "/appointments",
   "/ai-assistant",
   "/settings",

@@ -6,4 +6,5 @@ export * as buyerRequirementsApi from "./buyer-requirements";
 export * as propertyInterestsApi from "./property-interests";
 export * as pipelineApi from "./pipeline";
 export * as appointmentsApi from "./appointments";
+export * as tasksApi from "./tasks";
 export * as aiApi from "./ai";

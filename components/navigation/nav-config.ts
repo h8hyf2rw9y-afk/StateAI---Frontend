@@ -3,6 +3,7 @@ export type NavIconName =
   | "leads"
   | "properties"
   | "pipeline"
+  | "tasks"
   | "appointments"
   | "ai-assistant"
   | "settings";
@@ -30,6 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Leads", href: "/leads", icon: "leads" },
   { label: "Properties", href: "/properties", icon: "properties" },
   { label: "Pipeline", href: "/pipeline", icon: "pipeline" },
+  { label: "Tasks", href: "/tasks", icon: "tasks" },
   { label: "Appointments", href: "/appointments", icon: "appointments" },
   { label: "AI Assistant", href: "/ai-assistant", icon: "ai-assistant" },
   { label: "Settings", href: "/settings", icon: "settings" },
