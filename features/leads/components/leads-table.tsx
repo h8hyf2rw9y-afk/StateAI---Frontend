@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, Users } from "lucide-react";
 import {
   Table,
@@ -31,6 +32,7 @@ import { formatCurrency, formatRelativeToToday, getInitials } from "@/lib/format
 const propertyNameById = new Map(mockProperties.map((p) => [p.id, p.name]));
 
 export function LeadsTable({ leads }: { leads: Lead[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -93,7 +95,11 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
           </TableHeader>
           <TableBody>
             {filteredLeads.map((lead) => (
-              <TableRow key={lead.id}>
+              <TableRow
+                key={lead.id}
+                className="cursor-pointer hover:bg-muted/40"
+                onClick={() => router.push(`/leads/${lead.id}`)}
+              >
                 <TableCell>
                   <div className="flex items-center gap-2.5">
                     <Avatar className="size-8">

@@ -12,7 +12,7 @@ export const mockAgents: AiAgent[] = [
       "Summarize client information",
       "Identify high-value opportunities",
     ],
-    status: "coming_soon",
+    status: "available",
   },
   {
     id: "follow-up",
@@ -25,7 +25,7 @@ export const mockAgents: AiAgent[] = [
       "Recommend reminders",
       "Flag overdue conversations",
     ],
-    status: "coming_soon",
+    status: "available",
   },
   {
     id: "sales-copilot",

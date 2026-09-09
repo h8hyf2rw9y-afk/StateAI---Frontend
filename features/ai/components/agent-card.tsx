@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BrainCircuit, MessageCircleMore, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,11 @@ export function AgentCard({ agent }: { agent: AiAgent }) {
             </li>
           ))}
         </ul>
+        {agent.status === "available" && (
+          <Link href="/leads" className="text-sm font-medium text-primary hover:underline">
+            Try it on a lead →
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

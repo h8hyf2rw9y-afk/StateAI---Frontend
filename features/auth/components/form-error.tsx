@@ -1,6 +1,6 @@
 import { AlertCircle } from "lucide-react";
 
-/** Shared error banner for the login/register forms — renders nothing when there's no message. */
+/** Shared error banner — originally for the login/register forms, also reused by the AI panels (features/ai/components/). Renders nothing when there's no message. */
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
 

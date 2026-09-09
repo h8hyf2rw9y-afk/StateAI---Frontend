@@ -1,14 +1,9 @@
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import type { AiRecommendation, RecommendationPriority } from "@/features/ai/types";
+import type { AiRecommendation } from "@/features/ai/types";
+import { getPriorityBadgeClassName } from "@/features/ai/lib";
 import { cn } from "@/lib/utils";
-
-const PRIORITY_STYLES: Record<RecommendationPriority, string> = {
-  high: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  medium: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  low: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
-};
 
 /**
  * Structured recommendation placeholders — the copy and priority are
@@ -37,7 +32,7 @@ export function RecommendationList({ recommendations }: { recommendations: AiRec
               <p className="text-sm font-medium">{rec.title}</p>
               <Badge
                 variant="outline"
-                className={cn("shrink-0 border-transparent capitalize", PRIORITY_STYLES[rec.priority])}
+                className={cn("shrink-0 border-transparent capitalize", getPriorityBadgeClassName(rec.priority))}
               >
                 {rec.priority}
               </Badge>
