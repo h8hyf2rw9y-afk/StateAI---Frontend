@@ -20,6 +20,18 @@ export function getBuyerRequirementsForContact(contactId: string): Promise<ApiRe
   return apiRequest<BuyerRequirement[]>(`/api/v1/contacts/${contactId}/buyer-requirements`);
 }
 
+/**
+ * Single-requirement fetch (`GET /buyer-requirements/{id}`) — added for the
+ * Opportunity detail page (app/(dashboard)/pipeline/[id]/page.tsx), which
+ * needs to show the one buyer requirement an opportunity references by id,
+ * not a contact's full list. Not previously exposed here because nothing
+ * needed it before this task — the lead detail page's Buyer search section
+ * only ever needed the per-contact list above.
+ */
+export function getBuyerRequirement(requirementId: string): Promise<ApiResult<BuyerRequirement>> {
+  return apiRequest<BuyerRequirement>(`/api/v1/buyer-requirements/${requirementId}`);
+}
+
 export function createBuyerRequirement(
   contactId: string,
   input: BuyerRequirementInput
