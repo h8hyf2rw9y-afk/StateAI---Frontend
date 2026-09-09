@@ -121,6 +121,9 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+/** The backend's real property_type values, for building a Select — e.g. features/buyer-requirements/components/buyer-requirement-form.tsx's "property type" field. Derived from the same label map as formatPropertyType so the two can't drift apart. */
+export const PROPERTY_TYPES: string[] = Object.keys(PROPERTY_TYPE_LABELS);
+
 export function formatPropertyType(propertyType: string): string {
   return PROPERTY_TYPE_LABELS[propertyType] ?? propertyType;
 }

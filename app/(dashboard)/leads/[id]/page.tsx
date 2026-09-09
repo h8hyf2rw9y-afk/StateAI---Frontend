@@ -5,11 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SectionCard } from "@/components/shared/section-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { FormError } from "@/features/auth/components/form-error";
 import { LeadIntelligencePanel } from "@/features/ai/components/lead-intelligence-panel";
 import { FollowUpPanel } from "@/features/ai/components/follow-up-panel";
+import { BuyerSearchSection } from "@/features/buyer-requirements/components/buyer-search-section";
 import { getContact } from "@/lib/api/contacts";
 import { formatContactRole, formatContactSource, type Contact } from "@/features/leads/types";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -115,6 +117,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {contact.notes && (
             <p className="mb-6 max-w-2xl text-sm text-muted-foreground">{contact.notes}</p>
           )}
+
+          <div className="mb-4">
+            <SectionCard title="Buyer search">
+              <BuyerSearchSection contactId={contact.id} />
+            </SectionCard>
+          </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <LeadIntelligencePanel contactId={contact.id} />
