@@ -2,16 +2,18 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, UserRound } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionCard } from "@/components/shared/section-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { LeadIntelligencePanel } from "@/features/ai/components/lead-intelligence-panel";
 import { FollowUpPanel } from "@/features/ai/components/follow-up-panel";
 import { BuyerSearchSection } from "@/features/buyer-requirements/components/buyer-search-section";
+import { ContactForm } from "@/features/leads/components/contact-form";
 import { getContact } from "@/lib/api/contacts";
 import { formatContactRole, formatContactSource, type Contact } from "@/features/leads/types";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -100,6 +102,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     {formatContactRole(role.role_key)}
                   </Badge>
                 ))}
+                <ContactForm
+                  contact={contact}
+                  onSaved={setContact}
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      <Pencil />
+                      Edit
+                    </Button>
+                  }
+                />
               </div>
             }
           />

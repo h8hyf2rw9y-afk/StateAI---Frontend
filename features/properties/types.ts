@@ -143,6 +143,9 @@ export function formatPropertyStatus(status: string): string {
   return PROPERTY_STATUS_LABELS[status] ?? status;
 }
 
+/** For populating the create/edit form's status picker — derived from the same label map as formatPropertyStatus, so the two can't drift apart, same pattern as PROPERTY_TYPES above. */
+export const PROPERTY_STATUSES: string[] = Object.keys(PROPERTY_STATUS_LABELS);
+
 const PROPERTY_STATUS_BADGE_STYLES: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
   active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
@@ -174,4 +177,38 @@ export function formatArea(areaM2: string | null): string | null {
 export function formatPropertyLocation(property: Pick<Property, "neighborhood" | "city" | "state">): string {
   const parts = [property.neighborhood, property.city, property.state].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : "Location not specified";
+}
+
+/**
+ * Outbound shape for `POST /properties` / `PATCH /properties/{id}` —
+ * mirrors app/schemas/property.py's PropertyCreate/PropertyUpdate. Decimal
+ * fields are sent as plain numbers (not the Decimal-as-string shape
+ * `Property` above uses for *inbound* data) — Pydantic parses a JSON
+ * number into a Decimal on the way in just fine; the string encoding is
+ * specifically how the backend serializes a Decimal back *out*, to avoid
+ * float precision loss in the response, not a requirement on what this
+ * client sends. `latitude`/`longitude` are real PropertyCreate/Update
+ * fields but aren't surfaced by the create/edit form (see
+ * features/properties/components/property-form.tsx) — no map picker
+ * exists in this app, and typing raw coordinates isn't a prioritized
+ * field, same restraint features/buyer-requirements/components/
+ * buyer-requirement-form.tsx already documents for its own field subset.
+ */
+export interface PropertyInput {
+  title?: string;
+  property_type?: string;
+  status?: string;
+  price?: number;
+  currency?: string;
+  address_line?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  neighborhood?: string;
+  construction_m2?: number;
+  land_m2?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  parking_spaces?: number;
+  description?: string;
 }

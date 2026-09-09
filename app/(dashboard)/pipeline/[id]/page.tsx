@@ -2,14 +2,16 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Building2, Calendar, Handshake, Percent, UserRound } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Handshake, Pencil, Percent, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { StageBadge } from "@/features/pipeline/components/stage-badge";
 import { StageSelector } from "@/features/pipeline/components/stage-selector";
+import { OpportunityForm } from "@/features/pipeline/components/opportunity-form";
 import { OpportunityActivityList } from "@/features/pipeline/components/opportunity-activity-list";
 import { OpportunityTaskList } from "@/features/pipeline/components/opportunity-task-list";
 import { OpportunityAppointmentList } from "@/features/pipeline/components/opportunity-appointment-list";
@@ -151,7 +153,21 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           <PageHeader
             title={opportunity.title}
             description={`${formatOpportunityType(opportunity.opportunity_type)} opportunity · Created ${formatTimestamp(opportunity.created_at)}`}
-            actions={<StageBadge stage={opportunity.stage} />}
+            actions={
+              <div className="flex items-center gap-1.5">
+                <StageBadge stage={opportunity.stage} />
+                <OpportunityForm
+                  opportunity={opportunity}
+                  onSaved={setOpportunity}
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      <Pencil />
+                      Edit
+                    </Button>
+                  }
+                />
+              </div>
+            }
           />
 
           <div className="mb-6">

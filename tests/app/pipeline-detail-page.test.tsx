@@ -9,29 +9,51 @@ import type { BuyerRequirement } from "@/features/buyer-requirements/types";
 
 const getOpportunityMock = vi.fn();
 const updateOpportunityStageMock = vi.fn();
+const updateOpportunityMock = vi.fn();
 const getOpportunityActivitiesMock = vi.fn();
 const getTasksForOpportunityMock = vi.fn();
 const getAppointmentsForOpportunityMock = vi.fn();
 const getContactMock = vi.fn();
+const getContactsMock = vi.fn();
 const getPropertyMock = vi.fn();
+const getPropertiesMock = vi.fn();
 const getBuyerRequirementMock = vi.fn();
+const getBuyerRequirementsForContactMock = vi.fn();
 const useUserMock = vi.fn();
 
 vi.mock("@/lib/api/pipeline", () => ({
   getOpportunity: (id: string) => getOpportunityMock(id),
   updateOpportunityStage: (...args: unknown[]) => updateOpportunityStageMock(...args),
+  updateOpportunity: (...args: unknown[]) => updateOpportunityMock(...args),
   getOpportunityActivities: (id: string) => getOpportunityActivitiesMock(id),
   getTasksForOpportunity: (id: string) => getTasksForOpportunityMock(id),
   getAppointmentsForOpportunity: (id: string) => getAppointmentsForOpportunityMock(id),
 }));
-vi.mock("@/lib/api/contacts", () => ({ getContact: (id: string) => getContactMock(id) }));
-vi.mock("@/lib/api/properties", () => ({ getProperty: (id: string) => getPropertyMock(id) }));
-vi.mock("@/lib/api/buyer-requirements", () => ({ getBuyerRequirement: (id: string) => getBuyerRequirementMock(id) }));
+vi.mock("@/lib/api/contacts", () => ({
+  getContact: (id: string) => getContactMock(id),
+  getContacts: () => getContactsMock(),
+}));
+vi.mock("@/lib/api/properties", () => ({
+  getProperty: (id: string) => getPropertyMock(id),
+  getProperties: () => getPropertiesMock(),
+}));
+vi.mock("@/lib/api/buyer-requirements", () => ({
+  getBuyerRequirement: (id: string) => getBuyerRequirementMock(id),
+  getBuyerRequirementsForContact: (id: string) => getBuyerRequirementsForContactMock(id),
+}));
 vi.mock("@/hooks/useUser", () => ({ useUser: () => useUserMock() }));
 // See tests/test-utils/select-stub.tsx — the real Select hangs jsdom under
 // fireEvent (no existing test in this repo drives one open); this renders
-// the embedded StageSelector's Selects as plain native <select>s instead.
+// the embedded StageSelector's (and now OpportunityForm's) Selects as
+// plain native <select>s instead.
 vi.mock("@/components/ui/select", () => import("@/tests/test-utils/select-stub"));
+// The page now renders an "Edit" button (OpportunityForm) unconditionally
+// in its success state — OpportunityForm calls useRouter() at the top of
+// every render, so any test reaching this page's success state needs the
+// app router mocked.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 const OPPORTUNITY_ID = "d3c6071a-8b48-520f-b8ee-8503db845350";
 const CONTACT_ID = "a480e9eb-626a-5f08-bf51-553ceb4e7f2c";

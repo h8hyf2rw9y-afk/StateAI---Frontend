@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { Property } from "@/features/properties/types";
+import type { Property, PropertyInput } from "@/features/properties/types";
 
 /**
  * Typed surface for the backend's real, already-implemented Properties API
@@ -9,11 +9,9 @@ import type { Property } from "@/features/properties/types";
  * endpoint (limit/offset, no `{items, total, page, pageSize}` envelope),
  * a bare object for a single property.
  *
- * Only the two read functions the current UI needs — create/update/delete
- * exist backend-side (see app/api/routes/properties.py) but there's no
- * "Add property" flow in this frontend yet (the button on the Properties
- * page is still disabled), so implementing them here now would be
- * speculative, unused code, same mistake lib/api/leads.ts made.
+ * `delete` is not implemented here — no "delete property" UI exists in
+ * this app, unlike create/update below (the "Add property"/"Edit" flows —
+ * see features/properties/components/property-form.tsx).
  */
 export function getProperties(): Promise<ApiResult<Property[]>> {
   // The backend caps `limit` at 200 (app/api/routes/properties.py) — matches
@@ -23,4 +21,12 @@ export function getProperties(): Promise<ApiResult<Property[]>> {
 
 export function getProperty(propertyId: string): Promise<ApiResult<Property>> {
   return apiRequest<Property>(`/api/v1/properties/${propertyId}`);
+}
+
+export function createProperty(input: PropertyInput): Promise<ApiResult<Property>> {
+  return apiRequest<Property>("/api/v1/properties", { method: "POST", body: input });
+}
+
+export function updateProperty(propertyId: string, input: PropertyInput): Promise<ApiResult<Property>> {
+  return apiRequest<Property>(`/api/v1/properties/${propertyId}`, { method: "PATCH", body: input });
 }

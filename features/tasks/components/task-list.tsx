@@ -9,6 +9,7 @@ import {
   Home,
   ListTodo,
   Loader2,
+  Pencil,
   Percent,
   Phone,
   Search,
@@ -17,6 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,6 +31,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { TaskStatusBadge } from "@/features/tasks/components/task-status-badge";
 import { TaskPriorityBadge } from "@/features/tasks/components/task-priority-badge";
+import { TaskForm } from "@/features/tasks/components/task-form";
 import {
   formatTaskPriority,
   formatTaskStatus,
@@ -356,6 +359,17 @@ export function TaskList() {
                             {getInitials(getAssigneeLabel(task.assigned_to_user_id, user?.id))}
                           </AvatarFallback>
                         </Avatar>
+                        <TaskForm
+                          task={task}
+                          onSaved={(updated) =>
+                            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+                          }
+                          trigger={
+                            <Button size="icon-sm" variant="ghost" aria-label="Edit task">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          }
+                        />
                       </CardContent>
                     </Card>
                   );

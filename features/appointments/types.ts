@@ -137,6 +137,9 @@ export function formatAppointmentType(appointmentType: string): string {
   return REAL_APPOINTMENT_TYPE_LABELS[appointmentType] ?? appointmentType;
 }
 
+/** For populating the create/edit form's type picker — derived from the same label map as formatAppointmentType, so the two can't drift apart. Named `REAL_*` (not `APPOINTMENT_TYPES`) because that name is already taken by the mock section above, still load-bearing for the Dashboard. */
+export const REAL_APPOINTMENT_TYPES: string[] = Object.keys(REAL_APPOINTMENT_TYPE_LABELS);
+
 const REAL_APPOINTMENT_STATUS_LABELS: Record<string, string> = {
   scheduled: "Scheduled",
   confirmed: "Confirmed",
@@ -148,6 +151,9 @@ const REAL_APPOINTMENT_STATUS_LABELS: Record<string, string> = {
 export function formatAppointmentStatus(status: string): string {
   return REAL_APPOINTMENT_STATUS_LABELS[status] ?? status;
 }
+
+/** Same naming reasoning as REAL_APPOINTMENT_TYPES above — `APPOINTMENT_STATUSES` is already taken by the mock section. */
+export const REAL_APPOINTMENT_STATUSES: string[] = Object.keys(REAL_APPOINTMENT_STATUS_LABELS);
 
 const REAL_APPOINTMENT_STATUS_BADGE_STYLES: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
@@ -166,4 +172,28 @@ export function getAppointmentStatusBadgeClassName(status: string): string {
 export function isAppointmentUpcoming(appointment: Pick<AppointmentRecord, "start_at" | "status">): boolean {
   if (appointment.status !== "scheduled" && appointment.status !== "confirmed") return false;
   return new Date(appointment.start_at).getTime() >= Date.now();
+}
+
+/**
+ * Outbound shape for `POST /appointments` / `PATCH /appointments/{id}` —
+ * mirrors app/schemas/appointment.py's AppointmentBase/Update.
+ * `assigned_to_user_id` is optional on the backend (unlike Task's
+ * required equivalent), but the create form
+ * (features/appointments/components/appointment-form.tsx) still defaults
+ * it to the signed-in user rather than leaving it unset or offering a
+ * picker — same "no /users endpoint, so only 'you' is a safe choice"
+ * reasoning as features/tasks/components/task-form.tsx.
+ */
+export interface AppointmentInput {
+  assigned_to_user_id?: string;
+  contact_id?: string;
+  property_id?: string;
+  opportunity_id?: string;
+  title?: string;
+  description?: string;
+  start_at?: string;
+  end_at?: string;
+  location?: string;
+  appointment_type?: string;
+  status?: string;
 }

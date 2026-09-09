@@ -8,6 +8,7 @@ import {
   Home,
   Loader2,
   PenLine,
+  Pencil,
   Phone,
   Search,
   Users as UsersIcon,
@@ -15,6 +16,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,6 +28,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { AppointmentStatusBadge } from "@/features/appointments/components/appointment-status-badge";
+import { AppointmentForm } from "@/features/appointments/components/appointment-form";
 import {
   formatAppointmentStatus,
   formatAppointmentType,
@@ -278,6 +281,17 @@ export function AppointmentsList() {
                             {getInitials(getAssigneeLabel(appt.assigned_to_user_id, user?.id))}
                           </AvatarFallback>
                         </Avatar>
+                        <AppointmentForm
+                          appointment={appt}
+                          onSaved={(updated) =>
+                            setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+                          }
+                          trigger={
+                            <Button size="icon-sm" variant="ghost" aria-label="Edit appointment">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          }
+                        />
                       </CardContent>
                     </Card>
                   );

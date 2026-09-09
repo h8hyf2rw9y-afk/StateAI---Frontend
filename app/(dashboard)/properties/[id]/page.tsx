@@ -2,12 +2,14 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bath, Bed, Building2, Car, Loader2, Ruler } from "lucide-react";
+import { ArrowLeft, Bath, Bed, Building2, Car, Loader2, Pencil, Ruler } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { PropertyStatusBadge } from "@/features/properties/components/property-status-badge";
+import { PropertyForm } from "@/features/properties/components/property-form";
 import { getProperty } from "@/lib/api/properties";
 import {
   formatArea,
@@ -97,7 +99,21 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
           <PageHeader
             title={property.title}
             description={formatPropertyLocation(property)}
-            actions={<PropertyStatusBadge status={property.status} />}
+            actions={
+              <div className="flex items-center gap-1.5">
+                <PropertyStatusBadge status={property.status} />
+                <PropertyForm
+                  property={property}
+                  onSaved={setProperty}
+                  trigger={
+                    <Button size="sm" variant="outline">
+                      <Pencil />
+                      Edit
+                    </Button>
+                  }
+                />
+              </div>
+            }
           />
 
           <div className="mb-6 flex h-56 items-center justify-center rounded-xl bg-muted text-muted-foreground">

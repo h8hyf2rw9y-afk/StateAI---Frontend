@@ -61,6 +61,27 @@ function extractItems(children: ReactNode): { value: string; label: ReactNode }[
   return items;
 }
 
+/**
+ * A native `<option>` can only hold text, but a `SelectItem`'s children are
+ * often more than one plain string — e.g. `{contact.first_name}{" "}
+ * {contact.last_name}` (features/tasks/components/task-form.tsx and
+ * friends) is a *list* of children (`["Carlos", " ", "Mendoza"]`), not one
+ * string. Flattens any of that (strings, numbers, arrays, nested elements'
+ * `children`) into the same plain text a real `<option>` would end up
+ * showing, so tests can find an option by the visible name they'd actually
+ * see, not just the id it happened to fall back to.
+ */
+function nodeToText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeToText).join("");
+  if (isValidElement(node)) {
+    const props = node.props as { children?: ReactNode };
+    return nodeToText(props.children);
+  }
+  return "";
+}
+
 export function Select({
   value,
   onValueChange,
@@ -75,17 +96,23 @@ export function Select({
 }
 
 export function SelectTrigger({
+  id,
+  disabled,
   "aria-label": ariaLabel,
 }: {
+  id?: string;
   children?: ReactNode;
   className?: string;
   size?: "sm" | "default";
+  disabled?: boolean;
   "aria-label"?: string;
 }) {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("SelectTrigger must be used inside <Select>");
   return (
     <select
+      id={id}
+      disabled={disabled}
       aria-label={ariaLabel}
       value={ctx.value ?? ""}
       onChange={(e) => ctx.onValueChange?.(e.target.value || null)}
@@ -93,7 +120,7 @@ export function SelectTrigger({
       <option value="" disabled hidden />
       {ctx.items.map((item) => (
         <option key={item.value} value={item.value}>
-          {typeof item.label === "string" ? item.label : item.value}
+          {nodeToText(item.label) || item.value}
         </option>
       ))}
     </select>

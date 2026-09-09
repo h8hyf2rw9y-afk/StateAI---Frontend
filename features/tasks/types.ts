@@ -62,6 +62,9 @@ export function formatTaskType(taskType: string): string {
   return TASK_TYPE_LABELS[taskType] ?? taskType;
 }
 
+/** For populating the create/edit form's type picker — derived from the same label map as formatTaskType, so the two can't drift apart. */
+export const TASK_TYPES: string[] = Object.keys(TASK_TYPE_LABELS);
+
 const TASK_STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   in_progress: "In progress",
@@ -72,6 +75,8 @@ const TASK_STATUS_LABELS: Record<string, string> = {
 export function formatTaskStatus(status: string): string {
   return TASK_STATUS_LABELS[status] ?? status;
 }
+
+export const TASK_STATUSES: string[] = Object.keys(TASK_STATUS_LABELS);
 
 const TASK_STATUS_BADGE_STYLES: Record<string, string> = {
   pending: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
@@ -96,6 +101,8 @@ export function formatTaskPriority(priority: string): string {
   return TASK_PRIORITY_LABELS[priority] ?? priority;
 }
 
+export const TASK_PRIORITIES: string[] = Object.keys(TASK_PRIORITY_LABELS);
+
 const TASK_PRIORITY_BADGE_STYLES: Record<string, string> = {
   low: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
   medium: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
@@ -119,4 +126,30 @@ export function getTaskPriorityBadgeClassName(priority: string): string {
 export function isTaskOverdue(task: Pick<Task, "due_at" | "status">): boolean {
   if (task.status === "completed" || task.status === "cancelled") return false;
   return new Date(task.due_at).getTime() < Date.now();
+}
+
+/**
+ * Outbound shape for `POST /tasks` / `PATCH /tasks/{id}` — mirrors
+ * app/schemas/task.py's TaskBase/TaskUpdate. `assigned_to_user_id` is
+ * required by `TaskCreate` (not optional, unlike every other relationship
+ * field) — the create form (features/tasks/components/task-form.tsx)
+ * fills it in silently with the signed-in user's own id, since there's no
+ * `/users` endpoint to power a real assignee picker (same "You"-only
+ * convention already established for display elsewhere in this app).
+ * `property_interest_id` isn't surfaced by the form — a real field, but
+ * picking one meaningfully requires already being on a specific contact's
+ * buyer-search context, which this general Tasks page doesn't have.
+ */
+export interface TaskInput {
+  assigned_to_user_id?: string;
+  contact_id?: string;
+  property_id?: string;
+  buyer_requirement_id?: string;
+  opportunity_id?: string;
+  title?: string;
+  description?: string;
+  task_type?: string;
+  status?: string;
+  priority?: string;
+  due_at?: string;
 }

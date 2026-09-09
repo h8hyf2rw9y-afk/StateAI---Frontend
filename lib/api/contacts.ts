@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { Contact } from "@/features/leads/types";
+import type { Contact, ContactInput } from "@/features/leads/types";
 
 /**
  * Typed surface for the backend's real, already-implemented Contacts API
@@ -25,4 +25,22 @@ export function getContacts(): Promise<ApiResult<Contact[]>> {
 
 export function getContact(contactId: string): Promise<ApiResult<Contact>> {
   return apiRequest<Contact>(`/api/v1/contacts/${contactId}`);
+}
+
+/** `POST /contacts` — the backend requires at least one of email/phone (app/schemas/contact.py's ContactCreate, enforced server-side); see features/leads/components/contact-form.tsx for the client-side nudge. */
+export function createContact(input: ContactInput): Promise<ApiResult<Contact>> {
+  return apiRequest<Contact>("/api/v1/contacts", { method: "POST", body: input });
+}
+
+export function updateContact(contactId: string, input: ContactInput): Promise<ApiResult<Contact>> {
+  return apiRequest<Contact>(`/api/v1/contacts/${contactId}`, { method: "PATCH", body: input });
+}
+
+/** `POST /contacts/{id}/roles` — assigns one role; roles have no separate update, only add/remove (app/api/routes/contacts.py). */
+export function addContactRole(contactId: string, roleKey: string): Promise<ApiResult<Contact>> {
+  return apiRequest<Contact>(`/api/v1/contacts/${contactId}/roles`, { method: "POST", body: { role_key: roleKey } });
+}
+
+export function removeContactRole(contactId: string, roleKey: string): Promise<ApiResult<Contact>> {
+  return apiRequest<Contact>(`/api/v1/contacts/${contactId}/roles/${roleKey}`, { method: "DELETE" });
 }

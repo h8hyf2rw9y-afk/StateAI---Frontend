@@ -17,6 +17,16 @@ vi.mock("@/lib/api/ai", () => ({
   getFollowUpRecommendation: (contactId: string) => getFollowUpRecommendationMock(contactId),
 }));
 
+// The page now renders an "Edit" button (ContactForm) unconditionally in
+// its success state — ContactForm calls useRouter() at the top of every
+// render (not just once the dialog is actually opened), so any test that
+// reaches this page's success state needs the app router mocked, same
+// convention as tests/features/leads/leads-table.test.tsx already
+// established for its own row-navigation.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const REAL_CONTACT_ID = "42be9d7e-bee9-570b-95df-3ffcf0fdeafc";
 
 function makeContact(overrides: Partial<Contact> = {}): Contact {

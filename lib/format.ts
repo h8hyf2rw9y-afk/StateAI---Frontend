@@ -39,6 +39,32 @@ export function formatTime(iso: string): string {
 }
 
 /**
+ * Converts a full ISO timestamp to the "YYYY-MM-DDTHH:mm" shape an
+ * `<input type="datetime-local">` expects for its `value` — in the
+ * viewer's *local* time (matching what the input itself displays/edits),
+ * not UTC. Used by the Task/Appointment/Opportunity create-edit forms for
+ * due dates/start-end times/expected close dates.
+ */
+export function toDatetimeLocalValue(iso: string): string {
+  const date = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * The inverse of toDatetimeLocalValue: an `<input type="datetime-local">`'s
+ * local-time value back into a real ISO timestamp (with an explicit
+ * offset) to send to the backend. `new Date(value)` already parses a
+ * datetime-local string as local time (unlike a bare "YYYY-MM-DD" date,
+ * which parseLocalDate below exists specifically to work around) — the
+ * ambiguity that helper avoids doesn't apply here since a datetime-local
+ * value always carries an explicit time component.
+ */
+export function fromDatetimeLocalValue(value: string): string {
+  return new Date(value).toISOString();
+}
+
+/**
  * Parses a bare "YYYY-MM-DD" string as a local calendar date. `new
  * Date(iso)` would parse it as UTC midnight instead, which silently shifts
  * the date by a day in any timezone behind UTC — exactly the mismatch that

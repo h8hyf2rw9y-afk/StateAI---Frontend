@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { LeadsTable } from "@/features/leads/components/leads-table";
+import { ContactForm } from "@/features/leads/components/contact-form";
 
 export default function LeadsPage() {
   return (
@@ -10,10 +11,14 @@ export default function LeadsPage() {
         title="Leads"
         description="Every contact in your organization's CRM."
         actions={
-          <Button disabled>
-            <Plus />
-            Add lead
-          </Button>
+          <ContactForm
+            trigger={
+              <Button>
+                <Plus />
+                Add lead
+              </Button>
+            }
+          />
         }
       />
       <LeadsTable />

@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { AppointmentRecord } from "@/features/appointments/types";
+import type { AppointmentRecord, AppointmentInput } from "@/features/appointments/types";
 
 /**
  * Typed surface for the backend's real, already-implemented Appointments
@@ -10,13 +10,10 @@ import type { AppointmentRecord } from "@/features/appointments/types";
  * / lib/api/pipeline.ts: mounted under /api/v1, a bare array for the list
  * endpoint (limit/offset, no envelope).
  *
- * Only the one read function the current UI needs — `POST`/`PATCH`/`DELETE
- * /appointments/{id}` all exist backend-side (app/api/routes/appointments.py)
- * but there's no create/edit/cancel flow in this frontend yet (the
- * "Schedule appointment" button on the Appointments page is still
- * disabled, same as "Add property"/"Add lead"), so implementing them here
- * now would be speculative, unused code — same restraint
- * lib/api/properties.ts already documents for itself.
+ * `DELETE /appointments/{id}` exists backend-side but isn't implemented
+ * here — no "cancel/delete appointment" UI exists in this app, unlike
+ * create/update below (see
+ * features/appointments/components/appointment-form.tsx).
  */
 export function getAppointments(params?: {
   status?: string;
@@ -36,4 +33,16 @@ export function getAppointments(params?: {
   return apiRequest<AppointmentRecord[]>("/api/v1/appointments", {
     params: { limit: 200, ...params },
   });
+}
+
+/** `POST /appointments` — the backend requires `start_at <= end_at` (app/schemas/appointment.py's model_validator, re-checked server-side on update too); see appointment-form.tsx for the client-side nudge. */
+export function createAppointment(input: AppointmentInput): Promise<ApiResult<AppointmentRecord>> {
+  return apiRequest<AppointmentRecord>("/api/v1/appointments", { method: "POST", body: input });
+}
+
+export function updateAppointment(
+  appointmentId: string,
+  input: AppointmentInput
+): Promise<ApiResult<AppointmentRecord>> {
+  return apiRequest<AppointmentRecord>(`/api/v1/appointments/${appointmentId}`, { method: "PATCH", body: input });
 }

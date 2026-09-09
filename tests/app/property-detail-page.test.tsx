@@ -10,6 +10,14 @@ vi.mock("@/lib/api/properties", () => ({
   getProperty: (id: string) => getPropertyMock(id),
 }));
 
+// The page now renders an "Edit" button (PropertyForm) unconditionally in
+// its success state — PropertyForm calls useRouter() at the top of every
+// render, so any test reaching this page's success state needs the app
+// router mocked, same convention as tests/features/leads/leads-table.test.tsx.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const REAL_PROPERTY_ID = "dc525277-4c97-5441-90ca-48c9734745cf";
 
 function makeProperty(overrides: Partial<Property> = {}): Property {

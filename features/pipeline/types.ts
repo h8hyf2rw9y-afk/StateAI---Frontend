@@ -230,6 +230,35 @@ export function formatOpportunityValue(expectedValue: string | null, currency: s
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(expectedValue));
 }
 
+/**
+ * Outbound shape for `PATCH /opportunities/{id}` and the body of
+ * `POST /contacts/{contact_id}/opportunities` — mirrors
+ * app/schemas/opportunity.py's OpportunityUpdate exactly (all fields
+ * optional). `OpportunityCreate` additionally requires `opportunity_type`
+ * — deliberately NOT part of this shared type, since it's immutable after
+ * creation (OpportunityUpdate has no such field at all: "if the type is
+ * wrong, create a new Opportunity," per that schema's own docstring) — see
+ * createOpportunity in lib/api/pipeline.ts, which takes it as a separate,
+ * required argument instead. `contact_id` is never part of either body —
+ * it comes from the URL on create and can't change at all after that.
+ * `owner_user_id` exists on both schemas but this app's forms never send
+ * it (no `/users` endpoint to power a real picker — same reasoning as
+ * Task/Appointment's assignee) — omitted, the backend defaults it to the
+ * creating user.
+ */
+export interface OpportunityInput {
+  property_id?: string;
+  buyer_requirement_id?: string;
+  stage?: string;
+  title?: string;
+  description?: string;
+  expected_value?: number;
+  currency?: string;
+  probability?: number;
+  expected_close_date?: string;
+  lost_reason?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Real backend Activity — mirrors app/schemas/activity.py's ActivityRead.
 // This is the opportunity's own history, including the `stage_change`

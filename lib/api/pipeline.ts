@@ -4,6 +4,7 @@ import type {
   Activity,
   Opportunity,
   OpportunityAppointment,
+  OpportunityInput,
   OpportunityTask,
 } from "@/features/pipeline/types";
 
@@ -18,12 +19,9 @@ import type {
  *
  * There is no top-level `POST /opportunities` (an Opportunity is always
  * created *for* a contact, `POST /contacts/{id}/opportunities` — same
- * pattern as Buyer Requirements/Property Interests) and no DELETE (an
- * Opportunity is business history — "removing" one means PATCHing
- * `stage: "lost"`, not deleting the row) — so, matching
- * lib/api/properties.ts's own restraint, only the functions the current UI
- * actually calls are implemented here: list, get, and the one supported
- * mutation (stage changes via PATCH).
+ * pattern as Buyer Requirements/Property Interests, see createOpportunity
+ * below) and no DELETE (an Opportunity is business history — "removing"
+ * one means PATCHing `stage: "lost"`, not deleting the row).
  */
 export function getOpportunities(params?: {
   opportunity_type?: string;
@@ -46,6 +44,46 @@ export function getOpportunities(params?: {
 
 export function getOpportunity(opportunityId: string): Promise<ApiResult<Opportunity>> {
   return apiRequest<Opportunity>(`/api/v1/opportunities/${opportunityId}`);
+}
+
+/**
+ * `POST /contacts/{contact_id}/opportunities` — `contact_id` is a path
+ * segment, never part of the body (matching the backend's own
+ * OpportunityCreate, which has no `contact_id` field to send), and
+ * `opportunity_type` is a required, separate argument from the rest of
+ * `OpportunityInput` since it's immutable after creation — see that type's
+ * own doc comment in features/pipeline/types.ts.
+ */
+export function createOpportunity(
+  contactId: string,
+  opportunityType: string,
+  input: OpportunityInput
+): Promise<ApiResult<Opportunity>> {
+  return apiRequest<Opportunity>(`/api/v1/contacts/${contactId}/opportunities`, {
+    method: "POST",
+    body: { ...input, opportunity_type: opportunityType },
+  });
+}
+
+/**
+ * The general-purpose `PATCH /opportunities/{id}` for every field besides
+ * stage (title/description/property/buyer requirement/expected value/
+ * probability/expected close date) — deliberately separate from
+ * updateOpportunityStage above, which owns stage/lost_reason changes and
+ * the UI that collects a reason before calling it
+ * (features/pipeline/components/stage-selector.tsx). Both call the exact
+ * same backend endpoint; splitting them is a frontend-only convenience so
+ * neither caller has to know about fields it doesn't own — the backend
+ * itself doesn't distinguish "a stage PATCH" from "any other PATCH," and
+ * still writes the same stage_change Activity/audit record whenever
+ * `stage` is actually present in the body, regardless of which of these
+ * two functions sent it.
+ */
+export function updateOpportunity(opportunityId: string, input: OpportunityInput): Promise<ApiResult<Opportunity>> {
+  return apiRequest<Opportunity>(`/api/v1/opportunities/${opportunityId}`, {
+    method: "PATCH",
+    body: input,
+  });
 }
 
 /**

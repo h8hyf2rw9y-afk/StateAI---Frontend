@@ -115,3 +115,58 @@ const CONTACT_ROLE_LABELS: Record<string, string> = {
 export function formatContactRole(roleKey: string): string {
   return CONTACT_ROLE_LABELS[roleKey] ?? roleKey;
 }
+
+/** app/schemas/enums.py's CONTACT_ROLE_KEYS — the real, complete set (not just whichever roles happen to be assigned somewhere already), for populating the create/edit form's role picker. */
+export const CONTACT_ROLE_KEYS = ["buyer", "seller", "owner", "investor", "agent", "other"] as const;
+
+/** app/schemas/enums.py's ContactSource — for the create/edit form's source picker. formatContactSource above already renders any of these (or an unmapped one) safely. */
+export const CONTACT_SOURCES = [
+  "inmuebles24",
+  "lamudi",
+  "facebook",
+  "marketplace",
+  "instagram",
+  "website",
+  "referral",
+  "phone",
+  "walk_in",
+  "other",
+  "unknown",
+] as const;
+
+/** app/schemas/enums.py's PreferredContactMethod. */
+export const PREFERRED_CONTACT_METHODS = ["phone", "email", "whatsapp", "sms"] as const;
+
+const PREFERRED_CONTACT_METHOD_LABELS: Record<string, string> = {
+  phone: "Phone",
+  email: "Email",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+};
+
+export function formatPreferredContactMethod(method: string): string {
+  return PREFERRED_CONTACT_METHOD_LABELS[method] ?? method;
+}
+
+/**
+ * Outbound shape for `POST /contacts` / `PATCH /contacts/{id}` — mirrors
+ * app/schemas/contact.py's ContactCreate/ContactUpdate (both accept the
+ * same field set; Create additionally requires at least one of email/phone,
+ * enforced server-side, not duplicated here beyond a client-side nudge —
+ * see features/leads/components/contact-form.tsx). All-optional, same
+ * convention as features/buyer-requirements/types.ts's
+ * BuyerRequirementInput: only the fields the user actually filled in are
+ * sent. Roles are NOT part of this — they're assigned via the separate
+ * `POST/DELETE /contacts/{id}/roles` endpoints (see addContactRole/
+ * removeContactRole in lib/api/contacts.ts), matching the backend's own
+ * schema (ContactCreate has no `roles` field at all).
+ */
+export interface ContactInput {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  preferred_contact_method?: string;
+  source?: string;
+  notes?: string;
+}

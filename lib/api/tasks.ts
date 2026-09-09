@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { Task } from "@/features/tasks/types";
+import type { Task, TaskInput } from "@/features/tasks/types";
 
 /**
  * Typed surface for the backend's real, already-implemented Tasks API
@@ -10,10 +10,9 @@ import type { Task } from "@/features/tasks/types";
  * module here: mounted under /api/v1, a bare array for the list endpoint
  * (limit/offset, no envelope).
  *
- * Only the one read function the current UI needs — `POST`/`PATCH`/`DELETE
- * /tasks/{id}` all exist backend-side but there's no create/edit/complete
- * flow in this frontend yet, matching the same restraint
- * lib/api/{properties,appointments}.ts already document for themselves.
+ * `DELETE /tasks/{id}` exists backend-side but isn't implemented here — no
+ * "delete task" UI exists in this app, unlike create/update below (see
+ * features/tasks/components/task-form.tsx).
  */
 export function getTasks(params?: {
   status?: string;
@@ -30,4 +29,12 @@ export function getTasks(params?: {
   // sort param to request anything else) — same ceiling as every other
   // list endpoint in this app.
   return apiRequest<Task[]>("/api/v1/tasks", { params: { limit: 200, ...params } });
+}
+
+export function createTask(input: TaskInput): Promise<ApiResult<Task>> {
+  return apiRequest<Task>("/api/v1/tasks", { method: "POST", body: input });
+}
+
+export function updateTask(taskId: string, input: TaskInput): Promise<ApiResult<Task>> {
+  return apiRequest<Task>(`/api/v1/tasks/${taskId}`, { method: "PATCH", body: input });
 }
