@@ -1,4 +1,5 @@
 import type { ApiError } from "@/types/api";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import type {
   FollowUpAction,
   FollowUpChannel,
@@ -9,40 +10,30 @@ import type {
 
 /**
  * Maps a failed AI-agent request to copy that's safe and useful to show a
- * user — mirrors features/auth/lib.ts's getAuthErrorMessage in spirit: never
- * a raw backend/provider error, a stack trace, or any internal detail
- * (model name, provider, filesystem paths, credentials). The backend
- * (app/api/routes/ai.py) already reduces every failure to one of a handful
- * of generic HTTP statuses for exactly this reason — this function just
- * turns those into agent-appropriate sentences.
+ * user — never a raw backend/provider error, a stack trace, or any
+ * internal detail (model name, provider, filesystem paths, credentials).
+ * The backend (app/api/routes/ai.py) already reduces every failure to one
+ * of a handful of generic HTTP statuses for exactly this reason — this
+ * function only needs to add AI-specific copy for the codes that mean
+ * something different here (502/503/504, and a client-side timeout), and
+ * delegates everything else (auth, not-found, network) to the shared
+ * getApiErrorMessage, so a 401 reads the same whether it came from an AI
+ * call or a plain CRM one.
  */
 export function getAiErrorMessage(error: ApiError): string {
-  switch (error.status) {
-    case 401:
-    case 403:
-      return "Your session has expired. Please sign in again.";
-    case 404:
-      return "This lead couldn't be found.";
-    case 503:
-      return "AI is currently unavailable. Please make sure the local AI service is running and try again.";
-    case 504:
-      return "The AI took longer than expected to respond. Please try again.";
-    case 502:
-      return "The AI service returned an unexpected response. Please try again.";
-    default:
-      break;
+  if (error.status === 503) {
+    return "AI is currently unavailable. Please make sure the local AI service is running and try again.";
   }
-
-  if (error.code === "timeout") {
+  if (error.status === 504 || error.code === "timeout") {
     return "The AI took longer than expected to respond. Please try again.";
   }
-
-  if (error.status === undefined) {
-    // apiRequest's own catch-all for network/DNS/connection failures.
-    return "Couldn't reach the server. Check your connection and try again.";
+  if (error.status === 502) {
+    return "The AI service returned an unexpected response. Please try again.";
   }
-
-  return "Something went wrong while running the AI. Please try again.";
+  if (error.status === 404) {
+    return "This lead couldn't be found.";
+  }
+  return getApiErrorMessage(error);
 }
 
 const PRIORITY_STYLES: Record<RecommendationPriority, string> = {

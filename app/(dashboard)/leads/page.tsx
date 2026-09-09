@@ -2,14 +2,13 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { LeadsTable } from "@/features/leads/components/leads-table";
-import { mockLeads } from "@/features/leads/mock-data";
 
 export default function LeadsPage() {
   return (
     <>
       <PageHeader
         title="Leads"
-        description="Every lead in your pipeline, prioritized by AI score."
+        description="Every contact in your organization's CRM."
         actions={
           <Button disabled>
             <Plus />
@@ -17,7 +16,7 @@ export default function LeadsPage() {
           </Button>
         }
       />
-      <LeadsTable leads={mockLeads} />
+      <LeadsTable />
     </>
   );
 }

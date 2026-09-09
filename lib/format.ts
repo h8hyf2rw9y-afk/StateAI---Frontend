@@ -14,6 +14,23 @@ export function formatCurrency(value: number, currency = "USD"): string {
 }
 
 /**
+ * "Aug 21, 2026" from a full ISO *timestamp* (e.g. a backend `created_at`
+ * like "2026-08-21T20:33:33.776723Z") — deliberately plain `new Date(iso)`,
+ * unlike formatDate/parseLocalDate below. Those exist specifically to work
+ * around bare "YYYY-MM-DD" strings being misread as UTC; a real timestamp
+ * already carries an explicit offset, so parsing it directly is correct
+ * and `parseLocalDate`'s `iso.split("-")` would actually break on it
+ * (it assumes exactly three dash-separated numeric parts).
+ */
+export function formatTimestamp(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+/**
  * Parses a bare "YYYY-MM-DD" string as a local calendar date. `new
  * Date(iso)` would parse it as UTC midnight instead, which silently shifts
  * the date by a day in any timezone behind UTC — exactly the mismatch that
