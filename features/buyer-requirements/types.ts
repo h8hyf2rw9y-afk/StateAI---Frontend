@@ -95,6 +95,45 @@ export interface PropertyMatch {
 }
 
 // ---------------------------------------------------------------------------
+// GET /buyer-requirements/{id}/property-matches — a richer, separate
+// analysis alongside PropertyMatch above (not a replacement for it — see
+// that endpoint's own backend doc comment in app/schemas/matching.py for
+// why both exist). Every active property in the organization gets one of
+// these, classified match/partial_match/no_match with plain-English
+// reasons for what it did and didn't satisfy — never a numeric score.
+// ---------------------------------------------------------------------------
+
+export type MatchClassification = "match" | "partial_match" | "no_match";
+
+export interface PropertyMatchAnalysis {
+  property: Property;
+  classification: MatchClassification;
+  criteria_met: string[];
+  criteria_unmet: string[];
+  summary: string;
+}
+
+const MATCH_CLASSIFICATION_LABELS: Record<MatchClassification, string> = {
+  match: "Match",
+  partial_match: "Partial match",
+  no_match: "No match",
+};
+
+export function formatMatchClassification(classification: MatchClassification): string {
+  return MATCH_CLASSIFICATION_LABELS[classification] ?? classification;
+}
+
+const MATCH_CLASSIFICATION_BADGE_STYLES: Record<MatchClassification, string> = {
+  match: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  partial_match: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  no_match: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+};
+
+export function getMatchClassificationBadgeClassName(classification: MatchClassification): string {
+  return MATCH_CLASSIFICATION_BADGE_STYLES[classification] ?? MATCH_CLASSIFICATION_BADGE_STYLES.partial_match;
+}
+
+// ---------------------------------------------------------------------------
 // Soft-enum labels — same pattern as features/leads/types.ts and
 // features/properties/types.ts: plain strings with a safe fallback,
 // matching the backend's own read schemas (which don't re-validate these

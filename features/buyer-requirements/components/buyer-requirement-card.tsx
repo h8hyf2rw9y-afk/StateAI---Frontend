@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { BuyerRequirementForm } from "@/features/buyer-requirements/components/buyer-requirement-form";
-import { MatchList } from "@/features/buyer-requirements/components/match-list";
+import { PropertyMatchList } from "@/features/buyer-requirements/components/property-match-list";
 import { updateBuyerRequirement } from "@/lib/api/buyer-requirements";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { formatPropertyType } from "@/features/properties/types";
@@ -23,9 +23,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * One buyer requirement — active ones get Edit/Cancel actions and a
- * "See matching properties" toggle; anything else (paused/fulfilled/
- * cancelled) renders as a read-only history entry, per this task's
- * explicit ACTIVE-vs-HISTORY example. History is never hidden — see
+ * "See property matches" toggle (Buyer Matching — see
+ * property-match-list.tsx); anything else (paused/fulfilled/cancelled)
+ * renders as a read-only history entry, per this task's explicit
+ * ACTIVE-vs-HISTORY example. History is never hidden — see
  * buyer-search-section.tsx, which renders every requirement the backend
  * returns, not just the active one.
  */
@@ -124,11 +125,11 @@ export function BuyerRequirementCard({
       {isActive && (
         <div className="mt-3">
           <Button variant="outline" size="sm" onClick={() => setShowMatches((value) => !value)}>
-            {showMatches ? "Hide matching properties" : "See matching properties"}
+            {showMatches ? "Hide property matches" : "See property matches"}
           </Button>
           {showMatches && (
             <div className="mt-3">
-              <MatchList requirementId={requirement.id} />
+              <PropertyMatchList requirementId={requirement.id} />
             </div>
           )}
         </div>

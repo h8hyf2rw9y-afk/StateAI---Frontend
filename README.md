@@ -223,7 +223,7 @@ Property detail page (/properties/[id]) → getProperty(id) → GET /api/v1/prop
 The "what is this client looking for?" workflow — rendered as a **Buyer search** section on the lead detail page (`app/(dashboard)/leads/[id]/page.tsx`). Covers both CRM cases from the backend's own data model:
 
 - **Case A — `PropertyInterest`**: the contact is interested in one specific, already-identified property.
-- **Case B — `BuyerRequirement`**: the contact is searching by criteria (budget, type, locations, …) — and the backend can compute deterministic candidate `Property` matches for it (`GET /buyer-requirements/{id}/matches`, Use Case 5, `app/services/matching_service.py` — no AI, plain SQL filtering).
+- **Case B — `BuyerRequirement`**: the contact is searching by criteria (budget, type, locations, …) — and the backend can compute deterministic candidate `Property` matches for it (`GET /buyer-requirements/{id}/matches`, Use Case 5, `app/services/matching_service.py` — no AI, plain SQL filtering; see also [Buyer Matching](#buyer-matching-real-property-recommendations) below for the richer, explainable analysis this UI actually calls today).
 
 A contact can hold both, and can hold **several** `BuyerRequirement`s over time as their situation changes (e.g. rejecting one property, then opening a new search) — the backend never deletes an old one when a new one is created, it just gets a different `status`. This UI's central rule, taken directly from the task brief, is to **never hide that history**.
 
@@ -232,9 +232,9 @@ features/buyer-requirements/components/buyer-search-section.tsx (on the lead det
   → lib/api/buyer-requirements.ts (getBuyerRequirementsForContact) → GET /api/v1/contacts/{id}/buyer-requirements
   → lib/api/property-interests.ts (getPropertyInterestsForContact) → GET /api/v1/contacts/{id}/property-interests
 
-Per active requirement, on demand ("See matching properties"):
-  → lib/api/buyer-requirements.ts (getBuyerRequirementMatches) → GET /api/v1/buyer-requirements/{id}/matches
-  → real Property rows, rendered with the existing PropertyCard (features/properties/components/property-card.tsx)
+Per active requirement, on demand ("See property matches") — see Buyer Matching below:
+  → lib/api/buyer-requirements.ts (getBuyerRequirementPropertyMatches) → GET /api/v1/buyer-requirements/{id}/property-matches
+  → every active Property, classified + explained, rendered with the existing PropertyCard (features/properties/components/property-card.tsx)
 
 Create / edit / cancel:
   → createBuyerRequirement → POST /api/v1/contacts/{id}/buyer-requirements
@@ -246,10 +246,33 @@ Create / edit / cancel:
 - **No match score, no percentage, ever**: `PropertyMatchRead` only ever gives `matched_preferred_features`/`total_preferred_features` — two real counts, nothing else. `MatchList` shows them as a plain "N of M preferred features matched" caption, and only when `total_preferred_features > 0` (an all-zero "0 of 0" reads as meaningless, not as "no match") — never converted into a percentage or any kind of score, per this task's explicit instruction. There is no AI involved in matching at all.
 - **History is never hidden**: `BuyerSearchSection` fetches and renders *every* requirement the backend returns for a contact, split into an **Active search** group (`status === "active"`) and a **History** group (everything else — `paused`/`fulfilled`/`cancelled`) — confirmed against Sergio's real seeded data (an old `cancelled` requirement and a new `active` one, both returned by the same `GET` call and both rendered).
 - **Create/edit reuses the backend's real fields only**: the form (`buyer-requirement-form.tsx`) surfaces the fields this task's own brief prioritizes — operation (`purpose`), property type, budget min/max, bedrooms/bathrooms/construction minimums, parking, locations (create only), notes — not the full `BuyerRequirementCreate`/`Update` schema (`timeline`/`financing_type`/`preapproval_status`/`motivation` are real backend fields but weren't part of the prioritized set asked for here). "Cancel search" is a plain `PATCH { status: "cancelled" }` on the same row — no new requirement is created for a simple status change, only for an actual "New search."
-- **Locations and features are add-only, by design, not by omission**: the backend has no endpoint to remove or replace a `BuyerRequirementLocation`/`BuyerRequirementFeature`, only to add one (`POST .../locations`, `POST .../features`) — so the edit form doesn't attempt either; existing locations/features are still shown read-only on the card. Features specifically also have no `GET /features` catalog endpoint to power a picker, so assigning one from the UI would mean guessing valid keys — deferred, not built.
+- **Locations and features are add-only, by design, not by omission**: the backend has no endpoint to remove or replace a `BuyerRequirementLocation`/`BuyerRequirementFeature`, only to add one (`POST .../locations`, `POST .../features`) — so the edit form doesn't attempt either; existing locations/features are still shown read-only on the card. A real `GET /features` catalog endpoint does exist (confirmed while building [Buyer Matching](#buyer-matching-real-property-recommendations)) and could power an assignment picker, but adding one here was out of scope for that task — deferred, not built, and no longer accurately described as "no endpoint exists."
 - **Property → Buyer Requirement ("who's looking for something like this property?") is genuinely not implemented backend-side** — confirmed by inspecting `app/services/matching_service.py` and every property route; matching only runs one direction (requirement → candidate properties). Documented here as deferred, not built as a new, unasked-for backend relationship.
 - **Loading/error/empty states**: "Loading buyer search…" while fetching, the same `FormError`/`getApiErrorMessage` pattern as everywhere else on failure, "No active property search yet." when a contact has neither a requirement nor a property interest, and "No properties currently match this search." when a real `GET .../matches` call returns an empty array — never a fallback to mock data.
 - **Security**: identical pattern to Leads/Properties — only `contact_id`/`requirement_id` (whichever the current call needs) ever leaves the frontend; organization scope is entirely backend-derived, and a requirement outside the caller's organization 404s like every other resource.
+
+## Buyer Matching (real property recommendations)
+
+The first real matching system in this app — deterministic, explainable, no AI, no embeddings, no numeric score. Triggered from the same "See property matches" toggle on an active `BuyerRequirementCard` (on the lead detail page's Buyer search section) that used to show the older, narrower match list.
+
+```
+features/buyer-requirements/components/buyer-requirement-card.tsx ("See property matches")
+  → features/buyer-requirements/components/property-match-list.tsx (fetches on toggle)
+  → lib/api/buyer-requirements.ts (getBuyerRequirementPropertyMatches)
+  → GET /api/v1/buyer-requirements/{id}/property-matches
+  → every active Property in the organization, each with a classification
+    (match / partial_match / no_match), the specific criteria it met and
+    didn't, and a one-line summary
+```
+
+- **A separate, richer analysis — not a redesign of the existing matches UI**: `GET /buyer-requirements/{id}/matches` (`app/services/matching_service.py`'s original `find_matches`) already existed, with its own passing tests and its own frontend consumer (`match-list.tsx`, still present, still real, just no longer what this screen renders) that silently excludes any property that doesn't qualify. Replacing that endpoint's behavior would have broken both. Buyer Matching is a second, backend-side method (`analyze_matches`) on the same `MatchingService`, exposed at a new route, that evaluates **every** active property criterion-by-criterion instead of hard-filtering with one SQL `WHERE` — see the backend README's own "Buyer Matching" section for the full classification rule.
+- **`features/buyer-requirements/types.ts`** gained `PropertyMatchAnalysis`/`MatchClassification` alongside the existing, untouched `PropertyMatch` (the older endpoint's shape) — same "add, don't replace" reasoning as the backend.
+- **Match / Partial match / No match are visually distinct, color-coded badges** (emerald / amber / red, matching this app's existing status-badge conventions elsewhere — `PropertyStatusBadge`, Pipeline's `StageBadge`), not a numeric score rendered as a color. Each result also shows a green-checkmarked list of criteria it met and a red-X'd list of what it didn't — real, backend-generated sentences (e.g. "Price (4600000.00 MXN) is within budget.", "City is Monterrey, but the client is looking in: San Pedro Garza García."), never summarized into a percentage.
+- **Reuses `PropertyCard` as-is** for each result (same visuals as the Properties page, same real link to `/properties/{id}`) — the classification badge and criteria breakdown render alongside it, not by duplicating property-rendering logic.
+- **No fabricated criteria**: only the fields the backend actually evaluates appear — no postal code (a real `Property` field, but `BuyerRequirementLocation` has no matching field to compare it against, confirmed by reading the backend model directly), no invented weighting or partial credit.
+- **Loading/error/empty states**: "Analyzing property matches…" while fetching, the same `FormError`/`getApiErrorMessage` pattern as everywhere else on failure, and "No properties to compare yet." when the organization has no active properties at all — never a fallback to mock data.
+- **Security**: identical pattern to every other real page — only `requirementId` ever leaves the frontend; organization scope for both the requirement and every candidate property is entirely backend-derived, and a requirement outside the caller's organization 404s like every other resource.
+- **Live-verified against the real Supabase demo data**: with the real backend and frontend running together, opening Alejandro Torres's buyer search and clicking "See property matches" correctly analyzed all 14 real seeded properties — one genuine `match` (every one of 8 specified criteria satisfied), most `partial_match` (with the exact unmet criteria shown, e.g. over budget, wrong city), and two real `no_match` results — then clicking through the top match navigated to its real property detail page. Zero console errors. This feature makes no writes at all (a pure `GET`), so no cleanup was needed. Leads, Properties, Pipeline (board and detail), Tasks, Appointments, AI Assistant, and the Lead Intelligence/Follow-up panels were all spot-checked live afterward and showed no regressions.
 
 ## Pipeline (real CRM opportunities)
 
