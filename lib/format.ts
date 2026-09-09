@@ -30,6 +30,14 @@ export function formatTimestamp(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** "10:30 AM" from a full ISO *timestamp* — same plain `new Date(iso)` reasoning as formatTimestamp above, just the time portion. Used by the real Appointments list (features/appointments/components/appointments-list.tsx) to show a `start_at` alongside its day-grouping heading. */
+export function formatTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 /**
  * Parses a bare "YYYY-MM-DD" string as a local calendar date. `new
  * Date(iso)` would parse it as UTC midnight instead, which silently shifts

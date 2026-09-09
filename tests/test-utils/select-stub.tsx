@@ -1,4 +1,4 @@
-import { Children, createContext, isValidElement, useContext, useEffect, useState, type ReactNode } from "react";
+import { Children, createContext, isValidElement, useContext, type ReactNode } from "react";
 
 /**
  * Test-only stand-in for components/ui/select.tsx, used via
@@ -17,16 +17,49 @@ import { Children, createContext, isValidElement, useContext, useEffect, useStat
  * simple `fireEvent.change` instead of simulating pointer-driven
  * popup/positioning behavior that has nothing to do with the component
  * under test's own logic.
+ *
+ * Items are extracted from `<SelectContent>`'s children *synchronously
+ * during render* (walking the `children` prop `Select` already has, not
+ * via a child component's own `useEffect` reporting back up). An earlier
+ * version used a `SelectContent`-owned effect to register items into
+ * context — that introduced a real gap between the first commit (options
+ * not yet registered) and the effect flushing (options registered), which
+ * `fireEvent.change` could race: firing before the target `<option>`
+ * existed silently no-ops a native `<select>`'s value assignment, so the
+ * simulated pick was lost. That only surfaced as an intermittent failure
+ * when the whole suite ran together (more scheduling variance), not when
+ * this file ran alone — confirmed and fixed by removing the effect
+ * entirely in favor of synchronous extraction.
  */
 
 interface SelectCtx {
   value: string | undefined;
   onValueChange: ((value: string | null) => void) | undefined;
   items: { value: string; label: ReactNode }[];
-  registerItems: (items: { value: string; label: ReactNode }[]) => void;
 }
 
 const Ctx = createContext<SelectCtx | null>(null);
+
+/**
+ * Walks the whole children tree looking for elements with a `value` prop
+ * (a `SelectItem`) — recursing into anything else that has `children`
+ * (`SelectContent`, `SelectGroup`, or a plain wrapper `<>...</>`), so this
+ * doesn't care which specific grouping component sits between `Select` and
+ * its `SelectItem`s.
+ */
+function extractItems(children: ReactNode): { value: string; label: ReactNode }[] {
+  const items: { value: string; label: ReactNode }[] = [];
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    const props = child.props as { children?: ReactNode; value?: string };
+    if (typeof props.value === "string") {
+      items.push({ value: props.value, label: props.children });
+    } else if (props.children !== undefined) {
+      items.push(...extractItems(props.children));
+    }
+  });
+  return items;
+}
 
 export function Select({
   value,
@@ -37,8 +70,8 @@ export function Select({
   onValueChange?: (value: string | null) => void;
   children: ReactNode;
 }) {
-  const [items, setItems] = useState<{ value: string; label: ReactNode }[]>([]);
-  return <Ctx.Provider value={{ value, onValueChange, items, registerItems: setItems }}>{children}</Ctx.Provider>;
+  const items = extractItems(children);
+  return <Ctx.Provider value={{ value, onValueChange, items }}>{children}</Ctx.Provider>;
 }
 
 export function SelectTrigger({
@@ -72,26 +105,14 @@ export function SelectValue() {
   return null;
 }
 
-export function SelectContent({ children }: { children: ReactNode }) {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("SelectContent must be used inside <Select>");
-
-  useEffect(() => {
-    const items = Children.toArray(children)
-      .filter(isValidElement)
-      .map((child) => {
-        const props = child.props as { value: string; children: ReactNode };
-        return { value: props.value, label: props.children };
-      });
-    ctx.registerItems(items);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [children]);
-
+/** Not rendered directly — `Select` reads this element's `children` prop straight off the JSX tree (see extractItems) rather than this component ever mounting its own children. */
+export function SelectContent({ children: _children }: { children: ReactNode }) {
+  void _children;
   return null;
 }
 
 export function SelectItem({ children }: { value: string; children: ReactNode }) {
-  // Never rendered directly — SelectContent reads `value`/`children` off
+  // Never rendered directly — extractItems reads `value`/`children` off
   // the element's own props before this ever runs. Present only so JSX
   // referencing <SelectItem> type-checks and doesn't throw if ever called.
   return <>{children}</>;
