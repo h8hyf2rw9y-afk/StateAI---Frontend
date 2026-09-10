@@ -4,8 +4,8 @@ import type {
   FollowUpAction,
   FollowUpChannel,
   LeadPriority,
+  PipelineAction,
   RecommendedNextAction,
-  RecommendationPriority,
 } from "@/features/ai/types";
 
 /**
@@ -36,14 +36,14 @@ export function getAiErrorMessage(error: ApiError): string {
   return getApiErrorMessage(error);
 }
 
-const PRIORITY_STYLES: Record<RecommendationPriority, string> = {
+const PRIORITY_STYLES: Record<LeadPriority, string> = {
   high: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
   medium: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   low: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
 };
 
-/** Shared by the dashboard's mock recommendation list and the real Lead Intelligence/Follow-up panels — same three-value priority scale throughout. */
-export function getPriorityBadgeClassName(priority: LeadPriority | RecommendationPriority): string {
+/** Shared by all three real AI panels (Lead Intelligence, Follow-up, Pipeline) — same three-value priority scale throughout. */
+export function getPriorityBadgeClassName(priority: LeadPriority): string {
   return PRIORITY_STYLES[priority];
 }
 
@@ -86,6 +86,28 @@ const CHANNEL_LABELS: Record<FollowUpChannel, string> = {
 
 export function getChannelLabel(channel: FollowUpChannel): string {
   return CHANNEL_LABELS[channel];
+}
+
+const PIPELINE_ACTION_LABELS: Record<PipelineAction, string> = {
+  call: "Call the client",
+  whatsapp: "Message on WhatsApp",
+  email: "Send an email",
+  follow_up: "Follow up",
+  send_properties: "Send matching properties",
+  schedule_viewing: "Schedule a viewing",
+  prepare_appointment: "Prepare for the appointment",
+  review_offer: "Review the offer",
+  negotiate: "Continue negotiating",
+  collect_documents: "Collect documents",
+  review_financing: "Review financing",
+  coordinate_notary: "Coordinate with the notary",
+  create_task: "Create a follow-up task",
+  monitor: "Monitor — no action needed yet",
+};
+
+/** The Pipeline Agent's own next-action vocabulary — see PipelineAction's doc comment in features/ai/types.ts for why it's separate from RecommendedNextAction/FollowUpAction above. */
+export function getPipelineActionLabel(action: PipelineAction): string {
+  return PIPELINE_ACTION_LABELS[action] ?? action;
 }
 
 /** "87%" from a 0.0-1.0 confidence value — display-only rounding, never a fabricated precision the model didn't actually provide. */

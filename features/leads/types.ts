@@ -1,61 +1,16 @@
-import type { PipelineStage } from "@/features/pipeline/types";
-
-export const LEAD_SOURCES = [
-  "website",
-  "referral",
-  "social_media",
-  "portal",
-  "walk_in",
-  "advertising",
-  "other",
-] as const;
-
-export type LeadSource = (typeof LEAD_SOURCES)[number];
-
-export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
-  website: "Website",
-  referral: "Referral",
-  social_media: "Social Media",
-  portal: "Listing Portal",
-  walk_in: "Walk-in",
-  advertising: "Advertising",
-  other: "Other",
-};
-
-export interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatarUrl?: string;
-  /** A lead's status is a pipeline stage — see features/pipeline/types. */
-  status: PipelineStage;
-  /** AI-computed conversion likelihood, 0-100. Mocked for now. */
-  score: number;
-  source: LeadSource;
-  budgetMin: number;
-  budgetMax: number;
-  currency: string;
-  interestedPropertyIds: string[];
-  agentId: string;
-  agentName: string;
-  lastInteractionAt: string; // ISO date
-  nextAction: string;
-  followUpDate: string | null; // ISO date
-  createdAt: string; // ISO date
-}
-
 // ---------------------------------------------------------------------------
 // Real backend contact — mirrors app/schemas/contact.py's ContactRead
-// field-for-field (see lib/api/contacts.ts). Deliberately a separate type
-// from Lead above, not a consolidation of the two: Lead's score/status/
-// budget/interestedPropertyIds/nextAction/followUpDate have no backend
-// equivalent (Contact has none of them) and Lead is still used by the
-// still-mocked Pipeline and Dashboard features — replacing it here would
-// either fabricate fields the backend doesn't provide or break those other
-// features, both explicitly out of scope for this task. The Leads list and
-// detail page use Contact; everything else keeps using Lead until it's
-// wired to the real backend too.
+// field-for-field (see lib/api/contacts.ts).
+//
+// This file used to also define a mock `Lead` type (its own score/status/
+// budget/interestedPropertyIds/nextAction/followUpDate fields, none of which
+// the real Contact model has) plus LEAD_SOURCES/LeadSource/
+// LEAD_SOURCE_LABELS for it — kept around only because the mock Dashboard
+// was its last real consumer. Removed in the CRM Integration Gaps task once
+// the Dashboard was rewired to real data (see features/dashboard/); nothing
+// else in this app ever imported them (the real Leads list/detail pages
+// always used Contact, and Contact has its own, separate source vocabulary —
+// CONTACT_SOURCES/formatContactSource below).
 // ---------------------------------------------------------------------------
 
 export interface ContactRole {

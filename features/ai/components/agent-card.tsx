@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { BrainCircuit, MessageCircleMore, Sparkles } from "lucide-react";
+import { BrainCircuit, MessageCircleMore, Waypoints } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +7,7 @@ import type { AiAgent } from "@/features/ai/types";
 const ICONS: Record<AiAgent["icon"], LucideIcon> = {
   BrainCircuit,
   MessageCircleMore,
-  Sparkles,
+  Waypoints,
 };
 
 export function AgentCard({ agent }: { agent: AiAgent }) {
@@ -21,9 +20,7 @@ export function AgentCard({ agent }: { agent: AiAgent }) {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="size-5" aria-hidden="true" />
           </span>
-          <Badge variant="secondary">
-            {agent.status === "available" ? "Available" : "Coming soon"}
-          </Badge>
+          <Badge variant="secondary">Available</Badge>
         </div>
         <div>
           <p className="font-medium">{agent.name}</p>
@@ -37,11 +34,6 @@ export function AgentCard({ agent }: { agent: AiAgent }) {
             </li>
           ))}
         </ul>
-        {agent.status === "available" && (
-          <Link href="/leads" className="text-sm font-medium text-primary hover:underline">
-            Try it on a lead →
-          </Link>
-        )}
       </CardContent>
     </Card>
   );

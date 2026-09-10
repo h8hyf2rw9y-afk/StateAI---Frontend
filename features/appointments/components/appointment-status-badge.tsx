@@ -3,14 +3,13 @@ import { formatAppointmentStatus, getAppointmentStatusBadgeClassName } from "@/f
 import { cn } from "@/lib/utils";
 
 /**
- * `status` is the backend's real Appointment status soft-enum string — not
- * the old mock `AppointmentStatus` union this component used to render
- * (that type still exists, for the Dashboard's mock appointment widgets,
- * but `AppointmentStatusBadge` itself has no other caller — see
- * features/appointments/types.ts). The five real values happen to be
- * spelled the same as the mock's, but this now accepts any string and
- * falls back gracefully, matching every other real-backend status badge in
- * this app (PropertyStatusBadge, Pipeline's StageBadge).
+ * `status` is the backend's real Appointment status soft-enum string — a
+ * plain `string`, never re-validated as a strict union, so this falls back
+ * gracefully for anything unmapped, matching every other real-backend
+ * status badge in this app (PropertyStatusBadge, Pipeline's StageBadge).
+ * (The old mock `AppointmentStatus` union this component briefly rendered
+ * was removed in the CRM Integration Gaps task, once the Dashboard — its
+ * last remaining caller — was rewired to real data.)
  */
 export function AppointmentStatusBadge({ status, className }: { status: string; className?: string }) {
   return (

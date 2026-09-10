@@ -1,80 +1,13 @@
 // ---------------------------------------------------------------------------
-// Mock/demo appointment shape — still used by app/(dashboard)/dashboard/page.tsx
-// (via features/appointments/mock-data.ts's `mockAppointments`) and
-// features/dashboard/components/{priorities-list,upcoming-appointments-list}.tsx,
-// all of which import the `Appointment` type by name (not just the mock
-// array — unlike features/properties/mock-data.ts's old `Property`, this
-// name can't be freed up the same way without also touching the Dashboard,
-// which is explicitly out of scope for the task that made this feature's
-// list page real). Left untouched, same reasoning features/leads/types.ts
-// already documents for `Lead` vs `Contact`: this shape (`date`/`time`/
-// `durationMinutes`/`leadName`/`agentName`) has no real backend equivalent
-// (see `AppointmentRecord` below) and is still load-bearing for the
-// Dashboard. The real Appointments page
-// (app/(dashboard)/appointments/page.tsx) no longer uses `Appointment`,
-// `AppointmentType`, or `AppointmentStatus` — see `AppointmentRecord` below.
-// ---------------------------------------------------------------------------
-
-export const APPOINTMENT_TYPES = [
-  "viewing",
-  "call",
-  "meeting",
-  "closing",
-  "other",
-] as const;
-
-export type AppointmentType = (typeof APPOINTMENT_TYPES)[number];
-
-export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
-  viewing: "Property Viewing",
-  call: "Call",
-  meeting: "Meeting",
-  closing: "Closing",
-  other: "Other",
-};
-
-export const APPOINTMENT_STATUSES = [
-  "scheduled",
-  "confirmed",
-  "completed",
-  "cancelled",
-  "no_show",
-] as const;
-
-export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
-
-export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
-  scheduled: "Scheduled",
-  confirmed: "Confirmed",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  no_show: "No Show",
-};
-
-export interface Appointment {
-  id: string;
-  title: string;
-  date: string; // ISO date, e.g. "2026-09-03"
-  time: string; // "10:30"
-  durationMinutes: number;
-  leadId: string;
-  leadName: string;
-  propertyId: string | null;
-  propertyName: string | null;
-  type: AppointmentType;
-  status: AppointmentStatus;
-  notes?: string;
-  agentId: string;
-  agentName: string;
-}
-
-// ---------------------------------------------------------------------------
 // Real backend Appointment — mirrors app/schemas/appointment.py's
-// AppointmentRead field-for-field (see lib/api/appointments.ts). A separate
-// type from `Appointment` above for the same reason `Contact`/`Property`/
-// `Opportunity` are separate from their mock counterparts elsewhere in this
-// app — no field here is fabricated, and nothing here is consolidated with
-// the mock shape the Dashboard still depends on.
+// AppointmentRead field-for-field (see lib/api/appointments.ts).
+//
+// This file used to also define a mock `Appointment` type (separate
+// `date`/`time`/`durationMinutes`/`leadName`/`agentName` fields, plus
+// AppointmentType/AppointmentStatus/APPOINTMENT_TYPES/APPOINTMENT_STATUSES
+// for it) — kept around only because the mock Dashboard was its last real
+// consumer. Removed in the CRM Integration Gaps task once the Dashboard was
+// rewired to real data; the real Appointments page never used them.
 //
 // Note for future readers: features/pipeline/types.ts independently defines
 // its own `OpportunityAppointment` (identical shape, for the appointments

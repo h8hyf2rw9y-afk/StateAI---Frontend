@@ -1,37 +1,21 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type {
-  AiAgent,
-  AiRecommendation,
-  FollowUpResult,
-  LeadIntelligenceResult,
-} from "@/features/ai/types";
+import type { FollowUpResult, LeadIntelligenceResult, PipelineResult } from "@/features/ai/types";
 
 /**
- * getAgents/getRecommendations below are typed against speculative endpoints
- * (`/ai/agents`, `/ai/recommendations`) that don't exist on the backend yet
- * and aren't called anywhere in the app — see features/ai/mock-data.ts,
- * which the AI Assistant dashboard still renders directly. Left in place
- * only because removing unused exports isn't this task's concern; don't
- * treat their presence as confirmation those routes are real.
- */
-export function getAgents(): Promise<ApiResult<AiAgent[]>> {
-  return apiRequest<AiAgent[]>("/ai/agents");
-}
-
-export function getRecommendations(): Promise<ApiResult<AiRecommendation[]>> {
-  return apiRequest<AiRecommendation[]>("/ai/recommendations");
-}
-
-/**
- * The two real, implemented agents — see app/api/routes/ai.py in the
- * backend, mounted under /api/v1 (app/main.py) unlike the speculative paths
- * above, which is why these build their path with that prefix explicitly
- * rather than through some shared "backend resource path" helper — no such
- * helper exists yet since every other module in this directory targets
- * routes that were never actually implemented backend-side this way.
+ * The three real, implemented agents — see app/api/routes/ai.py in the
+ * backend, mounted under /api/v1 (app/main.py), which is why these build
+ * their path with that prefix explicitly rather than through some shared
+ * "backend resource path" helper — no such helper exists yet since every
+ * other module in this directory targets routes implemented a different way.
  *
- * Both are POSTs (they run an LLM call, not a lookup) and both are
+ * (The previous speculative `getAgents`/`getRecommendations` — typed against
+ * `/ai/agents`/`/ai/recommendations`, which the backend never had — were
+ * removed in the CRM Integration Gaps task along with the mock AI Assistant
+ * page that was their only caller. The three functions below are the real
+ * replacement.)
+ *
+ * All three are POSTs (they run an LLM call, not a lookup) and are
  * organization-scoped/authenticated by the backend itself from the bearer
  * token apiRequest attaches; the frontend only ever supplies `contactId`,
  * never an organization id (see this task's security objective — the
@@ -56,6 +40,22 @@ export function getLeadIntelligence(contactId: string): Promise<ApiResult<LeadIn
 
 export function getFollowUpRecommendation(contactId: string): Promise<ApiResult<FollowUpResult>> {
   return apiRequest<FollowUpResult>(`/api/v1/ai/follow-up/${contactId}`, {
+    method: "POST",
+    timeoutMs: AI_AGENT_TIMEOUT_MS,
+  });
+}
+
+/**
+ * `POST /ai/pipeline/{contact_id}` — the Pipeline Agent: analyzes every
+ * Opportunity this contact has and returns pipeline-level priority, risk
+ * flags, and recommended next actions. Read-only, same as the two above —
+ * see features/ai/components/pipeline-panel.tsx for the frontend surface
+ * (added in the CRM Integration Gaps task; the backend endpoint itself
+ * already existed and had already been tested against real Ollama before
+ * this task gave it a UI).
+ */
+export function getPipelineAnalysis(contactId: string): Promise<ApiResult<PipelineResult>> {
+  return apiRequest<PipelineResult>(`/api/v1/ai/pipeline/${contactId}`, {
     method: "POST",
     timeoutMs: AI_AGENT_TIMEOUT_MS,
   });

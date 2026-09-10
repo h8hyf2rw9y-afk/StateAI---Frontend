@@ -1,73 +1,19 @@
-/**
- * The sales pipeline stage is a single shared vocabulary used by both the
- * Leads page (as a lead's current status) and the Pipeline board (as a
- * deal's column). Defining it once here — instead of duplicating a near
- * identical union in features/leads — keeps the two views from drifting
- * apart as stages are added or renamed.
- */
-export const PIPELINE_STAGES = [
-  "new",
-  "contacted",
-  "qualified",
-  "viewing_scheduled",
-  "negotiation",
-  "won",
-  "lost",
-] as const;
-
-export type PipelineStage = (typeof PIPELINE_STAGES)[number];
-
-export const PIPELINE_STAGE_LABELS: Record<PipelineStage, string> = {
-  new: "New",
-  contacted: "Contacted",
-  qualified: "Qualified",
-  viewing_scheduled: "Viewing Scheduled",
-  negotiation: "Negotiation",
-  won: "Won",
-  lost: "Lost",
-};
-
-/**
- * A deal is a lead paired with an opportunity moving through the pipeline.
- *
- * Still mock — used by app/(dashboard)/dashboard/page.tsx (via
- * features/pipeline/mock-data.ts's `mockDeals`) for the dashboard's
- * pipeline summary widget, and by nothing else after this task. Left
- * untouched, same reasoning features/leads/types.ts already documents for
- * `Lead`/`Contact`: `Deal` has no backend equivalent (`leadName`/
- * `agentName`/a single flat `value`/`probability` don't exist on the real,
- * per-opportunity backend shape below — a `Contact` can have *several*
- * opportunities, so there's no one "the deal's value" to flatten it to),
- * and the Dashboard is explicitly out of scope for this task. The real
- * Pipeline page (`app/(dashboard)/pipeline/page.tsx`) no longer uses `Deal`
- * or `PipelineStage` — see `Opportunity`/`OpportunityStage` below.
- */
-export interface Deal {
-  id: string;
-  leadId: string;
-  leadName: string;
-  propertyId: string | null;
-  propertyName: string | null;
-  stage: PipelineStage;
-  value: number;
-  currency: string;
-  probability: number; // 0-100
-  expectedCloseDate: string; // ISO date
-  agentId: string;
-  agentName: string;
-  updatedAt: string; // ISO date
-}
-
 // ---------------------------------------------------------------------------
 // Real backend Opportunity — mirrors app/models/opportunity.py /
 // app/schemas/opportunity.py's OpportunityRead field-for-field (see
-// lib/api/pipeline.ts). Deliberately a separate type from `Deal` above, not
-// a consolidation of the two — same reasoning `Contact` vs `Lead` already
-// established in features/leads/types.ts: an Opportunity is genuinely not a
-// "deal" in the mock sense (no single agentName/leadName baked in — those
-// live on the Contact/owner it references by id, read through separately,
-// same as everywhere else in this schema), and `Deal` is still load-bearing
-// for the still-mocked Dashboard.
+// lib/api/pipeline.ts).
+//
+// This file used to also define a mock `Deal` type (a lead paired with an
+// opportunity, with a single flat leadName/agentName/value/probability) plus
+// the mock 7-value `PipelineStage`/`PIPELINE_STAGES`/`PIPELINE_STAGE_LABELS`
+// vocabulary — kept around only because the mock Dashboard was their last
+// real consumer (an Opportunity is genuinely not a "deal" in that mock
+// sense: no single leadName/agentName baked in — those live on the
+// Contact/owner it references by id, read through separately, same as
+// everywhere else in this schema — and a Contact can have *several*
+// Opportunities, so there's no one "the deal's value" to flatten it to).
+// Removed in the CRM Integration Gaps task once the Dashboard was rewired to
+// real data; the real Pipeline page never used them.
 //
 // `opportunity_type`/`stage`/`lost_reason` are typed as plain strings
 // (matching the backend's own read schema, which doesn't re-validate them
@@ -91,12 +37,11 @@ export const OPPORTUNITY_TYPE_LABELS: Record<OpportunityType, string> = {
 
 /**
  * The backend's real, 13-value shared stage enum (app/schemas/enums.py's
- * OPPORTUNITY_STAGES) — one list covering both buy and sell pipelines, not
- * the mock 7-value `PIPELINE_STAGES` above. `OPPORTUNITY_STAGES_BY_TYPE`
- * mirrors the backend's own dict of the same name (OpportunityService is
- * the actual source of truth server-side; this is only used client-side to
- * build the right Select options for an opportunity's own type, same
- * validation the backend re-does regardless).
+ * OPPORTUNITY_STAGES) — one list covering both buy and sell pipelines.
+ * `OPPORTUNITY_STAGES_BY_TYPE` mirrors the backend's own dict of the same
+ * name (OpportunityService is the actual source of truth server-side; this
+ * is only used client-side to build the right Select options for an
+ * opportunity's own type, same validation the backend re-does regardless).
  */
 export const OPPORTUNITY_STAGE_VALUES = [
   "qualification",
