@@ -8,6 +8,7 @@ import { NAV_ITEMS } from "@/components/navigation/nav-config";
 import { NavLink } from "@/components/navigation/nav-link";
 import { Logo } from "@/components/shared/logo";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 /** Slim topbar: mobile nav trigger on small screens, user menu on the right. Page titles live in each page via PageHeader, not here. */
 export function AppHeader() {
@@ -44,6 +45,7 @@ export function AppHeader() {
 
       <div className="flex-1" />
 
+      <NotificationBell />
       <UserMenu />
     </header>
   );

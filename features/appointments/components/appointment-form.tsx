@@ -81,6 +81,7 @@ export function AppointmentForm({
   const [contactId, setContactId] = useState(appointment?.contact_id ?? "");
   const [propertyId, setPropertyId] = useState(appointment?.property_id ?? "");
   const [opportunityId, setOpportunityId] = useState(appointment?.opportunity_id ?? "");
+  const [outcomeNotes, setOutcomeNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,6 +128,9 @@ export function AppointmentForm({
     };
     if (isEdit) {
       input.status = status;
+      if (status === "completed" && outcomeNotes.trim()) {
+        input.outcome_notes = outcomeNotes.trim();
+      }
     } else {
       input.assigned_to_user_id = user?.id;
     }
@@ -195,6 +199,22 @@ export function AppointmentForm({
               </div>
             )}
           </div>
+
+          {isEdit && status === "completed" && (
+            <div className="flex flex-col gap-1.5 rounded-lg border border-dashed p-3">
+              <Label htmlFor="outcome_notes">What happened at this showing?</Label>
+              <Textarea
+                id="outcome_notes"
+                rows={2}
+                placeholder="e.g. Liked the property but wants to compare two more."
+                value={outcomeNotes}
+                onChange={(e) => setOutcomeNotes(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Saved as an Activity on this contact — visible in their history, and to the Follow-up and Pipeline agents.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">

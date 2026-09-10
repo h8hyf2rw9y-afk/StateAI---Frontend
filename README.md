@@ -6,7 +6,7 @@ This repository is the **frontend only**. It connects to a real FastAPI backend 
 
 ## Status
 
-🚧 Real Supabase authentication (email/password + Google OAuth) and route protection, self-service account onboarding (a brand-new sign-in provisions its own organization automatically — see [How authentication works](#how-authentication-works)), and a real FastAPI backend behind Leads, Properties, Buyer search + Buyer Matching, Pipeline, Appointments, Tasks, a real Dashboard, and all three read-only AI agents (Lead Intelligence, Follow-up, Pipeline) via a real AI Assistant page. See [What's mocked](#whats-mocked-vs-real) below for what (if anything) in that section is now stale.
+🚧 Real Supabase authentication (email/password + Google OAuth) and route protection, self-service account onboarding (a brand-new sign-in provisions its own organization automatically — see [How authentication works](#how-authentication-works)), a real FastAPI backend behind Leads, Properties, Buyer search + Buyer Matching, Pipeline, Appointments, Tasks, a real Dashboard, and all three read-only AI agents (Lead Intelligence, Follow-up, Pipeline) via a real AI Assistant page — and, as of Phase 5, a real Notification bell (`components/layout/notification-bell.tsx`) consuming the backend's now-active automation (overdue tasks / upcoming appointments detected and turned into real notifications on a schedule), plus a "record the outcome" field when marking a showing Appointment completed. See [What's mocked](#whats-mocked-vs-real) below for what (if anything) in that section is now stale.
 
 ## Tech stack
 

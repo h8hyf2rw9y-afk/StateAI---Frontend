@@ -7,4 +7,5 @@ export * as pipelineApi from "./pipeline";
 export * as appointmentsApi from "./appointments";
 export * as tasksApi from "./tasks";
 export * as activitiesApi from "./activities";
+export * as notificationsApi from "./notifications";
 export * as aiApi from "./ai";

@@ -159,6 +159,53 @@ describe("AppointmentForm", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ ...appointment, status: "completed" }));
   });
 
+  it("shows the outcome field only when editing and status is set to completed", () => {
+    mockDefaults();
+    render(<AppointmentForm appointment={makeAppointment({ status: "confirmed" })} trigger={<button>Edit</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.queryByLabelText(/what happened at this showing/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/^status/i), { target: { value: "completed" } });
+    expect(screen.getByLabelText(/what happened at this showing/i)).toBeInTheDocument();
+  });
+
+  it("sends outcome_notes only alongside status completed, never on a bare status change", async () => {
+    mockDefaults();
+    const appointment = makeAppointment();
+    updateAppointmentMock.mockResolvedValue({ ok: true, data: { ...appointment, status: "completed" } });
+
+    render(<AppointmentForm appointment={appointment} trigger={<button>Edit</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText(/^status/i), { target: { value: "completed" } });
+    fireEvent.change(screen.getByLabelText(/what happened at this showing/i), {
+      target: { value: "Liked the property but wants to compare two more." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(updateAppointmentMock).toHaveBeenCalledWith(
+        APPOINTMENT_ID,
+        expect.objectContaining({ status: "completed", outcome_notes: "Liked the property but wants to compare two more." })
+      )
+    );
+  });
+
+  it("does not send outcome_notes when the field is left blank", async () => {
+    mockDefaults();
+    const appointment = makeAppointment();
+    updateAppointmentMock.mockResolvedValue({ ok: true, data: { ...appointment, status: "completed" } });
+
+    render(<AppointmentForm appointment={appointment} trigger={<button>Edit</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText(/^status/i), { target: { value: "completed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(updateAppointmentMock).toHaveBeenCalled());
+    const payload = updateAppointmentMock.mock.calls[0][1];
+    expect(payload.outcome_notes).toBeUndefined();
+  });
+
   it("shows a friendly error message on API failure", async () => {
     mockDefaults();
     createAppointmentMock.mockResolvedValue({ ok: false, error: { message: "irrelevant", status: 500 } });

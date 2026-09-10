@@ -129,4 +129,13 @@ export interface AppointmentInput {
   location?: string;
   appointment_type?: string;
   status?: string;
+  /**
+   * Phase 5 — User Story F/K. Never itself stored on AppointmentRecord
+   * (see app/schemas/appointment.py's AppointmentUpdate.outcome_notes on
+   * the backend) — sending this alongside status="completed" makes the
+   * backend create one real Activity from it instead, visible in Activity
+   * history and to the Follow-up/Pipeline agents' context. Sending it
+   * without status="completed" is accepted but has no effect server-side.
+   */
+  outcome_notes?: string;
 }
