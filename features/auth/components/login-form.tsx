@@ -13,6 +13,7 @@ import { FormError } from "@/features/auth/components/form-error";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthErrorMessage } from "@/features/auth/lib";
 import { validateLoginForm, type LoginFormErrors } from "@/features/auth/validation";
+import { provisionMyOrganization } from "@/lib/api/me";
 
 /** Where to send a signed-in user, honoring proxy.ts's `?next=` (set when it bounced them here from a protected route). */
 function getRedirectTarget(): string {
@@ -47,6 +48,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       setFormError(getAuthErrorMessage(error));
       return;
     }
+
+    // Idempotent — safe on every login, not just a brand-new signup (see
+    // lib/api/me.ts). Best-effort: a failure here isn't shown as a login
+    // error (apiRequest never throws — see its own doc comment — so
+    // nothing here needs a try/catch) — the dashboard's own real-data
+    // loading already surfaces a clear error state if the account still
+    // isn't provisioned, so this never silently strands the user without
+    // any explanation.
+    await provisionMyOrganization();
 
     router.push(getRedirectTarget());
     router.refresh();

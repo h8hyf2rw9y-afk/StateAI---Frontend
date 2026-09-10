@@ -27,6 +27,31 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      // Idempotent onboarding — same call LoginForm makes on every real
+      // login (see lib/api/me.ts), just from a server context: this is
+      // the one place a session goes active (Google OAuth, or an email
+      // confirmation link that signs the user straight in) without ever
+      // touching LoginForm. apiRequest itself is browser-only, so this
+      // uses the session this route already just created directly rather
+      // than that shared helper. Best-effort: a failure here isn't shown
+      // as a login error — the dashboard's own real-data loading already
+      // surfaces a clear error state if the account still isn't
+      // provisioned, so this never silently strands the user.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+        await fetch(`${apiBaseUrl}/api/v1/me/organization`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: "{}",
+        }).catch(() => {});
+      }
+
       // Behind a load balancer/proxy (e.g. in production), prefer the
       // original host so the redirect doesn't point at an internal address.
       const forwardedHost = request.headers.get("x-forwarded-host");

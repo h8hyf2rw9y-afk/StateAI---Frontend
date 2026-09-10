@@ -13,6 +13,7 @@ import { FormError } from "@/features/auth/components/form-error";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthErrorMessage } from "@/features/auth/lib";
 import { validateRegisterForm, type RegisterFormErrors } from "@/features/auth/validation";
+import { provisionMyOrganization } from "@/lib/api/me";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -70,7 +71,12 @@ export function RegisterForm() {
     }
 
     // Email confirmation is off in this project's Supabase settings —
-    // the user is already signed in.
+    // the user is already signed in. Provision their organization now,
+    // same idempotent call LoginForm makes on every real login (see
+    // lib/api/me.ts) — this is the one path where a session goes active
+    // without ever touching LoginForm or the /auth/callback route.
+    await provisionMyOrganization();
+
     router.push("/dashboard");
     router.refresh();
   }
