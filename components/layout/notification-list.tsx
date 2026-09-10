@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { formatNotificationType, getNotificationLink, type Notification } from "@/features/notifications/types";
+import { getBuyerRequirement } from "@/lib/api/buyer-requirements";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,19 @@ export function NotificationList({
   errorMessage: string | null;
   onMarkRead: (notification: Notification) => void;
 }) {
+  const router = useRouter();
+
+  async function goToBuyerRequirementsContact(notification: Notification) {
+    onMarkRead(notification);
+    if (!notification.related_entity_id) return;
+    const response = await getBuyerRequirement(notification.related_entity_id);
+    // A requirement that's since been deleted (Contact deletion cascades to
+    // it) is a silent no-op here, never a broken navigation or a crash —
+    // same "never a fabricated link to somewhere that doesn't exist" rule
+    // getNotificationLink itself already follows.
+    if (response.ok) router.push(`/leads/${response.data.contact_id}`);
+  }
+
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
@@ -59,6 +74,15 @@ export function NotificationList({
       {notifications.map((notification) => {
         const href = getNotificationLink(notification);
         const isUnread = !notification.read_at;
+        // Phase 8: a buyer_requirement notification has no direct page of
+        // its own (see getNotificationLink's own comment) — this resolves
+        // it to its owning Contact on click, the same lookup
+        // app/(dashboard)/pipeline/[id]/page.tsx's own "Buyer requirement"
+        // card already does (fetch the requirement, read its contact_id,
+        // go to /leads/{contact_id}), instead of leaving it as dead,
+        // unclickable text.
+        const isBuyerRequirement =
+          notification.related_entity_type === "buyer_requirement" && notification.related_entity_id != null;
         const content = (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
@@ -73,16 +97,32 @@ export function NotificationList({
           </div>
         );
 
-        return href ? (
-          <DropdownMenuItem
-            key={notification.id}
-            className="flex-col items-start gap-0 whitespace-normal"
-            onClick={() => onMarkRead(notification)}
-            render={<Link href={href} />}
-          >
-            {content}
-          </DropdownMenuItem>
-        ) : (
+        if (href) {
+          return (
+            <DropdownMenuItem
+              key={notification.id}
+              className="flex-col items-start gap-0 whitespace-normal"
+              onClick={() => onMarkRead(notification)}
+              render={<Link href={href} />}
+            >
+              {content}
+            </DropdownMenuItem>
+          );
+        }
+
+        if (isBuyerRequirement) {
+          return (
+            <DropdownMenuItem
+              key={notification.id}
+              className="flex-col items-start gap-0 whitespace-normal"
+              onClick={() => goToBuyerRequirementsContact(notification)}
+            >
+              {content}
+            </DropdownMenuItem>
+          );
+        }
+
+        return (
           <DropdownMenuItem
             key={notification.id}
             className="flex-col items-start gap-0 whitespace-normal"

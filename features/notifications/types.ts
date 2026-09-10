@@ -68,13 +68,20 @@ export function getNotificationLink(notification: Notification): string | null {
     case "contact":
       return `/leads/${notification.related_entity_id}`;
     default:
-      // Phase 6: "buyer_requirement" notifications point at a requirement,
-      // not a contact — there's no per-requirement detail page in this app
+      // "buyer_requirement" notifications point at a requirement, not a
+      // contact — there's no per-requirement detail page in this app
       // (buyer requirements live inside their contact's own /leads/{id}
-      // page), and the notification body/id here doesn't carry the
-      // contact_id needed to build that link. Rendering as plain,
-      // unclickable text is the same honest fallback every other unmapped
-      // related_entity_type already gets, rather than a fabricated link.
+      // page), and this function is synchronous, so it can't itself fetch
+      // the requirement to find its contact_id. Returning null here still
+      // means "no plain href" — but as of Phase 8,
+      // components/layout/notification-list.tsx specifically special-cases
+      // related_entity_type === "buyer_requirement" to resolve it on click
+      // (fetch the requirement, read its contact_id, navigate to
+      // /leads/{contact_id} — the same lookup
+      // app/(dashboard)/pipeline/[id]/page.tsx's own "Buyer requirement"
+      // card already does), so it's no longer dead text in the one place
+      // users actually see it. Any other unmapped related_entity_type still
+      // gets the honest plain-text fallback here.
       return null;
   }
 }

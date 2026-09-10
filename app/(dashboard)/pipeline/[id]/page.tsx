@@ -15,6 +15,7 @@ import { OpportunityForm } from "@/features/pipeline/components/opportunity-form
 import { OpportunityActivityList } from "@/features/pipeline/components/opportunity-activity-list";
 import { OpportunityTaskList } from "@/features/pipeline/components/opportunity-task-list";
 import { OpportunityAppointmentList } from "@/features/pipeline/components/opportunity-appointment-list";
+import { PipelinePanel } from "@/features/ai/components/pipeline-panel";
 import {
   getOpportunity,
   getOpportunityActivities,
@@ -271,6 +272,23 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
             <SectionCard title="Activity & stage history">
               <OpportunityActivityList activities={activities} />
             </SectionCard>
+          </div>
+
+          {/*
+            Phase 8: the Pipeline Agent already existed as a real,
+            user-triggered panel on /ai-assistant (features/ai/components/pipeline-panel.tsx,
+            unmodified here) but had no surface on the one page where an
+            agent deciding "what should I do with this opportunity" would
+            actually look first. It reasons about the whole contact's
+            pipeline at once (see that component's own docstring), not only
+            this one opportunity — the note below says so rather than
+            implying a narrower scope than what it actually returns.
+          */}
+          <div className="mt-4 max-w-2xl">
+            <p className="mb-2 text-xs text-muted-foreground">
+              The Pipeline Agent analyzes all of this contact&apos;s opportunities together, not just this one.
+            </p>
+            <PipelinePanel contactId={opportunity.contact_id} />
           </div>
         </>
       )}

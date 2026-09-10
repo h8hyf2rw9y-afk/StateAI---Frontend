@@ -11,6 +11,7 @@ import { UpcomingAppointmentsList } from "@/features/dashboard/components/upcomi
 import { PipelineSummary } from "@/features/dashboard/components/pipeline-summary";
 import { ActivityFeed } from "@/features/dashboard/components/activity-feed";
 import { AiAssistantCta } from "@/features/dashboard/components/ai-assistant-cta";
+import { TodaysPriorities } from "@/features/dashboard/components/todays-priorities";
 import {
   getOpenOpportunityCount,
   getOpenPipelineValue,
@@ -24,6 +25,7 @@ import { getOpportunities } from "@/lib/api/pipeline";
 import { getTasks } from "@/lib/api/tasks";
 import { getAppointments } from "@/lib/api/appointments";
 import { getRecentActivities } from "@/lib/api/activities";
+import { getNotifications } from "@/lib/api/notifications";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { useUser } from "@/hooks/useUser";
 import { getDisplayName } from "@/features/auth/lib";
@@ -34,6 +36,7 @@ import type { Opportunity } from "@/features/pipeline/types";
 import type { Task } from "@/features/tasks/types";
 import type { AppointmentRecord } from "@/features/appointments/types";
 import type { Activity } from "@/features/pipeline/types";
+import type { Notification } from "@/features/notifications/types";
 
 type Status = "loading" | "success" | "error";
 
@@ -74,19 +77,22 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [priorityNotifications, setPriorityNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const [contactsRes, propertiesRes, opportunitiesRes, tasksRes, appointmentsRes, activityRes] = await Promise.all([
-        getContacts(),
-        getProperties(),
-        getOpportunities(),
-        getTasks(),
-        getAppointments(),
-        getRecentActivities(8),
-      ]);
+      const [contactsRes, propertiesRes, opportunitiesRes, tasksRes, appointmentsRes, activityRes, notificationsRes] =
+        await Promise.all([
+          getContacts(),
+          getProperties(),
+          getOpportunities(),
+          getTasks(),
+          getAppointments(),
+          getRecentActivities(8),
+          getNotifications({ unread: true, limit: 100 }),
+        ]);
       if (cancelled) return;
 
       const firstError = [contactsRes, propertiesRes, opportunitiesRes, tasksRes, appointmentsRes, activityRes].find(
@@ -104,6 +110,12 @@ export default function DashboardPage() {
       if (tasksRes.ok) setTasks(tasksRes.data);
       if (appointmentsRes.ok) setAppointments(appointmentsRes.data);
       if (activityRes.ok) setActivity(activityRes.data);
+      // Not part of the page's own error state on purpose — same reasoning
+      // features/ai/components/pipeline-panel.tsx already applies to its
+      // secondary opportunity-title lookup: "Today's priorities" is a bonus
+      // summary of data the bell already has, not something the rest of
+      // this page's real CRM numbers should fail over.
+      if (notificationsRes.ok) setPriorityNotifications(notificationsRes.data);
       setStatus("success");
     }
 
@@ -155,6 +167,16 @@ export default function DashboardPage() {
               icon={ListChecks}
             />
             <StatCard label="Available properties" value={status === "loading" ? "—" : String(availableProperties)} icon={Building2} />
+          </div>
+
+          <div className="mt-4">
+            <SectionCard title="Today's priorities">
+              {status === "loading" ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : (
+                <TodaysPriorities notifications={priorityNotifications} />
+              )}
+            </SectionCard>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">

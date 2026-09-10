@@ -21,6 +21,9 @@ const getBuyerRequirementMock = vi.fn();
 const getBuyerRequirementsForContactMock = vi.fn();
 const useUserMock = vi.fn();
 
+const getOpportunitiesMock = vi.fn();
+const getPipelineAnalysisMock = vi.fn();
+
 vi.mock("@/lib/api/pipeline", () => ({
   getOpportunity: (id: string) => getOpportunityMock(id),
   updateOpportunityStage: (...args: unknown[]) => updateOpportunityStageMock(...args),
@@ -28,6 +31,14 @@ vi.mock("@/lib/api/pipeline", () => ({
   getOpportunityActivities: (id: string) => getOpportunityActivitiesMock(id),
   getTasksForOpportunity: (id: string) => getTasksForOpportunityMock(id),
   getAppointmentsForOpportunity: (id: string) => getAppointmentsForOpportunityMock(id),
+  // Used only by features/ai/components/pipeline-panel.tsx (Phase 8's new
+  // surface on this page) once "Analyze pipeline" is actually clicked —
+  // idle by default, so most tests below never invoke this; present so a
+  // test that does click it doesn't hit an undefined import.
+  getOpportunities: (...args: unknown[]) => getOpportunitiesMock(...args),
+}));
+vi.mock("@/lib/api/ai", () => ({
+  getPipelineAnalysis: (id: string) => getPipelineAnalysisMock(id),
 }));
 vi.mock("@/lib/api/contacts", () => ({
   getContact: (id: string) => getContactMock(id),
@@ -377,5 +388,56 @@ describe("OpportunityDetailPage", () => {
     // No organization id is ever part of any of these calls — the backend
     // alone derives organization scope from the bearer token.
     expect(getOpportunityMock).not.toHaveBeenCalledWith(expect.objectContaining({ organization_id: expect.anything() }));
+  });
+
+  it("Phase 8: surfaces the real Pipeline Agent panel, idle until clicked, never auto-calling AI on page load", async () => {
+    mockSecondaryDefaults();
+    getOpportunityMock.mockResolvedValue({ ok: true, data: makeOpportunity() });
+
+    await renderPage(OPPORTUNITY_ID);
+    await screen.findByRole("heading", { name: "Casa San Jerónimo" });
+
+    expect(screen.getByRole("button", { name: "Analyze pipeline" })).toBeInTheDocument();
+    expect(screen.getByText(/analyzes all of this contact/i)).toBeInTheDocument();
+    // Idle by default (the panel's own established contract) — mounting
+    // this page must never itself trigger an AI call.
+    expect(getPipelineAnalysisMock).not.toHaveBeenCalled();
+  });
+
+  it("Phase 8: clicking Analyze pipeline calls the real endpoint with this opportunity's own contact, never mutates CRM state", async () => {
+    mockSecondaryDefaults();
+    getOpportunityMock.mockResolvedValue({ ok: true, data: makeOpportunity() });
+    getPipelineAnalysisMock.mockResolvedValue({
+      ok: true,
+      data: {
+        analysis: {
+          overall_priority: "high",
+          confidence: 0.8,
+          summary: "One opportunity needs attention.",
+          opportunities: [],
+          immediate_actions: [],
+          risk_flags: [],
+        },
+      },
+    });
+    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
+    const mutationCallsBefore = updateOpportunityMock.mock.calls.length + updateOpportunityStageMock.mock.calls.length;
+
+    await renderPage(OPPORTUNITY_ID);
+    await screen.findByRole("heading", { name: "Casa San Jerónimo" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Analyze pipeline" }));
+
+    expect(await screen.findByText("One opportunity needs attention.")).toBeInTheDocument();
+    expect(getPipelineAnalysisMock).toHaveBeenCalledWith(CONTACT_ID);
+    // Read-only: analyzing never itself triggers a CRM write. (Not a bare
+    // `.not.toHaveBeenCalled()` — these two mocks are shared across this
+    // whole file and an earlier test already exercises the real,
+    // human-triggered StageSelector; the point here is that *this* click
+    // adds zero further mutation calls, not that no other test in this
+    // file ever calls them.)
+    expect(updateOpportunityMock.mock.calls.length + updateOpportunityStageMock.mock.calls.length).toBe(
+      mutationCallsBefore
+    );
   });
 });

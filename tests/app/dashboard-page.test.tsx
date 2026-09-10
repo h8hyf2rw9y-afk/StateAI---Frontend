@@ -6,6 +6,7 @@ import type { Property } from "@/features/properties/types";
 import type { Opportunity, Activity } from "@/features/pipeline/types";
 import type { Task } from "@/features/tasks/types";
 import type { AppointmentRecord } from "@/features/appointments/types";
+import type { Notification } from "@/features/notifications/types";
 
 const getContactsMock = vi.fn();
 const getPropertiesMock = vi.fn();
@@ -13,6 +14,7 @@ const getOpportunitiesMock = vi.fn();
 const getTasksMock = vi.fn();
 const getAppointmentsMock = vi.fn();
 const getRecentActivitiesMock = vi.fn();
+const getNotificationsMock = vi.fn();
 const useUserMock = vi.fn();
 
 vi.mock("@/lib/api/contacts", () => ({ getContacts: () => getContactsMock() }));
@@ -21,6 +23,9 @@ vi.mock("@/lib/api/pipeline", () => ({ getOpportunities: () => getOpportunitiesM
 vi.mock("@/lib/api/tasks", () => ({ getTasks: () => getTasksMock() }));
 vi.mock("@/lib/api/appointments", () => ({ getAppointments: () => getAppointmentsMock() }));
 vi.mock("@/lib/api/activities", () => ({ getRecentActivities: (limit: number) => getRecentActivitiesMock(limit) }));
+vi.mock("@/lib/api/notifications", () => ({
+  getNotifications: (params: unknown) => getNotificationsMock(params),
+}));
 vi.mock("@/hooks/useUser", () => ({ useUser: () => useUserMock() }));
 
 const CONTACT_ID = "c1111111-1111-1111-1111-111111111111";
@@ -163,6 +168,22 @@ function makeActivity(overrides: Partial<Activity> = {}): Activity {
   };
 }
 
+function makeNotification(overrides: Partial<Notification> = {}): Notification {
+  return {
+    id: "n1",
+    organization_id: "org-1",
+    user_id: "user-1",
+    type: "task_due",
+    title: "Task overdue",
+    body: "Something is overdue.",
+    related_entity_type: "task",
+    related_entity_id: "t1",
+    read_at: null,
+    created_at: "2026-09-10T00:00:00Z",
+    ...overrides,
+  };
+}
+
 function mockAllEndpoints(overrides: {
   contacts?: Contact[];
   properties?: Property[];
@@ -170,6 +191,7 @@ function mockAllEndpoints(overrides: {
   tasks?: Task[];
   appointments?: AppointmentRecord[];
   activity?: Activity[];
+  notifications?: Notification[];
 } = {}) {
   getContactsMock.mockResolvedValue({ ok: true, data: overrides.contacts ?? [] });
   getPropertiesMock.mockResolvedValue({ ok: true, data: overrides.properties ?? [] });
@@ -177,6 +199,7 @@ function mockAllEndpoints(overrides: {
   getTasksMock.mockResolvedValue({ ok: true, data: overrides.tasks ?? [] });
   getAppointmentsMock.mockResolvedValue({ ok: true, data: overrides.appointments ?? [] });
   getRecentActivitiesMock.mockResolvedValue({ ok: true, data: overrides.activity ?? [] });
+  getNotificationsMock.mockResolvedValue({ ok: true, data: overrides.notifications ?? [] });
   useUserMock.mockReturnValue({ user: null, isLoading: false, isAuthenticated: true });
 }
 
@@ -188,6 +211,7 @@ describe("DashboardPage", () => {
     getTasksMock.mockReturnValue(new Promise(() => {}));
     getAppointmentsMock.mockReturnValue(new Promise(() => {}));
     getRecentActivitiesMock.mockReturnValue(new Promise(() => {}));
+    getNotificationsMock.mockReturnValue(new Promise(() => {}));
     useUserMock.mockReturnValue({ user: null, isLoading: true, isAuthenticated: false });
 
     render(<DashboardPage />);
@@ -296,6 +320,7 @@ describe("DashboardPage", () => {
     getTasksMock.mockResolvedValue({ ok: true, data: [] });
     getAppointmentsMock.mockResolvedValue({ ok: true, data: [] });
     getRecentActivitiesMock.mockResolvedValue({ ok: true, data: [] });
+    getNotificationsMock.mockResolvedValue({ ok: true, data: [] });
     useUserMock.mockReturnValue({ user: null, isLoading: false, isAuthenticated: true });
 
     render(<DashboardPage />);
@@ -310,6 +335,7 @@ describe("DashboardPage", () => {
     getTasksMock.mockResolvedValue({ ok: true, data: [] });
     getAppointmentsMock.mockResolvedValue({ ok: true, data: [] });
     getRecentActivitiesMock.mockResolvedValue({ ok: true, data: [] });
+    getNotificationsMock.mockResolvedValue({ ok: true, data: [] });
     useUserMock.mockReturnValue({ user: null, isLoading: false, isAuthenticated: true });
 
     render(<DashboardPage />);
@@ -328,5 +354,41 @@ describe("DashboardPage", () => {
     expect(getOpportunitiesMock).toHaveBeenCalledWith();
     expect(getTasksMock).toHaveBeenCalledWith();
     expect(getAppointmentsMock).toHaveBeenCalledWith();
+    // getNotifications takes {unread, limit} only — no organization_id, same
+    // as every other real fetch on this page (the backend derives org scope
+    // from the authenticated user, never from client input).
+    expect(getNotificationsMock).toHaveBeenCalledWith({ unread: true, limit: 100 });
+  });
+
+  it("Today's priorities: shows real unread-notification counts grouped by type, linking to the real list page", async () => {
+    mockAllEndpoints({
+      notifications: [
+        makeNotification({ id: "n1", type: "task_due" }),
+        makeNotification({ id: "n2", type: "task_due" }),
+        makeNotification({ id: "n3", type: "opportunity_inactive" }),
+        // A read notification must never be counted as a current priority.
+        makeNotification({ id: "n4", type: "task_due", read_at: "2026-09-09T00:00:00Z" }),
+      ],
+    });
+
+    render(<DashboardPage />);
+
+    expect(await screen.findByText("2")).toBeInTheDocument();
+    expect(screen.getByText("Task overdue")).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByText("Opportunity inactive")).toBeInTheDocument();
+
+    const tasksLink = screen.getByRole("link", { name: /task overdue/i });
+    expect(tasksLink).toHaveAttribute("href", "/tasks");
+    const pipelineLink = screen.getByRole("link", { name: /opportunity inactive/i });
+    expect(pipelineLink).toHaveAttribute("href", "/pipeline");
+  });
+
+  it("Today's priorities: shows an honest empty state, never a fabricated priority", async () => {
+    mockAllEndpoints({ notifications: [] });
+
+    render(<DashboardPage />);
+
+    expect(await screen.findByText(/nothing needs your attention right now/i)).toBeInTheDocument();
   });
 });

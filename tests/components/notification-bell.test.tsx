@@ -4,6 +4,8 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import type { Notification } from "@/features/notifications/types";
 
 vi.mock("@/components/ui/dropdown-menu", () => import("@/tests/test-utils/dropdown-menu-stub"));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/lib/api/buyer-requirements", () => ({ getBuyerRequirement: vi.fn() }));
 
 const getNotificationsMock = vi.fn();
 const markNotificationReadMock = vi.fn();

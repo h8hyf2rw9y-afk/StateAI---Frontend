@@ -1,9 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { NotificationList } from "@/components/layout/notification-list";
 import type { Notification } from "@/features/notifications/types";
 
 vi.mock("@/components/ui/dropdown-menu", () => import("@/tests/test-utils/dropdown-menu-stub"));
+
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+
+const getBuyerRequirementMock = vi.fn();
+vi.mock("@/lib/api/buyer-requirements", () => ({
+  getBuyerRequirement: (...args: unknown[]) => getBuyerRequirementMock(...args),
+}));
 
 function makeNotification(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -22,6 +30,11 @@ function makeNotification(overrides: Partial<Notification> = {}): Notification {
 }
 
 describe("NotificationList", () => {
+  beforeEach(() => {
+    pushMock.mockClear();
+    getBuyerRequirementMock.mockReset();
+  });
+
   it("shows a loading state", () => {
     render(<NotificationList status="loading" notifications={[]} errorMessage={null} onMarkRead={vi.fn()} />);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
@@ -131,7 +144,7 @@ describe("NotificationList", () => {
     expect(link).toHaveAttribute("href", "/leads/c1");
   });
 
-  it("renders a buyer_requirement notification (Phase 6) as plain text — no per-requirement detail page exists", () => {
+  it("has no plain <a href> for a buyer_requirement notification — no per-requirement detail page exists", () => {
     render(
       <NotificationList
         status="success"
@@ -151,6 +164,56 @@ describe("NotificationList", () => {
 
     expect(screen.getByText("Client B's requirement is ready")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("Phase 8: clicking a buyer_requirement notification resolves its owning Contact and navigates there — no raw UUID shown", async () => {
+    getBuyerRequirementMock.mockResolvedValue({ ok: true, data: { id: "br1", contact_id: "c-owner-1" } });
+    const onMarkRead = vi.fn();
+    render(
+      <NotificationList
+        status="success"
+        notifications={[
+          makeNotification({
+            type: "buyer_requirement_ready",
+            title: "Client B's requirement is ready",
+            body: "Client B's buyer requirement now has enough detail.",
+            related_entity_type: "buyer_requirement",
+            related_entity_id: "br1",
+          }),
+        ]}
+        errorMessage={null}
+        onMarkRead={onMarkRead}
+      />
+    );
+
+    expect(screen.queryByText("br1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Client B's requirement is ready"));
+
+    expect(onMarkRead).toHaveBeenCalledWith(expect.objectContaining({ id: "n1" }));
+    await waitFor(() => expect(getBuyerRequirementMock).toHaveBeenCalledWith("br1"));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/leads/c-owner-1"));
+  });
+
+  it("Phase 8: a buyer_requirement notification for a since-deleted requirement fails silently, never crashes", async () => {
+    getBuyerRequirementMock.mockResolvedValue({ ok: false, error: { message: "Not found", status: 404 } });
+    render(
+      <NotificationList
+        status="success"
+        notifications={[
+          makeNotification({
+            type: "buyer_requirement_ready",
+            related_entity_type: "buyer_requirement",
+            related_entity_id: "br-deleted",
+          }),
+        ]}
+        errorMessage={null}
+        onMarkRead={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Follow up with Beatriz QA is overdue"));
+    await waitFor(() => expect(getBuyerRequirementMock).toHaveBeenCalled());
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("renders a notification with no linkable related entity as plain, unclickable-as-a-link text", () => {
