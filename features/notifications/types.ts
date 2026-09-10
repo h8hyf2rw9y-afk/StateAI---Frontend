@@ -32,6 +32,16 @@ const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
   document_deadline: "Document deadline",
   contract_deadline: "Contract deadline",
   system: "System",
+  // Phase 6 — event-driven recommendations (app/automation/detectors.py).
+  contact_missing_requirements: "Missing buyer requirements",
+  buyer_requirement_incomplete: "Buyer requirement incomplete",
+  buyer_requirement_ready: "Ready for property matching",
+  opportunity_inactive: "Opportunity inactive",
+  // Phase 7 — the completed-appointment follow-up Task's companion
+  // notification (related_entity_type "task", so getNotificationLink's
+  // existing "task" case already links it to /tasks — no change needed
+  // there).
+  followup_task_created: "Follow-up task created",
 };
 
 export function formatNotificationType(type: string): string {
@@ -55,7 +65,16 @@ export function getNotificationLink(notification: Notification): string | null {
       return "/appointments";
     case "opportunity":
       return `/pipeline/${notification.related_entity_id}`;
+    case "contact":
+      return `/leads/${notification.related_entity_id}`;
     default:
+      // Phase 6: "buyer_requirement" notifications point at a requirement,
+      // not a contact — there's no per-requirement detail page in this app
+      // (buyer requirements live inside their contact's own /leads/{id}
+      // page), and the notification body/id here doesn't carry the
+      // contact_id needed to build that link. Rendering as plain,
+      // unclickable text is the same honest fallback every other unmapped
+      // related_entity_type already gets, rather than a fabricated link.
       return null;
   }
 }

@@ -266,12 +266,13 @@ export function OpportunityForm({
             </div>
           )}
 
+          {/* Phase 7 bug fix — see features/appointments/components/appointment-form.tsx's identical comment for the full root cause (Base UI's <Select.Value> can't resolve a label from JSX <SelectItem> children without a declarative `items` prop; these two were silently rendering the raw id). */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="property_id">Property</Label>
               <Select value={propertyId || "none"} onValueChange={(value) => setPropertyId(value === "none" ? "" : (value ?? ""))}>
                 <SelectTrigger id="property_id">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>{properties.find((p) => p.id === propertyId)?.title ?? "None"}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
@@ -290,7 +291,12 @@ export function OpportunityForm({
                 onValueChange={(value) => setBuyerRequirementId(value === "none" ? "" : (value ?? ""))}
               >
                 <SelectTrigger id="buyer_requirement_id" disabled={!contactId}>
-                  <SelectValue placeholder="None" />
+                  <SelectValue>
+                    {(() => {
+                      const selected = buyerRequirements.find((r) => r.id === buyerRequirementId);
+                      return selected ? `${formatPurpose(selected.purpose)} — ${selected.status}` : "None";
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>

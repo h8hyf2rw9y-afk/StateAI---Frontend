@@ -184,6 +184,7 @@ export function ContactForm({
             </div>
           </div>
 
+          {/* Phase 7 bug fix — see features/appointments/components/appointment-form.tsx's identical comment for the full root cause. Milder here than the id-valued selects elsewhere (the raw value is at least a readable word, e.g. "whatsapp"), but still not the properly formatted label a user should see. */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="preferred_contact_method">Preferred contact</Label>
@@ -192,7 +193,9 @@ export function ContactForm({
                 onValueChange={(value) => setPreferredContactMethod(value === "none" ? "" : (value ?? ""))}
               >
                 <SelectTrigger id="preferred_contact_method">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>
+                    {preferredContactMethod ? formatPreferredContactMethod(preferredContactMethod) : "None"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
@@ -208,7 +211,7 @@ export function ContactForm({
               <Label htmlFor="source">Source</Label>
               <Select value={source || "none"} onValueChange={(value) => setSource(value === "none" ? "" : (value ?? ""))}>
                 <SelectTrigger id="source">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>{source ? formatContactSource(source) : "None"}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>

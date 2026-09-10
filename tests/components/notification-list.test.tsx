@@ -83,6 +83,76 @@ describe("NotificationList", () => {
     expect(link).toHaveAttribute("href", "/tasks");
   });
 
+  it("renders a Phase 7 followup_task_created notification with a real label and links to Tasks — no raw UUID", () => {
+    const taskId = "b6a0f2a1-6a3e-4b5a-9a2f-3f1a2b3c4d5e";
+    render(
+      <NotificationList
+        status="success"
+        notifications={[
+          makeNotification({
+            type: "followup_task_created",
+            title: "A follow-up task was created for Client B",
+            body: "A follow-up task was created for the completed showing with Client B. Review the showing outcome and follow up with the client.",
+            related_entity_type: "task",
+            related_entity_id: taskId,
+          }),
+        ]}
+        errorMessage={null}
+        onMarkRead={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("A follow-up task was created for Client B")).toBeInTheDocument();
+    expect(screen.getByText("Follow-up task created")).toBeInTheDocument(); // the formatted type label
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/tasks");
+    expect(screen.queryByText(taskId)).not.toBeInTheDocument();
+  });
+
+  it("links a contact notification (Phase 6) to the real lead detail page", () => {
+    render(
+      <NotificationList
+        status="success"
+        notifications={[
+          makeNotification({
+            type: "contact_missing_requirements",
+            title: "Client B needs buyer requirements",
+            body: "Client B doesn't have buyer requirements yet.",
+            related_entity_type: "contact",
+            related_entity_id: "c1",
+          }),
+        ]}
+        errorMessage={null}
+        onMarkRead={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Client B needs buyer requirements")).toBeInTheDocument();
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "/leads/c1");
+  });
+
+  it("renders a buyer_requirement notification (Phase 6) as plain text — no per-requirement detail page exists", () => {
+    render(
+      <NotificationList
+        status="success"
+        notifications={[
+          makeNotification({
+            type: "buyer_requirement_ready",
+            title: "Client B's requirement is ready",
+            body: "Client B's buyer requirement now has enough detail.",
+            related_entity_type: "buyer_requirement",
+            related_entity_id: "br1",
+          }),
+        ]}
+        errorMessage={null}
+        onMarkRead={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Client B's requirement is ready")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("renders a notification with no linkable related entity as plain, unclickable-as-a-link text", () => {
     render(
       <NotificationList

@@ -243,12 +243,36 @@ export function AppointmentForm({
             <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>
 
+          {/*
+            Phase 7 bug fix: Base UI's <Select.Value> can only resolve a
+            selected value to a display label when Select.Root is given a
+            declarative `items` list — it can't read labels back out of
+            these <SelectItem> JSX children (see
+            node_modules/@base-ui/react/internals/resolveValueLabel.mjs's
+            resolveSelectedLabel: with no `items` prop, it falls straight to
+            printing the raw `value` string). For every other Select in this
+            app that was invisible, because the value itself already reads
+            fine (a soft-enum string like "showing"); for an id-valued
+            Select like these three, base-ui was silently rendering the raw
+            UUID — and its unclamped width (`w-fit`) then overlapped the
+            neighboring columns badly enough to make them unclickable in
+            testing. Fixed by computing the label ourselves and passing it
+            as SelectValue's children directly, bypassing base-ui's broken
+            fallback entirely — same fix applied in
+            features/tasks/components/task-form.tsx and
+            features/pipeline/components/opportunity-form.tsx.
+          */}
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="contact_id">Contact</Label>
               <Select value={contactId || "none"} onValueChange={(value) => setContactId(value === "none" ? "" : (value ?? ""))}>
                 <SelectTrigger id="contact_id">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>
+                    {(() => {
+                      const selected = contacts.find((c) => c.id === contactId);
+                      return selected ? `${selected.first_name} ${selected.last_name}` : "None";
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
@@ -267,7 +291,7 @@ export function AppointmentForm({
                 onValueChange={(value) => setPropertyId(value === "none" ? "" : (value ?? ""))}
               >
                 <SelectTrigger id="property_id">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>{properties.find((p) => p.id === propertyId)?.title ?? "None"}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
@@ -286,7 +310,7 @@ export function AppointmentForm({
                 onValueChange={(value) => setOpportunityId(value === "none" ? "" : (value ?? ""))}
               >
                 <SelectTrigger id="opportunity_id">
-                  <SelectValue placeholder="None" />
+                  <SelectValue>{opportunities.find((o) => o.id === opportunityId)?.title ?? "None"}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
