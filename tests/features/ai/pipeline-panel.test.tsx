@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PipelinePanel } from "@/features/ai/components/pipeline-panel";
-import type { PipelineResult } from "@/features/ai/types";
+import type { AgentExecutionLatest, PipelineResult } from "@/features/ai/types";
 import type { Opportunity } from "@/features/pipeline/types";
 
 const getPipelineAnalysisMock = vi.fn();
 const getOpportunitiesMock = vi.fn();
+const getLatestAgentExecutionMock = vi.fn();
 
 vi.mock("@/lib/api/ai", () => ({
   getPipelineAnalysis: (contactId: string) => getPipelineAnalysisMock(contactId),
@@ -13,6 +14,10 @@ vi.mock("@/lib/api/ai", () => ({
 
 vi.mock("@/lib/api/pipeline", () => ({
   getOpportunities: (params: unknown) => getOpportunitiesMock(params),
+}));
+
+vi.mock("@/lib/api/agent-executions", () => ({
+  getLatestAgentExecution: (contactId: string, agentName: string) => getLatestAgentExecutionMock(contactId, agentName),
 }));
 
 const OPPORTUNITY_ID_1 = "opp-1";
@@ -70,19 +75,46 @@ function validResult(overrides: Partial<PipelineResult["analysis"]> = {}): Pipel
   };
 }
 
+function storedExecution(overrides: Partial<AgentExecutionLatest<PipelineResult>> = {}): AgentExecutionLatest<PipelineResult> {
+  return {
+    id: "exec-1",
+    agent_name: "pipeline",
+    contact_id: "contact-123",
+    output: validResult(),
+    status: "succeeded",
+    created_at: "2026-09-09T00:00:00Z",
+    is_stale: false,
+    ...overrides,
+  };
+}
+
+async function waitForIdle() {
+  await waitFor(() => expect(screen.queryByText(/checking for a previous analysis/i)).not.toBeInTheDocument());
+}
+
 describe("PipelinePanel", () => {
-  it("does not call the API on mount — only on explicit user interaction", () => {
+  beforeEach(() => {
+    getPipelineAnalysisMock.mockReset();
+    getOpportunitiesMock.mockReset();
+    getLatestAgentExecutionMock.mockReset();
+    getLatestAgentExecutionMock.mockResolvedValue({ ok: true, data: null });
+    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
+  });
+
+  it("does not call the LLM agent on mount — only the read-only restore lookup", async () => {
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
+
     expect(getPipelineAnalysisMock).not.toHaveBeenCalled();
-    expect(getOpportunitiesMock).not.toHaveBeenCalled();
+    expect(getLatestAgentExecutionMock).toHaveBeenCalledWith("contact-123", "pipeline");
   });
 
   it("shows a loading state while the request is in flight", async () => {
     let resolveRequest: (value: unknown) => void = () => {};
     getPipelineAnalysisMock.mockReturnValue(new Promise((resolve) => (resolveRequest = resolve)));
-    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText(/analyzing pipeline/i)).toBeInTheDocument();
@@ -96,6 +128,7 @@ describe("PipelinePanel", () => {
     getOpportunitiesMock.mockResolvedValue({ ok: true, data: [makeOpportunity()] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText(/high priority/i)).toBeInTheDocument();
@@ -137,6 +170,7 @@ describe("PipelinePanel", () => {
     });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText("Casa San Jerónimo — negotiation")).toBeInTheDocument();
@@ -162,6 +196,7 @@ describe("PipelinePanel", () => {
     getOpportunitiesMock.mockResolvedValue({ ok: true, data: [makeOpportunity()] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText(/no activity in 12 days/i)).toBeInTheDocument();
@@ -185,6 +220,7 @@ describe("PipelinePanel", () => {
     getOpportunitiesMock.mockResolvedValue({ ok: true, data: [makeOpportunity()] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText(/collect documents/i)).toBeInTheDocument();
@@ -197,6 +233,7 @@ describe("PipelinePanel", () => {
     getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] }); // lookup fails/returns nothing
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByText("Opportunity")).toBeInTheDocument();
@@ -208,9 +245,9 @@ describe("PipelinePanel", () => {
       ok: false,
       error: { message: "The AI analysis service is not configured.", status: 503 },
     });
-    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/ai is currently unavailable/i);
@@ -221,9 +258,9 @@ describe("PipelinePanel", () => {
       ok: false,
       error: { message: "Not authenticated.", status: 401 },
     });
-    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/session has expired/i);
@@ -231,9 +268,9 @@ describe("PipelinePanel", () => {
 
   it("never sends an organization_id — only the contact id is passed to the API layer", async () => {
     getPipelineAnalysisMock.mockResolvedValue({ ok: true, data: validResult() });
-    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
     await screen.findByText(/high priority/i);
 
@@ -251,19 +288,41 @@ describe("PipelinePanel", () => {
     getOpportunitiesMock.mockResolvedValue({ ok: true, data: [makeOpportunity()] });
 
     render(<PipelinePanel contactId="contact-123" />);
+    await waitForIdle();
     fireEvent.click(screen.getByRole("button", { name: /analyze pipeline/i }));
     await screen.findByText(/high priority/i);
 
-    // The only two API functions this component imports are both reads
+    // The only three API functions this component imports are all reads
     // (getPipelineAnalysis is a POST that runs an LLM call, not a CRM
-    // mutation — see lib/api/ai.ts's own doc comment — and getOpportunities
-    // is a GET). Nothing from lib/api/tasks, lib/api/appointments,
-    // lib/api/contacts, lib/api/properties, or lib/api/buyer-requirements is
-    // imported by this component at all, so no CRM write is even reachable
-    // from here — asserted structurally by this test file's own mocks: only
-    // @/lib/api/ai and @/lib/api/pipeline are mocked because those are the
-    // only two modules PipelinePanel imports.
+    // mutation — see lib/api/ai.ts's own doc comment — getOpportunities is a
+    // GET, and getLatestAgentExecution is a read of a stored AgentExecution).
+    // Nothing from lib/api/tasks, lib/api/appointments, lib/api/contacts,
+    // lib/api/properties, or lib/api/buyer-requirements is imported by this
+    // component at all, so no CRM write is even reachable from here.
     expect(getPipelineAnalysisMock).toHaveBeenCalledWith("contact-123");
     expect(getOpportunitiesMock).toHaveBeenCalledWith({ contact_id: "contact-123" });
+  });
+
+  // --- Persistent AI Agent Results per client + smart refresh ---------------
+
+  it("restores a previously stored pipeline analysis for this contact without calling the LLM", async () => {
+    getLatestAgentExecutionMock.mockResolvedValue({ ok: true, data: storedExecution() });
+    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [makeOpportunity()] });
+
+    render(<PipelinePanel contactId="contact-123" />);
+
+    expect(await screen.findByText("One active negotiation, no immediate risk.")).toBeInTheDocument();
+    expect(getPipelineAnalysisMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /re-analyze pipeline/i })).toBeInTheDocument();
+  });
+
+  it("shows a stale banner and Refresh action when the pipeline's underlying data changed", async () => {
+    getLatestAgentExecutionMock.mockResolvedValue({ ok: true, data: storedExecution({ is_stale: true }) });
+
+    render(<PipelinePanel contactId="contact-123" />);
+
+    expect(await screen.findByText(/new information available/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh analysis/i })).toBeInTheDocument();
+    expect(getPipelineAnalysisMock).not.toHaveBeenCalled();
   });
 });

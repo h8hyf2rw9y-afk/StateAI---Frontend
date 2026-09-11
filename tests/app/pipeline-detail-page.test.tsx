@@ -1,6 +1,6 @@
 import { Suspense, act } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import OpportunityDetailPage from "@/app/(dashboard)/pipeline/[id]/page";
 import type { Opportunity, Activity, OpportunityTask, OpportunityAppointment } from "@/features/pipeline/types";
 import type { Contact } from "@/features/leads/types";
@@ -39,6 +39,12 @@ vi.mock("@/lib/api/pipeline", () => ({
 }));
 vi.mock("@/lib/api/ai", () => ({
   getPipelineAnalysis: (id: string) => getPipelineAnalysisMock(id),
+}));
+// PipelinePanel restores a previously stored result on mount (Persistent AI
+// Agent Results task) — mocked to the empty state so this file's existing
+// assertions (the LLM only runs on an explicit click) still hold.
+vi.mock("@/lib/api/agent-executions", () => ({
+  getLatestAgentExecution: () => Promise.resolve({ ok: true, data: null }),
 }));
 vi.mock("@/lib/api/contacts", () => ({
   getContact: (id: string) => getContactMock(id),
@@ -452,7 +458,9 @@ describe("OpportunityDetailPage", () => {
     await renderPage(OPPORTUNITY_ID);
     await screen.findByRole("heading", { name: "Casa San Jerónimo" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Analyze pipeline" }));
+    const analyzeButton = screen.getByRole("button", { name: "Analyze pipeline" });
+    await waitFor(() => expect(analyzeButton).not.toBeDisabled());
+    fireEvent.click(analyzeButton);
 
     expect(await screen.findByText("One opportunity needs attention.")).toBeInTheDocument();
     expect(getPipelineAnalysisMock).toHaveBeenCalledWith(CONTACT_ID);

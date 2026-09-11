@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, MessageCircleMore } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, MessageCircleMore, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { getFollowUpRecommendation } from "@/lib/api/ai";
+import { getLatestAgentExecution } from "@/lib/api/agent-executions";
 import {
   getAiErrorMessage,
   getChannelLabel,
@@ -17,18 +18,41 @@ import {
 import type { FollowUpResult } from "@/features/ai/types";
 import { cn } from "@/lib/utils";
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "checking" | "idle" | "loading" | "success" | "error";
 
 /**
- * User-triggered only, same as LeadIntelligencePanel — never runs
- * automatically. Advisory only: this panel can show a suggested message,
- * it cannot send one. Sending it (WhatsApp/email integration) is a future
- * capability, not implemented here or in the backend.
+ * Same persistence/restore contract as LeadIntelligencePanel — see that
+ * file's doc comment. Still user-triggered only, still advisory only
+ * (nothing here sends a message).
  */
 export function FollowUpPanel({ contactId }: { contactId: string }) {
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("checking");
   const [result, setResult] = useState<FollowUpResult | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restore() {
+      const response = await getLatestAgentExecution<FollowUpResult>(contactId, "follow_up");
+      if (cancelled) return;
+
+      if (!response.ok || response.data === null) {
+        setStatus("idle");
+        return;
+      }
+
+      setResult(response.data.output);
+      setIsStale(response.data.is_stale);
+      setStatus("success");
+    }
+
+    restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [contactId]);
 
   async function handleGenerate() {
     setStatus("loading");
@@ -43,8 +67,11 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
     }
 
     setResult(response.data);
+    setIsStale(false);
     setStatus("success");
   }
+
+  const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Regenerate" : "Generate follow-up";
 
   return (
     <Card>
@@ -53,12 +80,14 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
           <MessageCircleMore className="size-4 text-primary" aria-hidden="true" />
           Follow-up
         </CardTitle>
-        <Button size="sm" onClick={handleGenerate} disabled={status === "loading"}>
+        <Button size="sm" onClick={handleGenerate} disabled={status === "loading" || status === "checking"}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {status === "success" ? "Regenerate" : "Generate follow-up"}
+          {actionLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {status === "checking" && <p className="text-sm text-muted-foreground">Checking for a previous recommendation…</p>}
+
         {status === "idle" && (
           <p className="text-sm text-muted-foreground">
             Ask the AI whether this lead needs follow-up right now, and through which channel.
@@ -79,6 +108,13 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
 
         {status === "success" && result && (
           <div className="flex flex-col gap-3">
+            {isStale && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+                New information available for this lead since this recommendation was generated.
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={result.recommendation.should_follow_up ? "default" : "secondary"}>
                 {result.recommendation.should_follow_up ? "Follow-up recommended" : "No follow-up needed right now"}

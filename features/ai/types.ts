@@ -179,3 +179,32 @@ export interface PipelineResult {
   prompt_version: string;
   generated_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Persistent AI Agent Results — mirrors app/schemas/agent_execution.py's
+// AgentExecutionLatestRead. `agent_name` here matches the backend's own
+// registry ids (app/ai/registry.py's AGENT_REGISTRY keys) — "lead_intelligence"
+// / "follow_up" / "pipeline" — which is a different spelling from this
+// file's own `AgentId` above (hyphenated, UI-card-only); see
+// lib/api/agent-executions.ts.
+// ---------------------------------------------------------------------------
+
+export type AgentName = "lead_intelligence" | "follow_up" | "pipeline";
+
+/**
+ * One stored AgentExecution row, as returned by
+ * GET /ai/agent-executions/latest — the previous analysis to restore when a
+ * client is (re)selected, plus whether the CRM data it was based on has
+ * since changed (`is_stale`). `TOutput` is whichever of
+ * LeadIntelligenceResult/FollowUpResult/PipelineResult this execution's
+ * `agent_name` corresponds to.
+ */
+export interface AgentExecutionLatest<TOutput> {
+  id: string;
+  agent_name: AgentName;
+  contact_id: string | null;
+  output: TOutput;
+  status: string;
+  created_at: string;
+  is_stale: boolean;
+}

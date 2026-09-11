@@ -1,30 +1,76 @@
 "use client";
 
-import { useState } from "react";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BrainCircuit, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { getLeadIntelligence } from "@/lib/api/ai";
+import { getLatestAgentExecution } from "@/lib/api/agent-executions";
 import { getAiErrorMessage, getNextActionLabel, getPriorityBadgeClassName, formatConfidence } from "@/features/ai/lib";
 import type { LeadIntelligenceResult } from "@/features/ai/types";
 import { cn } from "@/lib/utils";
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "checking" | "idle" | "loading" | "success" | "error";
 
 /**
- * User-triggered only — never runs on page load (see this task's explicit
- * "do not automatically execute the AI every time the page loads"). One
- * call per click; the result is only ever kept in local component state,
- * nothing is persisted. Read-only: this panel cannot send a message, change
- * any CRM record, or take any action — it only displays what the backend's
- * Lead Intelligence Agent recommends for a human advisor to consider.
+ * User-TRIGGERED LLM calls only — a click on Analyze/Refresh is still the
+ * only thing that ever runs the Lead Intelligence Agent (see this task's
+ * explicit "do not automatically execute the AI every time the page loads,"
+ * unchanged from before). What changed: the *result* of the last real run
+ * is no longer thrown away when this panel unmounts (e.g. the advisor
+ * switches to another client) — GET /ai/agent-executions/latest (a pure
+ * read, never an LLM call) restores it, so switching back to a
+ * previously-analyzed client shows that analysis immediately instead of
+ * forcing a wasteful re-run of a 60-250s CPU-only Ollama call.
+ *
+ * Callers whose `contactId` can change during this component's lifetime
+ * MUST pass `key={contactId}` (see app/(dashboard)/ai-assistant/page.tsx) —
+ * that remounts the component fresh (starting again from the `checking`
+ * initial state below) instead of this effect setState-ing a reset
+ * synchronously on every prop change, so a previous client's result can
+ * never flash while the newly-selected client's own stored result is being
+ * looked up. The other two current call sites (the Lead detail page, the
+ * Opportunity detail page) each render this for one fixed contact for the
+ * page's whole lifetime, so no such remount is needed there.
  */
 export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("checking");
   const [result, setResult] = useState<LeadIntelligenceResult | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restore() {
+      const response = await getLatestAgentExecution<LeadIntelligenceResult>(contactId, "lead_intelligence");
+      if (cancelled) return;
+
+      if (!response.ok) {
+        // A failed lookup shouldn't block the advisor from just running a
+        // fresh analysis — this quietly falls back to the empty state
+        // rather than surfacing a second error path alongside Analyze's own.
+        setStatus("idle");
+        return;
+      }
+
+      if (response.data === null) {
+        setStatus("idle");
+        return;
+      }
+
+      setResult(response.data.output);
+      setIsStale(response.data.is_stale);
+      setStatus("success");
+    }
+
+    restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [contactId]);
 
   async function handleAnalyze() {
     setStatus("loading");
@@ -39,8 +85,11 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
     }
 
     setResult(response.data);
+    setIsStale(false);
     setStatus("success");
   }
+
+  const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Re-analyze lead" : "Analyze lead";
 
   return (
     <Card>
@@ -49,12 +98,14 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
           <BrainCircuit className="size-4 text-primary" aria-hidden="true" />
           Lead Intelligence
         </CardTitle>
-        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading"}>
+        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking"}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {status === "success" ? "Re-analyze lead" : "Analyze lead"}
+          {actionLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {status === "checking" && <p className="text-sm text-muted-foreground">Checking for a previous analysis…</p>}
+
         {status === "idle" && (
           <p className="text-sm text-muted-foreground">
             Get an AI read on how important this lead is right now and what to do next.
@@ -75,6 +126,13 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
 
         {status === "success" && result && (
           <div className="flex flex-col gap-3">
+            {isStale && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+                New information available for this lead since this analysis was generated.
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"

@@ -1,21 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ListChecks, Loader2, Waypoints } from "lucide-react";
+import { AlertTriangle, ListChecks, Loader2, RefreshCw, Waypoints } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { getPipelineAnalysis } from "@/lib/api/ai";
 import { getOpportunities } from "@/lib/api/pipeline";
+import { getLatestAgentExecution } from "@/lib/api/agent-executions";
 import { getAiErrorMessage, getPipelineActionLabel, getPriorityBadgeClassName, formatConfidence } from "@/features/ai/lib";
 import { getTaskPriorityBadgeClassName, formatTaskPriority } from "@/features/tasks/types";
 import type { PipelineResult } from "@/features/ai/types";
 import type { Opportunity } from "@/features/pipeline/types";
 import { cn } from "@/lib/utils";
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "checking" | "idle" | "loading" | "success" | "error";
 
 /**
  * Mirrors LeadIntelligencePanel/FollowUpPanel exactly (same Status union,
@@ -40,10 +41,43 @@ type Status = "idle" | "loading" | "success" | "error";
  * it only displays what the backend's Pipeline Agent recommends.
  */
 export function PipelinePanel({ contactId }: { contactId: string }) {
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>("checking");
   const [result, setResult] = useState<PipelineResult | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Same persistence/restore contract as LeadIntelligencePanel/FollowUpPanel
+  // — see LeadIntelligencePanel's doc comment. Opportunities are re-fetched
+  // alongside the restored result for the same reason handleAnalyze already
+  // fetches them: resolving each opportunity_id to a real title/link, not
+  // because the agent itself needs them.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restore() {
+      const [executionResponse, opportunitiesResponse] = await Promise.all([
+        getLatestAgentExecution<PipelineResult>(contactId, "pipeline"),
+        getOpportunities({ contact_id: contactId }),
+      ]);
+      if (cancelled) return;
+
+      if (!executionResponse.ok || executionResponse.data === null) {
+        setStatus("idle");
+        return;
+      }
+
+      setResult(executionResponse.data.output);
+      setIsStale(executionResponse.data.is_stale);
+      setOpportunities(opportunitiesResponse.ok ? opportunitiesResponse.data : []);
+      setStatus("success");
+    }
+
+    restore();
+    return () => {
+      cancelled = true;
+    };
+  }, [contactId]);
 
   async function handleAnalyze() {
     setStatus("loading");
@@ -61,6 +95,7 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
     }
 
     setResult(analysisResponse.data);
+    setIsStale(false);
     // A failure here only means opportunity titles fall back to a generic
     // label below — not worth failing the whole panel over, since the
     // analysis itself (the thing the user asked for) already succeeded.
@@ -72,6 +107,8 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
     return opportunities.find((o) => o.id === opportunityId)?.title ?? "Opportunity";
   }
 
+  const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Re-analyze pipeline" : "Analyze pipeline";
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
@@ -79,12 +116,14 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
           <Waypoints className="size-4 text-primary" aria-hidden="true" />
           Pipeline
         </CardTitle>
-        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading"}>
+        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking"}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {status === "success" ? "Re-analyze pipeline" : "Analyze pipeline"}
+          {actionLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {status === "checking" && <p className="text-sm text-muted-foreground">Checking for a previous analysis…</p>}
+
         {status === "idle" && (
           <p className="text-sm text-muted-foreground">
             Get an AI read on this contact&apos;s whole pipeline of opportunities — priority, risks, and what to do next.
@@ -105,6 +144,13 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
 
         {status === "success" && result && (
           <div className="flex flex-col gap-4">
+            {isStale && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+                New information available for this contact&apos;s pipeline since this analysis was generated.
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"

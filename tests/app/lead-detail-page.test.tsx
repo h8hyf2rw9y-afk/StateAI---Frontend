@@ -17,6 +17,15 @@ vi.mock("@/lib/api/ai", () => ({
   getFollowUpRecommendation: (contactId: string) => getFollowUpRecommendationMock(contactId),
 }));
 
+// LeadIntelligencePanel/FollowUpPanel each restore a previously stored
+// result on mount (Persistent AI Agent Results task) — mocked here to the
+// empty state so this file's existing "never runs on page load" assertions
+// still hold; it's a pure read (see lib/api/agent-executions.ts), not the
+// LLM call those assertions are about.
+vi.mock("@/lib/api/agent-executions", () => ({
+  getLatestAgentExecution: () => Promise.resolve({ ok: true, data: null }),
+}));
+
 // The page now renders an "Edit" button (ContactForm) unconditionally in
 // its success state — ContactForm calls useRouter() at the top of every
 // render (not just once the dialog is actually opened), so any test that
@@ -96,9 +105,15 @@ describe("LeadDetailPage", () => {
     // Trigger both AI panels the same way a user would, and confirm the
     // contact id (from the URL/contact fetch) is exactly what's sent —
     // never an organization id, never anything the frontend invented.
-    const { fireEvent } = await import("@testing-library/react");
-    fireEvent.click(screen.getByRole("button", { name: /analyze lead/i }));
-    fireEvent.click(screen.getByRole("button", { name: /generate follow-up/i }));
+    const { fireEvent, waitFor } = await import("@testing-library/react");
+    const analyzeLeadButton = screen.getByRole("button", { name: /analyze lead/i });
+    const generateFollowUpButton = screen.getByRole("button", { name: /generate follow-up/i });
+    // Each panel first restores its previously stored result (a quick read,
+    // mocked to empty above) before its Analyze/Generate button is enabled.
+    await waitFor(() => expect(analyzeLeadButton).not.toBeDisabled());
+    await waitFor(() => expect(generateFollowUpButton).not.toBeDisabled());
+    fireEvent.click(analyzeLeadButton);
+    fireEvent.click(generateFollowUpButton);
 
     expect(getLeadIntelligenceMock).toHaveBeenCalledWith(REAL_CONTACT_ID);
     expect(getFollowUpRecommendationMock).toHaveBeenCalledWith(REAL_CONTACT_ID);

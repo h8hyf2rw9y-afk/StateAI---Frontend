@@ -189,7 +189,16 @@ export default function AiAssistantPage() {
             </Link>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {/*
+            `key={selectedContact.id}` forces a clean remount of all three
+            panels on every client switch — each panel's own `useEffect`
+            (keyed on `contactId`) would already reset its state on a plain
+            prop change, but keying here removes any doubt that Client A's
+            AI result could ever render, even for a frame, while Client B's
+            is being restored (see each panel's doc comment and this task's
+            "never flash stale content" requirement).
+          */}
+          <div key={selectedContact.id} className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-3">
             <LeadIntelligencePanel contactId={selectedContact.id} />
             <FollowUpPanel contactId={selectedContact.id} />
             <PipelinePanel contactId={selectedContact.id} />
