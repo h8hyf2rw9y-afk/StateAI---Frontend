@@ -38,6 +38,11 @@ function makeProperty(overrides: Partial<Property> = {}): Property {
     bathrooms: "2.0",
     parking_spaces: 1,
     description: "Departamento moderno.",
+    ownership_type: "own",
+    external_source: null,
+    external_advisor_name: null,
+    external_advisor_contact: null,
+    collaboration_status: null,
     created_at: "2026-08-21T20:33:33Z",
     updated_at: "2026-08-21T20:33:33Z",
     features: [],
@@ -132,5 +137,68 @@ describe("PropertyForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add property" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/session has expired/i);
+  });
+
+  it("defaults to 'My inventory' with no collaboration fields shown", () => {
+    render(<PropertyForm trigger={<button>Add property</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+
+    expect(screen.getByLabelText(/ownership/i)).toHaveValue("own");
+    expect(screen.queryByLabelText(/advisor name/i)).not.toBeInTheDocument();
+  });
+
+  it("reveals collaboration fields when ownership is switched to External, and sends them on create", async () => {
+    createPropertyMock.mockResolvedValue({ ok: true, data: makeProperty({ ownership_type: "external" }) });
+
+    render(<PropertyForm trigger={<button>Add property</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Casa XYZ" } });
+    fireEvent.change(screen.getByLabelText(/ownership/i), { target: { value: "external" } });
+
+    expect(screen.getByLabelText(/advisor name/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^source/i), { target: { value: "Inmuebles24" } });
+    fireEvent.change(screen.getByLabelText(/advisor name/i), { target: { value: "Juan Pérez" } });
+    fireEvent.change(screen.getByLabelText(/advisor contact/i), { target: { value: "+52 81 1234 5678" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+
+    await waitFor(() => expect(createPropertyMock).toHaveBeenCalled());
+    const payload = createPropertyMock.mock.calls[0][0];
+    expect(payload.ownership_type).toBe("external");
+    expect(payload.external_source).toBe("Inmuebles24");
+    expect(payload.external_advisor_name).toBe("Juan Pérez");
+    expect(payload.external_advisor_contact).toBe("+52 81 1234 5678");
+    expect(payload.collaboration_status).toBeTruthy();
+  });
+
+  it("omits collaboration fields entirely when ownership stays 'own'", async () => {
+    createPropertyMock.mockResolvedValue({ ok: true, data: makeProperty() });
+
+    render(<PropertyForm trigger={<button>Add property</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Casa Normal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add property" }));
+
+    await waitFor(() => expect(createPropertyMock).toHaveBeenCalled());
+    const payload = createPropertyMock.mock.calls[0][0];
+    expect(payload.ownership_type).toBe("own");
+    expect(payload.external_source).toBeUndefined();
+    expect(payload.collaboration_status).toBeUndefined();
+  });
+
+  it("editing an external property pre-fills its collaboration details", () => {
+    const property = makeProperty({
+      ownership_type: "external",
+      external_source: "Inmuebles24",
+      external_advisor_name: "Juan Pérez",
+      collaboration_status: "info_received",
+    });
+    render(<PropertyForm property={property} trigger={<button>Edit</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText(/ownership/i)).toHaveValue("external");
+    expect(screen.getByLabelText(/^source/i)).toHaveValue("Inmuebles24");
+    expect(screen.getByLabelText(/advisor name/i)).toHaveValue("Juan Pérez");
   });
 });

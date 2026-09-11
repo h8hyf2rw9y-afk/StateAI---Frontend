@@ -20,8 +20,12 @@ import { FormError } from "@/features/auth/components/form-error";
 import { createProperty, updateProperty } from "@/lib/api/properties";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
+  PROPERTY_COLLABORATION_STATUSES,
+  PROPERTY_OWNERSHIP_TYPES,
   PROPERTY_STATUSES,
   PROPERTY_TYPES,
+  formatCollaborationStatus,
+  formatPropertyOwnership,
   formatPropertyStatus,
   formatPropertyType,
   type Property,
@@ -70,8 +74,15 @@ export function PropertyForm({
   const [bathrooms, setBathrooms] = useState(property?.bathrooms ?? "");
   const [parkingSpaces, setParkingSpaces] = useState(property?.parking_spaces?.toString() ?? "");
   const [description, setDescription] = useState(property?.description ?? "");
+  const [ownershipType, setOwnershipType] = useState(property?.ownership_type ?? "own");
+  const [externalSource, setExternalSource] = useState(property?.external_source ?? "");
+  const [externalAdvisorName, setExternalAdvisorName] = useState(property?.external_advisor_name ?? "");
+  const [externalAdvisorContact, setExternalAdvisorContact] = useState(property?.external_advisor_contact ?? "");
+  const [collaborationStatus, setCollaborationStatus] = useState(property?.collaboration_status ?? "contacted");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isExternal = ownershipType === "external";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,6 +100,16 @@ export function PropertyForm({
       state: state.trim() || undefined,
       neighborhood: neighborhood.trim() || undefined,
       description: description.trim() || undefined,
+      ownership_type: ownershipType,
+      // Omitted (not sent) when switching back to "own": PropertyService.update
+      // already clears these server-side itself once it sees
+      // ownership_type: "own" on an update (see its own comment — PATCH
+      // otherwise skips fields the caller didn't explicitly send), so this
+      // form doesn't need to send an explicit "clear" value for any of them.
+      external_source: isExternal ? externalSource.trim() || undefined : undefined,
+      external_advisor_name: isExternal ? externalAdvisorName.trim() || undefined : undefined,
+      external_advisor_contact: isExternal ? externalAdvisorContact.trim() || undefined : undefined,
+      collaboration_status: isExternal ? collaborationStatus : undefined,
     };
     if (price) input.price = Number(price);
     if (constructionM2) input.construction_m2 = Number(constructionM2);
@@ -245,6 +266,78 @@ export function PropertyForm({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ownership_type">Ownership</Label>
+              <Select value={ownershipType} onValueChange={(value) => value && setOwnershipType(value)}>
+                <SelectTrigger id="ownership_type">
+                  <SelectValue>{formatPropertyOwnership(ownershipType)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {PROPERTY_OWNERSHIP_TYPES.map((o) => (
+                    <SelectItem key={o} value={o}>
+                      {formatPropertyOwnership(o)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {isExternal
+                  ? "Found through another advisor or an external portal — not part of your own listings."
+                  : "Part of your own inventory."}
+              </p>
+            </div>
+
+            {isExternal && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="external_source">Source</Label>
+                    <Input
+                      id="external_source"
+                      placeholder="e.g. Inmuebles24"
+                      value={externalSource}
+                      onChange={(e) => setExternalSource(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="collaboration_status">Collaboration status</Label>
+                    <Select value={collaborationStatus} onValueChange={(value) => value && setCollaborationStatus(value)}>
+                      <SelectTrigger id="collaboration_status">
+                        <SelectValue>{formatCollaborationStatus(collaborationStatus)}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROPERTY_COLLABORATION_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {formatCollaborationStatus(s)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="external_advisor_name">Advisor name</Label>
+                    <Input
+                      id="external_advisor_name"
+                      value={externalAdvisorName}
+                      onChange={(e) => setExternalAdvisorName(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="external_advisor_contact">Advisor contact</Label>
+                    <Input
+                      id="external_advisor_contact"
+                      value={externalAdvisorContact}
+                      onChange={(e) => setExternalAdvisorContact(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>

@@ -13,6 +13,7 @@ import { PropertyForm } from "@/features/properties/components/property-form";
 import { getProperty } from "@/lib/api/properties";
 import {
   formatArea,
+  formatCollaborationStatus,
   formatPropertyLocation,
   formatPropertyPrice,
   formatPropertyType,
@@ -102,6 +103,11 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
             actions={
               <div className="flex items-center gap-1.5">
                 <PropertyStatusBadge status={property.status} />
+                {property.ownership_type === "external" && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400">
+                    External / Collaboration
+                  </Badge>
+                )}
                 <PropertyForm
                   property={property}
                   onSaved={setProperty}
@@ -154,6 +160,40 @@ export default function PropertyDetailPage({ params }: { params: Promise<{ id: s
               </span>
             )}
           </div>
+
+          {property.ownership_type === "external" && (
+            <div className="mb-6 max-w-2xl rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="mb-2 text-xs font-medium tracking-wide text-amber-700 uppercase dark:text-amber-400">
+                External / Collaboration property
+              </p>
+              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                {property.external_source && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Source</dt>
+                    <dd>{property.external_source}</dd>
+                  </div>
+                )}
+                {property.collaboration_status && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Collaboration status</dt>
+                    <dd>{formatCollaborationStatus(property.collaboration_status)}</dd>
+                  </div>
+                )}
+                {property.external_advisor_name && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Advisor</dt>
+                    <dd>{property.external_advisor_name}</dd>
+                  </div>
+                )}
+                {property.external_advisor_contact && (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Advisor contact</dt>
+                    <dd>{property.external_advisor_contact}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
 
           {property.description && <p className="mb-6 max-w-2xl text-sm">{property.description}</p>}
 

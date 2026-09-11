@@ -1,17 +1,39 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PropertyMatchList } from "@/features/buyer-requirements/components/property-match-list";
 import type { Property } from "@/features/properties/types";
-import type { PropertyMatchAnalysis } from "@/features/buyer-requirements/types";
+import type { PropertyMatchAnalysis, PropertyInterest } from "@/features/buyer-requirements/types";
 
 const getBuyerRequirementPropertyMatchesMock = vi.fn();
+const createPropertyInterestMock = vi.fn();
 
 vi.mock("@/lib/api/buyer-requirements", () => ({
   getBuyerRequirementPropertyMatches: (...args: unknown[]) => getBuyerRequirementPropertyMatchesMock(...args),
 }));
+vi.mock("@/lib/api/property-interests", () => ({
+  createPropertyInterest: (...args: unknown[]) => createPropertyInterestMock(...args),
+}));
 
 const REQUIREMENT_ID = "fccd2612-01d6-526f-8932-2dc6d080708a";
 const PROPERTY_ID = "d6441069-410d-5baf-9105-f89692bceb53";
+const CONTACT_ID = "a480e9eb-626a-5f08-bf51-553ceb4e7f2c";
+
+function makeInterest(overrides: Partial<PropertyInterest> = {}): PropertyInterest {
+  return {
+    id: "interest-1",
+    organization_id: "org-1",
+    contact_id: CONTACT_ID,
+    property_id: PROPERTY_ID,
+    status: "new",
+    source: null,
+    notes: null,
+    first_contact_at: null,
+    last_contact_at: null,
+    created_at: "2026-09-10T00:00:00Z",
+    updated_at: "2026-09-10T00:00:00Z",
+    ...overrides,
+  };
+}
 
 function makeProperty(overrides: Partial<Property> = {}): Property {
   return {
@@ -35,6 +57,11 @@ function makeProperty(overrides: Partial<Property> = {}): Property {
     bathrooms: "2.0",
     parking_spaces: 2,
     description: null,
+    ownership_type: "own",
+    external_source: null,
+    external_advisor_name: null,
+    external_advisor_contact: null,
+    collaboration_status: null,
     created_at: "2026-09-08T20:33:29Z",
     updated_at: "2026-09-08T20:33:29Z",
     features: [],
@@ -54,6 +81,10 @@ function makeResult(overrides: Partial<PropertyMatchAnalysis> = {}): PropertyMat
 }
 
 describe("PropertyMatchList", () => {
+  beforeEach(() => {
+    createPropertyInterestMock.mockReset();
+  });
+
   it("shows a loading state before results arrive", () => {
     getBuyerRequirementPropertyMatchesMock.mockReturnValue(new Promise(() => {}));
 
@@ -160,5 +191,58 @@ describe("PropertyMatchList", () => {
     expect(getBuyerRequirementPropertyMatchesMock).not.toHaveBeenCalledWith(
       expect.objectContaining({ organization_id: expect.anything() })
     );
+  });
+
+  it("does not show an Assign button when no contactId is given (read-only context)", async () => {
+    getBuyerRequirementPropertyMatchesMock.mockResolvedValue({ ok: true, data: [makeResult()] });
+
+    render(<PropertyMatchList requirementId={REQUIREMENT_ID} />);
+
+    await screen.findByText("Casa Valle Alto");
+    expect(screen.queryByRole("button", { name: /assign to client/i })).not.toBeInTheDocument();
+  });
+
+  it("lets the advisor manually assign a matched property to the buyer", async () => {
+    getBuyerRequirementPropertyMatchesMock.mockResolvedValue({ ok: true, data: [makeResult()] });
+    createPropertyInterestMock.mockResolvedValue({ ok: true, data: makeInterest() });
+    const onAssigned = vi.fn();
+
+    render(<PropertyMatchList requirementId={REQUIREMENT_ID} contactId={CONTACT_ID} onAssigned={onAssigned} />);
+
+    const button = await screen.findByRole("button", { name: /assign to client/i });
+    fireEvent.click(button);
+
+    await waitFor(() =>
+      expect(createPropertyInterestMock).toHaveBeenCalledWith(CONTACT_ID, { property_id: PROPERTY_ID, status: "new" })
+    );
+    await waitFor(() => expect(onAssigned).toHaveBeenCalled());
+  });
+
+  it("shows 'Assigned to client' instead of a button for a property already interested-in", async () => {
+    getBuyerRequirementPropertyMatchesMock.mockResolvedValue({ ok: true, data: [makeResult()] });
+
+    render(
+      <PropertyMatchList
+        requirementId={REQUIREMENT_ID}
+        contactId={CONTACT_ID}
+        existingInterests={[makeInterest({ property_id: PROPERTY_ID })]}
+      />
+    );
+
+    await screen.findByText("Casa Valle Alto");
+    expect(screen.getByText(/assigned to client/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /assign to client/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a friendly error if assignment fails, without crashing", async () => {
+    getBuyerRequirementPropertyMatchesMock.mockResolvedValue({ ok: true, data: [makeResult()] });
+    createPropertyInterestMock.mockResolvedValue({ ok: false, error: { message: "boom", status: 500 } });
+
+    render(<PropertyMatchList requirementId={REQUIREMENT_ID} contactId={CONTACT_ID} />);
+
+    const button = await screen.findByRole("button", { name: /assign to client/i });
+    fireEvent.click(button);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
   });
 });

@@ -15,7 +15,7 @@ import { FormError } from "@/features/auth/components/form-error";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getProperties } from "@/lib/api/properties";
 import { PropertyCard } from "@/features/properties/components/property-card";
-import { formatPropertyStatus, type Property } from "@/features/properties/types";
+import { formatPropertyOwnership, formatPropertyStatus, type Property } from "@/features/properties/types";
 
 type Status = "loading" | "success" | "error";
 
@@ -32,6 +32,7 @@ export function PropertiesGrid() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [ownershipFilter, setOwnershipFilter] = useState<string>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -63,14 +64,15 @@ export function PropertiesGrid() {
   const filtered = useMemo(() => {
     return properties.filter((property) => {
       const matchesStatus = statusFilter === "all" || property.status === statusFilter;
+      const matchesOwnership = ownershipFilter === "all" || property.ownership_type === ownershipFilter;
       const query_ = query.trim().toLowerCase();
       const matchesQuery =
         query_.length === 0 ||
         property.title.toLowerCase().includes(query_) ||
         (property.city?.toLowerCase().includes(query_) ?? false);
-      return matchesStatus && matchesQuery;
+      return matchesStatus && matchesOwnership && matchesQuery;
     });
-  }, [properties, query, statusFilter]);
+  }, [properties, query, statusFilter, ownershipFilter]);
 
   if (status === "loading") {
     return (
@@ -130,6 +132,18 @@ export function PropertiesGrid() {
             </SelectContent>
           </Select>
         )}
+        <Select value={ownershipFilter} onValueChange={(value) => setOwnershipFilter(value ?? "all")}>
+          <SelectTrigger className="sm:w-56">
+            <SelectValue placeholder="My inventory + External">
+              {(value: string | null) => (!value || value === "all" ? "My inventory + External" : formatPropertyOwnership(value))}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">My inventory + External</SelectItem>
+            <SelectItem value="own">My inventory</SelectItem>
+            <SelectItem value="external">External / Collaboration</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {filtered.length > 0 ? (

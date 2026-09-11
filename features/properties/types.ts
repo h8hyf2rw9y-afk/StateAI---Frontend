@@ -35,6 +35,16 @@ export interface Property {
   bathrooms: string | null;
   parking_spaces: number | null;
   description: string | null;
+  // "own" (the advisor's real inventory) vs "external" (found through
+  // another advisor/portal, being pursued for one specific client — see
+  // app/models/property.py's own docstring for the full reasoning). The
+  // four fields after it are only ever populated when ownership_type is
+  // "external".
+  ownership_type: string;
+  external_source: string | null;
+  external_advisor_name: string | null;
+  external_advisor_contact: string | null;
+  collaboration_status: string | null;
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
   features: PropertyFeature[];
@@ -116,6 +126,35 @@ export function formatPropertyLocation(property: Pick<Property, "neighborhood" |
   return parts.length > 0 ? parts.join(", ") : "Location not specified";
 }
 
+export const PROPERTY_OWNERSHIP_TYPES: string[] = ["own", "external"];
+
+const PROPERTY_OWNERSHIP_LABELS: Record<string, string> = {
+  own: "My inventory",
+  external: "External / Collaboration",
+};
+
+export function formatPropertyOwnership(ownershipType: string): string {
+  return PROPERTY_OWNERSHIP_LABELS[ownershipType] ?? ownershipType;
+}
+
+export const PROPERTY_COLLABORATION_STATUSES: string[] = [
+  "contacted",
+  "info_requested",
+  "info_received",
+  "shared_with_client",
+];
+
+const PROPERTY_COLLABORATION_STATUS_LABELS: Record<string, string> = {
+  contacted: "Advisor contacted",
+  info_requested: "Info requested",
+  info_received: "Info received",
+  shared_with_client: "Shared with client",
+};
+
+export function formatCollaborationStatus(status: string): string {
+  return PROPERTY_COLLABORATION_STATUS_LABELS[status] ?? status;
+}
+
 /**
  * Outbound shape for `POST /properties` / `PATCH /properties/{id}` —
  * mirrors app/schemas/property.py's PropertyCreate/PropertyUpdate. Decimal
@@ -148,4 +187,9 @@ export interface PropertyInput {
   bathrooms?: number;
   parking_spaces?: number;
   description?: string;
+  ownership_type?: string;
+  external_source?: string;
+  external_advisor_name?: string;
+  external_advisor_contact?: string;
+  collaboration_status?: string;
 }

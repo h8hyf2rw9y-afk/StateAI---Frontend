@@ -71,6 +71,12 @@ export function BuyerSearchSection({ contactId }: { contactId: string }) {
     });
   }
 
+  /** Called after "Assign to client" successfully creates a PropertyInterest (see property-match-list.tsx) — refetches rather than guessing the new row's full shape locally. */
+  async function handlePropertyAssigned() {
+    const response = await getPropertyInterestsForContact(contactId);
+    if (response.ok) setInterests(response.data);
+  }
+
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border py-10 text-center">
@@ -134,6 +140,8 @@ export function BuyerSearchSection({ contactId }: { contactId: string }) {
                   requirement={requirement}
                   contactId={contactId}
                   onChanged={handleRequirementSaved}
+                  existingInterests={interests}
+                  onPropertyAssigned={handlePropertyAssigned}
                 />
               ))}
             </div>
@@ -151,6 +159,8 @@ export function BuyerSearchSection({ contactId }: { contactId: string }) {
                 requirement={requirement}
                 contactId={contactId}
                 onChanged={handleRequirementSaved}
+                existingInterests={interests}
+                onPropertyAssigned={handlePropertyAssigned}
               />
             ))}
           </div>

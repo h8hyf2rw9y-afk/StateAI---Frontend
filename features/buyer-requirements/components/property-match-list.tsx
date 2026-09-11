@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, Search, X } from "lucide-react";
+import { Check, Loader2, Search, UserPlus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { PropertyCard } from "@/features/properties/components/property-card";
 import { getBuyerRequirementPropertyMatches } from "@/lib/api/buyer-requirements";
+import { createPropertyInterest } from "@/lib/api/property-interests";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
   formatMatchClassification,
   getMatchClassificationBadgeClassName,
+  type PropertyInterest,
   type PropertyMatchAnalysis,
 } from "@/features/buyer-requirements/types";
 import { cn } from "@/lib/utils";
@@ -35,11 +38,50 @@ type Status = "loading" | "success" | "error";
  * as the Properties page, same link to the real property detail page) —
  * the classification badge and criteria breakdown render alongside it,
  * not by duplicating property-rendering logic.
+ *
+ * "Assign to client" (contactId/existingInterests/onAssigned) is the
+ * manual-assignment half of the buyer -> property workflow: the advisor
+ * reviews STATE AI's deterministic matches and decides which ones to
+ * actually attach to this buyer, via the exact same PropertyInterest the
+ * lead detail page already displays (features/buyer-requirements/components/
+ * property-interest-row.tsx) — no new relationship concept, no duplicated
+ * property. A property already interested-in shows "Assigned" instead of
+ * a button, since PropertyInterest isn't unique on (contact, property) by
+ * design (a contact can regain interest over time) — re-assigning an
+ * already-assigned one here would just be a confusing duplicate, not a
+ * meaningful new fact.
  */
-export function PropertyMatchList({ requirementId }: { requirementId: string }) {
+export function PropertyMatchList({
+  requirementId,
+  contactId,
+  existingInterests = [],
+  onAssigned,
+}: {
+  requirementId: string;
+  contactId?: string;
+  existingInterests?: PropertyInterest[];
+  onAssigned?: () => void;
+}) {
   const [status, setStatus] = useState<Status>("loading");
   const [results, setResults] = useState<PropertyMatchAnalysis[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
+  const assignedPropertyIds = new Set(existingInterests.map((interest) => interest.property_id));
+
+  async function handleAssign(propertyId: string) {
+    if (!contactId) return;
+    setAssigningId(propertyId);
+    setAssignError(null);
+    const response = await createPropertyInterest(contactId, { property_id: propertyId, status: "new" });
+    setAssigningId(null);
+    if (!response.ok) {
+      setAssignError(getApiErrorMessage(response.error));
+      return;
+    }
+    onAssigned?.();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +137,11 @@ export function PropertyMatchList({ requirementId }: { requirementId: string }) 
 
   return (
     <div className="flex flex-col gap-3">
-      {results.map((result) => (
+      <FormError message={assignError} />
+      {results.map((result) => {
+        const isAssigned = assignedPropertyIds.has(result.property.id);
+        const isAssigning = assigningId === result.property.id;
+        return (
         <div key={result.property.id} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-start">
           <div className="sm:w-64 sm:shrink-0">
             <PropertyCard property={result.property} />
@@ -130,9 +176,34 @@ export function PropertyMatchList({ requirementId }: { requirementId: string }) 
                 ))}
               </ul>
             )}
+            {contactId && (
+              <div className="mt-1">
+                {isAssigned ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <Check className="size-3" aria-hidden="true" />
+                    Assigned to client
+                  </Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleAssign(result.property.id)}
+                    disabled={isAssigning}
+                  >
+                    {isAssigning ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <UserPlus className="size-3.5" aria-hidden="true" />
+                    )}
+                    Assign to client
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

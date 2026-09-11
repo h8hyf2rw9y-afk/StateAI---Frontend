@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bath, Bed, Building2, MapPin, Ruler } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PropertyStatusBadge } from "@/features/properties/components/property-status-badge";
 import {
   formatArea,
@@ -30,7 +31,14 @@ export function PropertyCard({ property }: { property: Property }) {
                 {formatPropertyLocation(property)}
               </p>
             </div>
-            <PropertyStatusBadge status={property.status} className="shrink-0" />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <PropertyStatusBadge status={property.status} />
+              {property.ownership_type === "external" && (
+                <Badge variant="outline" className="border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400">
+                  External
+                </Badge>
+              )}
+            </div>
           </div>
 
           <p className="text-lg font-semibold tracking-tight">

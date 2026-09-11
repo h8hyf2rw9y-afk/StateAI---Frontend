@@ -136,6 +136,11 @@ function makeProperty(overrides: Partial<Property> = {}): Property {
     bathrooms: null,
     parking_spaces: null,
     description: null,
+    ownership_type: "own",
+    external_source: null,
+    external_advisor_name: null,
+    external_advisor_contact: null,
+    collaboration_status: null,
     created_at: "2026-08-21T20:33:33Z",
     updated_at: "2026-08-21T20:33:33Z",
     features: [],
@@ -283,6 +288,27 @@ describe("OpportunityDetailPage", () => {
     await renderPage("00000000-0000-0000-0000-000000000000");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't be found/i);
+  });
+
+  it("flags an external/collaboration property on the opportunity, never implying it's owned inventory", async () => {
+    mockSecondaryDefaults();
+    getOpportunityMock.mockResolvedValue({ ok: true, data: makeOpportunity() });
+    getPropertyMock.mockResolvedValue({ ok: true, data: makeProperty({ ownership_type: "external" }) });
+
+    await renderPage(OPPORTUNITY_ID);
+    await screen.findByRole("heading", { name: "Casa San Jerónimo" });
+
+    expect(await screen.findByText(/external \/ collaboration/i)).toBeInTheDocument();
+  });
+
+  it("shows no external badge for a normally-owned property", async () => {
+    mockSecondaryDefaults();
+    getOpportunityMock.mockResolvedValue({ ok: true, data: makeOpportunity() });
+
+    await renderPage(OPPORTUNITY_ID);
+    await screen.findByRole("heading", { name: "Casa San Jerónimo" });
+
+    expect(screen.queryByText(/external \/ collaboration/i)).not.toBeInTheDocument();
   });
 
   it("links to the related contact and property", async () => {

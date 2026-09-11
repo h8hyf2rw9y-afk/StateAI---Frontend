@@ -18,6 +18,7 @@ import {
   formatRequirementStatus,
   getRequirementStatusBadgeClassName,
   type BuyerRequirement,
+  type PropertyInterest,
 } from "@/features/buyer-requirements/types";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +35,14 @@ export function BuyerRequirementCard({
   requirement,
   contactId,
   onChanged,
+  existingInterests,
+  onPropertyAssigned,
 }: {
   requirement: BuyerRequirement;
   contactId: string;
   onChanged: (requirement: BuyerRequirement) => void;
+  existingInterests?: PropertyInterest[];
+  onPropertyAssigned?: () => void;
 }) {
   const isActive = requirement.status === "active";
   const [showMatches, setShowMatches] = useState(false);
@@ -129,7 +134,12 @@ export function BuyerRequirementCard({
           </Button>
           {showMatches && (
             <div className="mt-3">
-              <PropertyMatchList requirementId={requirement.id} />
+              <PropertyMatchList
+                requirementId={requirement.id}
+                contactId={contactId}
+                existingInterests={existingInterests}
+                onAssigned={onPropertyAssigned}
+              />
             </div>
           )}
         </div>

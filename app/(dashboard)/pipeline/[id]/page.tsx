@@ -229,13 +229,23 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
             <SectionCard title="Property">
               {opportunity.property_id ? (
                 property ? (
-                  <Link
-                    href={`/properties/${property.id}`}
-                    className="flex items-center gap-1.5 text-sm font-medium hover:underline"
-                  >
-                    <Building2 className="size-4 text-muted-foreground" />
-                    {property.title}
-                  </Link>
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      href={`/properties/${property.id}`}
+                      className="flex items-center gap-1.5 text-sm font-medium hover:underline"
+                    >
+                      <Building2 className="size-4 text-muted-foreground" />
+                      {property.title}
+                    </Link>
+                    {property.ownership_type === "external" && (
+                      <Badge
+                        variant="outline"
+                        className="w-fit border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                      >
+                        External / Collaboration — not owned inventory
+                      </Badge>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Loading…</p>
                 )
