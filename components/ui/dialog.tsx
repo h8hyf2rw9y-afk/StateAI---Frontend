@@ -12,7 +12,16 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+  // When the trigger is rendered as another component (every form here does
+  // `<DialogTrigger render={<Button />} />`), that element already carries its
+  // own data-slot ("button"). Forcing "dialog-trigger" on top made Base UI's
+  // prop merge resolve differently on the server vs. the client, producing a
+  // hydration mismatch on every page with a dialog trigger. Only set the slot
+  // when there's no `render` override, so the rendered element keeps its own.
+  // (The key is omitted entirely rather than set to `undefined`: an explicit
+  // undefined still overrides the rendered element's own data-slot on the client.)
+  const slotProps = props.render ? {} : { "data-slot": "dialog-trigger" }
+  return <DialogPrimitive.Trigger {...slotProps} {...props} />
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
