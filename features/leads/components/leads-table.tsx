@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Search, Users } from "lucide-react";
+import { ListFilter, Loader2, Search, Users } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -29,6 +32,15 @@ import { formatContactRole, formatContactSource, type Contact } from "@/features
 import { formatTimestamp, getInitials } from "@/lib/format";
 
 type Status = "loading" | "success" | "error";
+
+type CreatedFilter = "any" | "7d" | "30d" | "90d";
+const CREATED_FILTER_LABELS: Record<CreatedFilter, string> = {
+  any: "Any time",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+};
+const CREATED_FILTER_DAYS: Record<Exclude<CreatedFilter, "any">, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
 /**
  * Real backend contacts, fetched on mount — the actual CRM source of truth
@@ -47,6 +59,10 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [createdFilter, setCreatedFilter] = useState<CreatedFilter>("any");
+  // Captured once so the "last N days" cutoff is stable across renders (and render stays pure).
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -81,17 +97,34 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
     return Array.from(roles).sort();
   }, [contacts]);
 
+  const availableSources = useMemo(() => {
+    const sources = new Set<string>();
+    for (const contact of contacts) if (contact.source) sources.add(contact.source);
+    return Array.from(sources).sort();
+  }, [contacts]);
+
+  const activeFilterCount = [roleFilter !== "all", sourceFilter !== "all", createdFilter !== "any"].filter(Boolean).length;
+
+  function clearFilters() {
+    setRoleFilter("all");
+    setSourceFilter("all");
+    setCreatedFilter("any");
+  }
+
   const filteredContacts = useMemo(() => {
+    const createdSince = createdFilter === "any" ? null : now - CREATED_FILTER_DAYS[createdFilter] * 24 * 60 * 60 * 1000;
     return contacts.filter((contact) => {
       const matchesRole = roleFilter === "all" || contact.roles.some((r) => r.role_key === roleFilter);
+      const matchesSource = sourceFilter === "all" || contact.source === sourceFilter;
+      const matchesCreated = createdSince === null || new Date(contact.created_at).getTime() >= createdSince;
       const name = `${contact.first_name} ${contact.last_name}`.toLowerCase();
       const matchesQuery =
         query.trim().length === 0 ||
         name.includes(query.toLowerCase()) ||
         (contact.email?.toLowerCase().includes(query.toLowerCase()) ?? false);
-      return matchesRole && matchesQuery;
+      return matchesRole && matchesSource && matchesCreated && matchesQuery;
     });
-  }, [contacts, query, roleFilter]);
+  }, [contacts, query, roleFilter, sourceFilter, createdFilter, now]);
 
   if (status === "loading") {
     return (
@@ -138,23 +171,94 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        {availableRoles.length > 0 && (
-          <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value ?? "all")}>
-            <SelectTrigger className="sm:w-52">
-              <SelectValue placeholder="All roles">
-                {(value: string | null) => (!value || value === "all" ? "All roles" : formatContactRole(value))}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              {availableRoles.map((role) => (
-                <SelectItem key={role} value={role}>
-                  {formatContactRole(role)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/*
+          Secondary filters live behind one button at the right end of the
+          toolbar. Roles used to be a visible "All roles" select acting as a
+          primary view; the Todos / Clientes activos tabs replaced that role,
+          so roles are now just one filter among three, and it keeps working
+          in both views and combined with the search box.
+        */}
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                className="sm:ml-auto"
+                aria-label={activeFilterCount > 0 ? `Filters (${activeFilterCount} active)` : "Filters"}
+              >
+                <ListFilter />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            }
+          />
+          <PopoverContent>
+            <div className="flex flex-col gap-3">
+              {availableRoles.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="lead-filter-role">Role</Label>
+                  <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value ?? "all")}>
+                    <SelectTrigger id="lead-filter-role" aria-label="Role">
+                      <SelectValue placeholder="All roles">
+                        {(value: string | null) => (!value || value === "all" ? "All roles" : formatContactRole(value))}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All roles</SelectItem>
+                      {availableRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {formatContactRole(role)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {availableSources.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="lead-filter-source">Source</Label>
+                  <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value ?? "all")}>
+                    <SelectTrigger id="lead-filter-source" aria-label="Source">
+                      <SelectValue placeholder="All sources">
+                        {(value: string | null) => (!value || value === "all" ? "All sources" : formatContactSource(value))}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All sources</SelectItem>
+                      {availableSources.map((source) => (
+                        <SelectItem key={source} value={source}>
+                          {formatContactSource(source)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lead-filter-created">Created</Label>
+                <Select value={createdFilter} onValueChange={(value) => setCreatedFilter((value as CreatedFilter) ?? "any")}>
+                  <SelectTrigger id="lead-filter-created" aria-label="Created">
+                    <SelectValue>{(value: string | null) => CREATED_FILTER_LABELS[(value as CreatedFilter) ?? "any"]}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(CREATED_FILTER_LABELS) as CreatedFilter[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {CREATED_FILTER_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="ghost" size="sm" onClick={clearFilters} disabled={activeFilterCount === 0}>
+                Clear filters
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="overflow-hidden rounded-xl border">
@@ -213,7 +317,7 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
           <EmptyState
             icon={Users}
             title="No leads match your filters"
-            description="Try a different search term or clear the role filter."
+            description="Try a different search term or clear the filters."
           />
         )}
       </div>
