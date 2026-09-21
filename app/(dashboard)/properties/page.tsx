@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Handshake, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { PropertiesGrid } from "@/features/properties/components/properties-grid";
@@ -9,16 +9,28 @@ export default function PropertiesPage() {
     <>
       <PageHeader
         title="Properties"
-        description="Every listing in your organization's CRM."
+        description="Your own inventory, plus properties other advisors have passed you."
         actions={
-          <PropertyForm
-            trigger={
-              <Button>
-                <Plus />
-                Add property
-              </Button>
-            }
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Same form and same Property record — only pre-selects "External / Collaboration" so it lands in the External advisors tab. */}
+            <PropertyForm
+              defaultOwnership="external"
+              trigger={
+                <Button variant="outline">
+                  <Handshake />
+                  Add external property
+                </Button>
+              }
+            />
+            <PropertyForm
+              trigger={
+                <Button>
+                  <Plus />
+                  Add property
+                </Button>
+              }
+            />
+          </div>
         }
       />
       <PropertiesGrid />

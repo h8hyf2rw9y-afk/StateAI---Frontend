@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Building2, Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { BuyerRequirementForm } from "@/features/buyer-requirements/components/buyer-requirement-form";
 import { BuyerRequirementCard } from "@/features/buyer-requirements/components/buyer-requirement-card";
 import { PropertyInterestRow } from "@/features/buyer-requirements/components/property-interest-row";
+import { AssignPropertyDialog } from "@/features/buyer-requirements/components/assign-property-dialog";
 import { getBuyerRequirementsForContact } from "@/lib/api/buyer-requirements";
 import { getPropertyInterestsForContact } from "@/lib/api/property-interests";
 import { getApiErrorMessage } from "@/lib/api/errors";
@@ -77,6 +78,14 @@ export function BuyerSearchSection({ contactId }: { contactId: string }) {
     if (response.ok) setInterests(response.data);
   }
 
+  function handleInterestChanged(updated: PropertyInterest) {
+    setInterests((current) => current.map((i) => (i.id === updated.id ? updated : i)));
+  }
+
+  function handleInterestRemoved(interestId: string) {
+    setInterests((current) => current.filter((i) => i.id !== interestId));
+  }
+
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border py-10 text-center">
@@ -99,16 +108,37 @@ export function BuyerSearchSection({ contactId }: { contactId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {interests.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Property interests</p>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-muted-foreground uppercase">Properties for this client</p>
+          <AssignPropertyDialog
+            contactId={contactId}
+            existingInterests={interests}
+            onAssigned={handlePropertyAssigned}
+            trigger={
+              <Button variant="outline" size="sm">
+                <Building2 /> Assign property
+              </Button>
+            }
+          />
+        </div>
+        {interests.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No properties assigned yet — assign one of yours, or one an external advisor passed you.
+          </p>
+        ) : (
           <div className="flex flex-col gap-2">
             {interests.map((interest) => (
-              <PropertyInterestRow key={interest.id} interest={interest} />
+              <PropertyInterestRow
+                key={interest.id}
+                interest={interest}
+                onChanged={handleInterestChanged}
+                onRemoved={handleInterestRemoved}
+              />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

@@ -147,6 +147,27 @@ describe("PropertyForm", () => {
     expect(screen.queryByLabelText(/advisor name/i)).not.toBeInTheDocument();
   });
 
+  it("opens already set to External / Collaboration when defaultOwnership='external', showing the advisor fields at once", () => {
+    render(<PropertyForm defaultOwnership="external" trigger={<button>Add external property</button>} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add external property" }));
+
+    expect(screen.getByLabelText(/ownership/i)).toHaveValue("external");
+    expect(screen.getByLabelText(/advisor name/i)).toBeInTheDocument();
+  });
+
+  it("ignores defaultOwnership when editing an existing property", () => {
+    render(
+      <PropertyForm
+        property={makeProperty({ ownership_type: "own" })}
+        defaultOwnership="external"
+        trigger={<button>Edit</button>}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(screen.getByLabelText(/ownership/i)).toHaveValue("own");
+  });
+
   it("reveals collaboration fields when ownership is switched to External, and sends them on create", async () => {
     createPropertyMock.mockResolvedValue({ ok: true, data: makeProperty({ ownership_type: "external" }) });
 

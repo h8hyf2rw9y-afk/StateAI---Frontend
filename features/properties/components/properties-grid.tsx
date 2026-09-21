@@ -15,9 +15,16 @@ import { FormError } from "@/features/auth/components/form-error";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import { getProperties } from "@/lib/api/properties";
 import { PropertyCard } from "@/features/properties/components/property-card";
-import { formatPropertyOwnership, formatPropertyStatus, type Property } from "@/features/properties/types";
+import { formatPropertyStatus, type Property } from "@/features/properties/types";
+import { cn } from "@/lib/utils";
 
 type Status = "loading" | "success" | "error";
+
+const OWNERSHIP_TABS: { value: "all" | "own" | "external"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "own", label: "My inventory" },
+  { value: "external", label: "External advisors" },
+];
 
 /**
  * Real backend properties, fetched on mount — the actual CRM source of
@@ -60,6 +67,15 @@ export function PropertiesGrid() {
   const availableStatuses = useMemo(() => {
     return Array.from(new Set(properties.map((p) => p.status))).sort();
   }, [properties]);
+
+  const counts = useMemo(
+    () => ({
+      all: properties.length,
+      own: properties.filter((p) => p.ownership_type === "own").length,
+      external: properties.filter((p) => p.ownership_type === "external").length,
+    }),
+    [properties]
+  );
 
   const filtered = useMemo(() => {
     return properties.filter((property) => {
@@ -132,19 +148,42 @@ export function PropertiesGrid() {
             </SelectContent>
           </Select>
         )}
-        <Select value={ownershipFilter} onValueChange={(value) => setOwnershipFilter(value ?? "all")}>
-          <SelectTrigger className="sm:w-56">
-            <SelectValue placeholder="My inventory + External">
-              {(value: string | null) => (!value || value === "all" ? "My inventory + External" : formatPropertyOwnership(value))}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">My inventory + External</SelectItem>
-            <SelectItem value="own">My inventory</SelectItem>
-            <SelectItem value="external">External / Collaboration</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
+
+      {/*
+        The "External advisors" section: properties that belong to another
+        advisor/portal and that the advisor is pursuing for a client (see
+        Property.ownership_type). A tab, not a separate page or table — they
+        are the same Property records, only kept visibly apart from owned
+        inventory so they're never mistaken for it. Counts come from the
+        already-fetched list, no extra request.
+      */}
+      <div role="tablist" aria-label="Property source" className="flex w-fit gap-1 rounded-lg bg-muted p-1">
+        {OWNERSHIP_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={ownershipFilter === tab.value}
+            onClick={() => setOwnershipFilter(tab.value)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors",
+              ownershipFilter === tab.value
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {tab.label}
+            <span className="text-xs text-muted-foreground">{counts[tab.value]}</span>
+          </button>
+        ))}
+      </div>
+      {ownershipFilter === "external" && (
+        <p className="text-sm text-muted-foreground">
+          Properties passed to you by other advisors or found on external portals. Assign them to your clients from the
+          lead&apos;s page — they never count as your own inventory or get auto-matched.
+        </p>
+      )}
 
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -155,8 +194,16 @@ export function PropertiesGrid() {
       ) : (
         <EmptyState
           icon={Building2}
-          title="No properties match your filters"
-          description="Try a different search term or clear the status filter."
+          title={
+            ownershipFilter === "external" && counts.external === 0
+              ? "No external properties yet"
+              : "No properties match your filters"
+          }
+          description={
+            ownershipFilter === "external" && counts.external === 0
+              ? "When another advisor passes you a property, add it with “Add external property”."
+              : "Try a different search term or clear the status filter."
+          }
         />
       )}
     </div>

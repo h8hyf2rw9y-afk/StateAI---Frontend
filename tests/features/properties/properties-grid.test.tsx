@@ -149,9 +149,59 @@ describe("PropertiesGrid", () => {
     render(<PropertiesGrid />);
     await screen.findByText("Casa Propia");
 
-    fireEvent.change(screen.getByDisplayValue("My inventory + External"), { target: { value: "external" } });
+    fireEvent.click(screen.getByRole("tab", { name: /external advisors/i }));
 
     expect(screen.queryByText("Casa Propia")).not.toBeInTheDocument();
     expect(screen.getByText("Casa XYZ")).toBeInTheDocument();
+  });
+
+  it("shows a count on each source tab, computed from the already-loaded list", async () => {
+    getPropertiesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeProperty({ id: "a", title: "Propia 1" }),
+        makeProperty({ id: "b", title: "Propia 2" }),
+        makeProperty({ id: "c", title: "Externa 1", ownership_type: "external" }),
+      ],
+    });
+
+    render(<PropertiesGrid />);
+    await screen.findByText("Propia 1");
+
+    expect(screen.getByRole("tab", { name: /^All\s*3$/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^My inventory\s*2$/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^External advisors\s*1$/ })).toBeInTheDocument();
+  });
+
+  it("shows the other advisor's name and the collaboration status on an external property's card", async () => {
+    getPropertiesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeProperty({
+          id: "ext",
+          title: "Casa XYZ",
+          ownership_type: "external",
+          external_advisor_name: "Juan Pérez",
+          collaboration_status: "info_received",
+        }),
+      ],
+    });
+
+    render(<PropertiesGrid />);
+    fireEvent.click(await screen.findByRole("tab", { name: /external advisors/i }));
+
+    expect(screen.getByText("Juan Pérez")).toBeInTheDocument();
+    expect(screen.getByText("Info received")).toBeInTheDocument();
+  });
+
+  it("shows a specific empty state on the External advisors tab when there are none, not the generic filter message", async () => {
+    getPropertiesMock.mockResolvedValue({ ok: true, data: [makeProperty({ title: "Solo propia" })] });
+
+    render(<PropertiesGrid />);
+    await screen.findByText("Solo propia");
+    fireEvent.click(screen.getByRole("tab", { name: /external advisors/i }));
+
+    expect(screen.getByText("No external properties yet")).toBeInTheDocument();
+    expect(screen.queryByText("Solo propia")).not.toBeInTheDocument();
   });
 });

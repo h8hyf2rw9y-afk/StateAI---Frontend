@@ -51,10 +51,13 @@ export function PropertyForm({
   property,
   trigger,
   onSaved,
+  defaultOwnership,
 }: {
   property?: Property;
   trigger: ReactElement;
   onSaved?: (property: Property) => void;
+  /** Pre-selects Ownership for a NEW listing (ignored when editing) — used by the Properties page's "Add external property" button. */
+  defaultOwnership?: "own" | "external";
 }) {
   const isEdit = Boolean(property);
   const router = useRouter();
@@ -74,7 +77,7 @@ export function PropertyForm({
   const [bathrooms, setBathrooms] = useState(property?.bathrooms ?? "");
   const [parkingSpaces, setParkingSpaces] = useState(property?.parking_spaces?.toString() ?? "");
   const [description, setDescription] = useState(property?.description ?? "");
-  const [ownershipType, setOwnershipType] = useState(property?.ownership_type ?? "own");
+  const [ownershipType, setOwnershipType] = useState(property?.ownership_type ?? defaultOwnership ?? "own");
   const [externalSource, setExternalSource] = useState(property?.external_source ?? "");
   const [externalAdvisorName, setExternalAdvisorName] = useState(property?.external_advisor_name ?? "");
   const [externalAdvisorContact, setExternalAdvisorContact] = useState(property?.external_advisor_contact ?? "");

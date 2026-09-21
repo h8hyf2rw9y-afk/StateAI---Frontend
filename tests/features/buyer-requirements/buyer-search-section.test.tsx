@@ -100,6 +100,16 @@ describe("BuyerSearchSection", () => {
     expect(getPropertyInterestsForContactMock).toHaveBeenCalledWith(CONTACT_ID);
   });
 
+  it("always offers 'Assign property', even when nothing is assigned yet, and says so", async () => {
+    getBuyerRequirementsForContactMock.mockResolvedValue({ ok: true, data: [] });
+    getPropertyInterestsForContactMock.mockResolvedValue({ ok: true, data: [] });
+
+    render(<BuyerSearchSection contactId={CONTACT_ID} />);
+
+    expect(await screen.findByRole("button", { name: /assign property/i })).toBeInTheDocument();
+    expect(screen.getByText(/no properties assigned yet/i)).toBeInTheDocument();
+  });
+
   it("shows a genuine empty state when there is no requirement or interest at all", async () => {
     getBuyerRequirementsForContactMock.mockResolvedValue({ ok: true, data: [] });
     getPropertyInterestsForContactMock.mockResolvedValue({ ok: true, data: [] });

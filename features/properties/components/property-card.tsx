@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Bath, Bed, Building2, MapPin, Ruler } from "lucide-react";
+import { Bath, Bed, Building2, MapPin, Ruler, UserRound } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PropertyStatusBadge } from "@/features/properties/components/property-status-badge";
 import {
   formatArea,
+  formatCollaborationStatus,
   formatPropertyLocation,
   formatPropertyPrice,
   formatPropertyType,
@@ -44,6 +45,18 @@ export function PropertyCard({ property }: { property: Property }) {
           <p className="text-lg font-semibold tracking-tight">
             {formatPropertyPrice(property.price, property.currency)}
           </p>
+
+          {property.ownership_type === "external" && (property.external_advisor_name || property.collaboration_status) && (
+            <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+              {property.external_advisor_name && (
+                <span className="flex items-center gap-1">
+                  <UserRound className="size-3" aria-hidden="true" />
+                  {property.external_advisor_name}
+                </span>
+              )}
+              {property.collaboration_status && <span>{formatCollaborationStatus(property.collaboration_status)}</span>}
+            </p>
+          )}
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span>{formatPropertyType(property.property_type)}</span>

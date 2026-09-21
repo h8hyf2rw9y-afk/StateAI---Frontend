@@ -20,6 +20,22 @@ export function getPropertyInterestsForContact(contactId: string): Promise<ApiRe
  * "Assign to client" button). No `organization_id` here or anywhere in
  * this file — the backend derives it from the bearer token.
  */
+/** Changes an existing client↔property relationship (e.g. "Proposed" → "Interested" → "Viewing scheduled"). Only the fields sent are changed. */
+export function updatePropertyInterest(
+  interestId: string,
+  data: { status?: string; notes?: string }
+): Promise<ApiResult<PropertyInterest>> {
+  return apiRequest<PropertyInterest>(`/api/v1/property-interests/${interestId}`, {
+    method: "PATCH",
+    body: data,
+  });
+}
+
+/** Removes the relationship only — never the property itself. Backend answers 204. */
+export function deletePropertyInterest(interestId: string): Promise<ApiResult<void>> {
+  return apiRequest<void>(`/api/v1/property-interests/${interestId}`, { method: "DELETE" });
+}
+
 export function createPropertyInterest(
   contactId: string,
   data: { property_id: string; status?: string; notes?: string }

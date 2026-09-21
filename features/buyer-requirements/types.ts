@@ -177,8 +177,22 @@ export function getRequirementStatusBadgeClassName(status: string): string {
   return REQUIREMENT_STATUS_BADGE_STYLES[status] ?? REQUIREMENT_STATUS_BADGE_STYLES.cancelled;
 }
 
+/** The soft-enum values the backend accepts for a client↔property relationship (app/schemas/enums.py's PROPERTY_INTEREST_STATUSES), in pipeline order. "new" is what "Assign to client" creates — a property the advisor has put in front of the client but that they haven't reacted to yet. */
+export const PROPERTY_INTEREST_STATUSES: string[] = [
+  "new",
+  "contacted",
+  "interested",
+  "viewing_scheduled",
+  "viewed",
+  "offer",
+  "negotiation",
+  "not_interested",
+  "lost",
+  "won",
+];
+
 const PROPERTY_INTEREST_STATUS_LABELS: Record<string, string> = {
-  new: "New",
+  new: "Proposed to client",
   contacted: "Contacted",
   interested: "Interested",
   viewing_scheduled: "Viewing scheduled",
