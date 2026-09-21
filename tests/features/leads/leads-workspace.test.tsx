@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { LeadsWorkspace } from "@/features/leads/components/leads-workspace";
 import type { Contact } from "@/features/leads/types";
+import { makeRenovaCase } from "@/tests/test-utils/renova-fixtures";
 
 const getContactsMock = vi.fn();
 const getRenovaCasesMock = vi.fn();
+const getRenovaCaseMock = vi.fn();
+const createRenovaCaseMock = vi.fn();
 const pushMock = vi.fn();
 let currentSearch = new URLSearchParams("");
 
@@ -13,10 +16,12 @@ vi.mock("@/lib/api/contacts", () => ({
 }));
 vi.mock("@/lib/api/renova", () => ({
   getRenovaCases: (...args: unknown[]) => getRenovaCasesMock(...args),
-  getRenovaCase: vi.fn(),
-  createRenovaCase: vi.fn(),
+  getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
+  createRenovaCase: (...args: unknown[]) => createRenovaCaseMock(...args),
   updateRenovaCase: vi.fn(),
 }));
+vi.mock("html-to-image", () => ({ toBlob: vi.fn() }));
+vi.mock("@/components/ui/popover", () => import("@/tests/test-utils/popover-stub"));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useSearchParams: () => currentSearch,
@@ -53,6 +58,8 @@ describe("LeadsWorkspace", () => {
   beforeEach(() => {
     getContactsMock.mockReset();
     getRenovaCasesMock.mockReset();
+    getRenovaCaseMock.mockReset();
+    createRenovaCaseMock.mockReset();
     pushMock.mockReset();
     getContactsMock.mockResolvedValue({ ok: true, data: [makeContact()] });
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [] });
@@ -187,16 +194,93 @@ describe("LeadsWorkspace", () => {
     expect(screen.queryByRole("button", { name: /add lead/i })).not.toBeInTheDocument();
   });
 
-  it("'Nuevo prospecto Renova' opens only the Renova form (not the contact form)", async () => {
+  it("Renova shows search, a Filtros button and the table — with the form NOT inline in the page", async () => {
+    renderAt("view=renova");
+    await screen.findByText(/aún no hay expedientes renova/i);
+
+    expect(screen.getByLabelText(/buscar expedientes renova/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^filtros/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fecha de ingreso/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("'Nuevo prospecto Renova' opens the Renova popup — not the contact form", async () => {
     renderAt("view=renova");
     await screen.findByText(/aún no hay expedientes renova/i);
 
     fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
 
-    expect(await screen.findByRole("dialog")).toHaveTextContent(/nuevo prospecto renova/i);
-    // Step 1 of the Renova form ("Registro"); the contact form's fields are absent.
-    expect(screen.getByLabelText(/fecha de ingreso/i)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Nuevo prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/fecha de ingreso/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
+  });
+
+  it("creating a prospect closes the popup, reloads the table and offers the detail page and the share card — creating no Contact", async () => {
+    const created = makeRenovaCase({ id: "new-case-1", assigned_user_id: "user-me" });
+    createRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
+    getRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
+    renderAt("view=renova");
+    await screen.findByText(/aún no hay expedientes renova/i);
+    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/nombre completo del titular/i), { target: { value: "María López" } });
+    fireEvent.change(within(dialog).getByLabelText(/celular del titular/i), { target: { value: "+52 81 5555 0101" } });
+    getRenovaCasesMock.mockClear();
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [] });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Guardar prospecto" }));
+
+    expect(await screen.findByText("Prospecto guardado.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalled());
+    expect(screen.getByRole("link", { name: "Abrir expediente" })).toHaveAttribute("href", "/leads/renova/new-case-1");
+    expect(getContactsMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver ficha para compartir" }));
+    expect(await screen.findByTestId("renova-share-card")).toHaveTextContent("COMPRA DE CASAS");
+    expect(getRenovaCaseMock).toHaveBeenCalledWith("new-case-1");
+  });
+
+  it("saving a draft says so", async () => {
+    createRenovaCaseMock.mockResolvedValue({ ok: true, data: makeRenovaCase({ status: "draft" }) });
+    renderAt("view=renova");
+    await screen.findByText(/aún no hay expedientes renova/i);
+    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/nombre completo del titular/i), { target: { value: "María López" } });
+    fireEvent.change(within(dialog).getByLabelText(/celular del titular/i), { target: { value: "+52 81 5555 0101" } });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Guardar borrador" }));
+
+    expect(await screen.findByText("Borrador guardado.")).toBeInTheDocument();
+  });
+
+  it("a table row's Editar opens the SAME popup in edit mode with the real case", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [{ ...makeRenovaCase({ id: "case-9" }) }] });
+    getRenovaCaseMock.mockResolvedValue({ ok: true, data: makeRenovaCase({ id: "case-9" }) });
+    renderAt("view=renova");
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /editar expediente de maría lópez/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Editar prospecto Renova")).toBeInTheDocument();
+    expect(getRenovaCaseMock).toHaveBeenCalledWith("case-9");
+    await waitFor(() => expect(within(dialog).getByLabelText("Colonia")).toHaveValue("Centro"));
+  });
+
+  it("the Contacts 'Add lead' form does not contain Renova fields, and Renova creates no contacts", async () => {
+    renderAt("view=all");
+    await screen.findByText("Carlos Mendoza");
+
+    fireEvent.click(screen.getByRole("button", { name: /add lead/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByLabelText(/nss/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/fecha de ingreso/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/renova/i)).not.toBeInTheDocument();
+    expect(getRenovaCasesMock).not.toHaveBeenCalled();
   });
 
   it("'Add lead' still opens the unchanged contact form", async () => {

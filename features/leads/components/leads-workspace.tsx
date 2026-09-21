@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { CheckCircle2, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactForm } from "@/features/leads/components/contact-form";
 import { LeadsTable } from "@/features/leads/components/leads-table";
-import { RenovaCaseForm } from "@/features/renova/components/renova-case-form";
+import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
+import { RenovaShareDialog } from "@/features/renova/components/renova-share-dialog";
+import type { RenovaCase } from "@/features/renova/types";
 import { RenovaCasesTable } from "@/features/renova/components/renova-cases-table";
 import { LEADS_VIEWS, LEADS_VIEW_LABELS, parseLeadsView, type LeadsView } from "@/features/leads/views";
 
@@ -33,8 +36,11 @@ const DESCRIPTIONS: Record<LeadsView, string> = {
  * when its own tab is showing.
  *
  * "Add lead" (Todos, Clientes activos) is the unchanged Contact form;
- * "Nuevo prospecto Renova" opens only the Renova form, which creates a
- * RenovaCase, never a Contact.
+ * "Nuevo prospecto Renova" opens only the Renova popup (RenovaCaseDialog),
+ * which creates a RenovaCase, never a Contact. The popup is also what the
+ * table's "Editar" opens, in edit mode. After a save it closes, the table
+ * reloads and a confirmation offers "Abrir expediente" / "Ver ficha para
+ * compartir".
  */
 export function LeadsWorkspace() {
   const router = useRouter();
@@ -42,6 +48,19 @@ export function LeadsWorkspace() {
   const view = parseLeadsView(searchParams.get("view"));
   // Bumped after a Renova case is created so the table reloads.
   const [renovaRefresh, setRenovaRefresh] = useState(0);
+  const [renovaDialog, setRenovaDialog] = useState<{ caseId?: string } | null>(null);
+  const [shareCaseId, setShareCaseId] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ caseId: string; message: string } | null>(null);
+
+  function handleRenovaSaved(renovaCase: RenovaCase, intent: "draft" | "prospect") {
+    const wasEdit = renovaDialog?.caseId !== undefined;
+    setRenovaDialog(null);
+    setRenovaRefresh((n) => n + 1);
+    setSaved({
+      caseId: renovaCase.id,
+      message: intent === "draft" ? "Borrador guardado." : wasEdit ? "Cambios guardados." : "Prospecto guardado.",
+    });
+  }
 
   function handleViewChange(next: string | number | null) {
     const nextView = parseLeadsView(typeof next === "string" ? next : null);
@@ -55,15 +74,10 @@ export function LeadsWorkspace() {
         description={DESCRIPTIONS[view]}
         actions={
           view === "renova" ? (
-            <RenovaCaseForm
-              onSaved={() => setRenovaRefresh((n) => n + 1)}
-              trigger={
-                <Button>
-                  <Plus />
-                  Nuevo prospecto Renova
-                </Button>
-              }
-            />
+            <Button onClick={() => setRenovaDialog({})}>
+              <Plus />
+              Nuevo prospecto Renova
+            </Button>
           ) : (
             <ContactForm
               trigger={
@@ -76,6 +90,27 @@ export function LeadsWorkspace() {
           )
         }
       />
+
+      {saved && view === "renova" && (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+        >
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+            {saved.message}
+          </span>
+          <Link href={`/leads/renova/${saved.caseId}`} className="font-medium underline underline-offset-4">
+            Abrir expediente
+          </Link>
+          <button type="button" className="font-medium underline underline-offset-4" onClick={() => setShareCaseId(saved.caseId)}>
+            Ver ficha para compartir
+          </button>
+          <button type="button" aria-label="Cerrar aviso" className="ml-auto" onClick={() => setSaved(null)}>
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       <Tabs value={view} onValueChange={handleViewChange} className="gap-4">
         <div className="-mx-1 overflow-x-auto px-1">
@@ -95,9 +130,14 @@ export function LeadsWorkspace() {
           <LeadsTable view="active" />
         </TabsContent>
         <TabsContent value="renova">
-          <RenovaCasesTable refreshKey={renovaRefresh} />
+          <RenovaCasesTable refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} />
         </TabsContent>
       </Tabs>
+
+      {renovaDialog && (
+        <RenovaCaseDialog caseId={renovaDialog.caseId} onClose={() => setRenovaDialog(null)} onSaved={handleRenovaSaved} />
+      )}
+      {shareCaseId && <RenovaShareDialog caseId={shareCaseId} onClose={() => setShareCaseId(null)} />}
     </>
   );
 }

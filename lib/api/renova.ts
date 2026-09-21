@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { RenovaCase, RenovaCaseInput, RenovaCaseListItem } from "@/features/renova/types";
+import type { RenovaCase, RenovaCaseInput, RenovaCaseListItem, RenovaHistoryEntry } from "@/features/renova/types";
 
 /**
  * Typed surface for the backend's Renova API (app/api/routes/renova.py) — the
@@ -42,4 +42,26 @@ export function createRenovaCase(input: RenovaCaseInput): Promise<ApiResult<Reno
 
 export function updateRenovaCase(caseId: string, input: RenovaCaseInput): Promise<ApiResult<RenovaCase>> {
   return apiRequest<RenovaCase>(`/api/v1/renova/cases/${caseId}`, { method: "PATCH", body: input });
+}
+
+interface AuditLogRow {
+  id: string;
+  action: string;
+  created_at: string;
+}
+
+/**
+ * A case's movement history — read from the generic audit-log endpoint but
+ * trimmed to what the UI may show: WHAT happened and WHEN. The rows' before/
+ * after snapshots are dropped right here so they can never reach a component.
+ */
+export async function getRenovaHistory(caseId: string): Promise<ApiResult<RenovaHistoryEntry[]>> {
+  const response = await apiRequest<AuditLogRow[]>("/api/v1/audit-logs", {
+    params: { entity_type: "renova_case", entity_id: caseId, limit: 50 },
+  });
+  if (!response.ok) return response;
+  return {
+    ...response,
+    data: response.data.map(({ id, action, created_at }) => ({ id, action, created_at })),
+  };
 }

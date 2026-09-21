@@ -19,6 +19,8 @@
 // float precision loss, same as Property.price.
 // ---------------------------------------------------------------------------
 
+import { formatMoney } from "@/features/renova/lib/money";
+
 export interface RenovaCaseListItem {
   id: string;
   organization_id: string;
@@ -49,6 +51,11 @@ export interface RenovaCase extends RenovaCaseListItem {
   marital_status: string | null;
   spouse_name: string | null;
   spouse_phone: string | null;
+  street_address: string | null;
+  neighborhood: string | null;
+  municipality: string | null;
+  postal_code: string | null;
+  occupancy_status: string | null;
   floors: number | null;
   bathrooms: string | null;
   bedrooms: number | null;
@@ -65,7 +72,7 @@ export interface RenovaCase extends RenovaCaseListItem {
   credit_number_masked: string | null;
 }
 
-/** Outbound shape for POST/PATCH — see toRenovaPayload in form-utils.ts. On PATCH a `null` clears an optional field; an omitted key leaves it untouched. */
+/** Outbound shape for POST/PATCH — see toRenovaPayload in lib/form-values.ts. On PATCH a `null` clears an optional field; an omitted key leaves it untouched. */
 export interface RenovaCaseInput {
   assigned_user_id?: string;
   entry_date?: string;
@@ -78,6 +85,11 @@ export interface RenovaCaseInput {
   spouse_phone?: string | null;
   nss?: string | null;
   credit_number?: string | null;
+  street_address?: string | null;
+  neighborhood?: string | null;
+  municipality?: string | null;
+  postal_code?: string | null;
+  occupancy_status?: string | null;
   dwelling_type?: string | null;
   floors?: number | null;
   bathrooms?: string | null;
@@ -103,6 +115,7 @@ export interface RenovaCaseInput {
 // --- value sets (app/schemas/enums.py's RENOVA_*) ---------------------------
 
 export const RENOVA_STATUSES = [
+  "draft",
   "new",
   "reviewing",
   "offer_preparation",
@@ -115,6 +128,7 @@ export const RENOVA_STATUSES = [
 ] as const;
 
 const STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
   new: "Nuevo",
   reviewing: "En revisión",
   offer_preparation: "Preparando oferta",
@@ -131,6 +145,7 @@ export function formatRenovaStatus(status: string): string {
 }
 
 const STATUS_STYLES: Record<string, string> = {
+  draft: "bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300",
   new: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
   reviewing: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
   offer_preparation: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -188,6 +203,19 @@ export function formatRenovaDwelling(value: string | null): string {
   return DWELLING_LABELS[value] ?? value;
 }
 
+export const RENOVA_OCCUPANCY_STATUSES = ["lives_there", "vacant", "rented", "lent", "other"] as const;
+const OCCUPANCY_LABELS: Record<string, string> = {
+  lives_there: "Vive ahí",
+  vacant: "Deshabitada",
+  rented: "Rentada",
+  lent: "Prestada",
+  other: "Otra",
+};
+export function formatRenovaOccupancy(value: string | null): string {
+  if (!value) return "—";
+  return OCCUPANCY_LABELS[value] ?? value;
+}
+
 export const RENOVA_DEEDS_STATUSES = ["yes", "no", "unknown"] as const;
 const DEEDS_LABELS: Record<string, string> = { yes: "Sí", no: "No", unknown: "Desconocido" };
 export function formatRenovaDeeds(value: string): string {
@@ -197,12 +225,7 @@ export function formatRenovaDeeds(value: string): string {
 // --- formatting ----------------------------------------------------------------
 
 /** "$1,400,000" in es-MX for the given currency (MXN by default); "—" when not captured yet — never a fabricated $0. */
-export function formatRenovaMoney(value: string | number | null | undefined, currency = "MXN"): string {
-  if (value === null || value === undefined || value === "") return "—";
-  const number = Number(value);
-  if (Number.isNaN(number)) return "—";
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency, maximumFractionDigits: 0 }).format(number);
-}
+export const formatRenovaMoney = formatMoney;
 
 /** "20 sep 2026" from a bare "YYYY-MM-DD" — parsed as a LOCAL calendar date (new Date("2026-09-20") would be UTC midnight and shift a day west of UTC). */
 export function formatRenovaDate(isoDate: string): string {
@@ -211,4 +234,29 @@ export function formatRenovaDate(isoDate: string): string {
   return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", year: "numeric" }).format(
     new Date(year, month - 1, day)
   );
+}
+
+/** One entry of a case's history — deliberately only the action and when: the audit rows' before/after data is never exposed to the UI. */
+export interface RenovaHistoryEntry {
+  id: string;
+  action: string;
+  created_at: string;
+}
+
+const HISTORY_LABELS: Record<string, string> = {
+  RENOVA_CASE_CREATED: "Expediente creado",
+  RENOVA_CASE_UPDATED: "Expediente actualizado",
+  RENOVA_CASE_STATUS_CHANGED: "Cambio de estado",
+  RENOVA_CASE_ASSIGNEE_CHANGED: "Cambio de asesor",
+  RENOVA_CASE_FINANCIALS_UPDATED: "Actualización de montos y adeudos",
+};
+export function formatRenovaHistoryAction(action: string): string {
+  return HISTORY_LABELS[action] ?? "Movimiento registrado";
+}
+
+/** "20 sep 2026, 14:35" for a full ISO timestamp. */
+export function formatRenovaDateTime(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
 }

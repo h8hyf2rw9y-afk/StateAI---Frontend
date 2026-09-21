@@ -5,6 +5,7 @@ import type { RenovaCaseListItem } from "@/features/renova/types";
 
 const getRenovaCasesMock = vi.fn();
 const getContactsMock = vi.fn();
+const pushMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   getRenovaCases: (...args: unknown[]) => getRenovaCasesMock(...args),
@@ -19,7 +20,9 @@ vi.mock("@/lib/api/contacts", () => ({
 vi.mock("@/hooks/useUser", () => ({
   useUser: () => ({ user: { id: "user-me" }, isLoading: false, isAuthenticated: true }),
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 vi.mock("@/components/ui/select", () => import("@/tests/test-utils/select-stub"));
+vi.mock("@/components/ui/popover", () => import("@/tests/test-utils/popover-stub"));
 
 function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListItem {
   return {
@@ -48,10 +51,15 @@ function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListIt
   };
 }
 
+function openFilters() {
+  fireEvent.click(screen.getByRole("button", { name: /^filtros/i }));
+}
+
 describe("RenovaCasesTable", () => {
   beforeEach(() => {
     getRenovaCasesMock.mockReset();
     getContactsMock.mockReset();
+    pushMock.mockReset();
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase()] });
   });
 
@@ -157,12 +165,54 @@ describe("RenovaCasesTable", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/tu sesión expiró/i);
   });
 
-  it("offers Abrir and Editar for each row", async () => {
+  it("offers an Abrir link to the detail page and an Editar button for each row", async () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
-    expect(screen.getByRole("button", { name: /abrir expediente de maría lópez/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /abrir expediente de maría lópez/i })).toHaveAttribute("href", "/leads/renova/case-1");
     expect(screen.getByRole("button", { name: /editar expediente de maría lópez/i })).toBeInTheDocument();
+  });
+
+  it("opens the detail page when a row is clicked", async () => {
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByText("María López"));
+
+    expect(pushMock).toHaveBeenCalledWith("/leads/renova/case-1");
+  });
+
+  it("Editar asks the parent to open the popup in edit mode and does not navigate", async () => {
+    const onEdit = vi.fn();
+    render(<RenovaCasesTable onEdit={onEdit} />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /editar expediente de maría lópez/i }));
+
+    expect(onEdit).toHaveBeenCalledWith("case-1");
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps search visible and puts the status / advisor filters behind a Filtros button", async () => {
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    expect(screen.getByLabelText(/buscar expedientes renova/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/filtrar por estado/i)).not.toBeInTheDocument();
+    openFilters();
+    expect(screen.getByLabelText(/filtrar por estado/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/filtrar por asesor/i)).toBeInTheDocument();
+  });
+
+  it("offers the new draft status as a filter and shows the count of active filters", async () => {
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+    openFilters();
+
+    fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "draft" } });
+
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ status: "draft" })));
+    expect(screen.getByRole("button", { name: "Filtros (1 activos)" })).toBeInTheDocument();
   });
 
   it("searches on the server by owner name or phone (debounced), sending only the term", async () => {
@@ -180,6 +230,7 @@ describe("RenovaCasesTable", () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
+    openFilters();
     fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "offer_sent" } });
 
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ status: "offer_sent" })));
@@ -189,6 +240,7 @@ describe("RenovaCasesTable", () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
+    openFilters();
     fireEvent.change(screen.getByLabelText(/filtrar por asesor/i), { target: { value: "mine" } });
 
     await waitFor(() =>
@@ -201,6 +253,7 @@ describe("RenovaCasesTable", () => {
     await screen.findByText("María López");
     getRenovaCasesMock.mockReturnValue(new Promise(() => {}));
 
+    openFilters();
     fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "cancelled" } });
 
     expect(await screen.findByText(/cargando expedientes renova/i)).toBeInTheDocument();
@@ -212,6 +265,7 @@ describe("RenovaCasesTable", () => {
     await screen.findByText("María López");
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [] });
 
+    openFilters();
     fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "cancelled" } });
 
     expect(await screen.findByText("Ningún expediente coincide con los filtros")).toBeInTheDocument();

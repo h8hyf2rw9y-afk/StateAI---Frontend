@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRenovaCase, getRenovaCase, getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
+import { createRenovaCase, getRenovaCase, getRenovaCases, getRenovaHistory, updateRenovaCase } from "@/lib/api/renova";
 import { getContacts } from "@/lib/api/contacts";
 
 const apiRequestMock = vi.fn();
@@ -56,6 +56,38 @@ describe("Renova API client", () => {
     for (const call of apiRequestMock.mock.calls.slice(1)) {
       expect(JSON.stringify(call[1].body)).not.toContain("organization_id");
     }
+  });
+
+  it("reads a case's history from the audit log endpoint and keeps ONLY action and date — never the before/after data", async () => {
+    apiRequestMock.mockResolvedValue({
+      ok: true,
+      data: [
+        {
+          id: "h1",
+          action: "RENOVA_CASE_UPDATED",
+          created_at: "2026-09-21T15:30:00Z",
+          entity_type: "renova_case",
+          before_data: { final_offer: "1" },
+          after_data: { final_offer: "2", has_nss: true },
+          actor_user_id: "u",
+          organization_id: "o",
+        },
+      ],
+    });
+
+    const result = await getRenovaHistory("abc");
+
+    expect(apiRequestMock).toHaveBeenCalledWith("/api/v1/audit-logs", {
+      params: { entity_type: "renova_case", entity_id: "abc", limit: 50 },
+    });
+    expect(result).toEqual({ ok: true, data: [{ id: "h1", action: "RENOVA_CASE_UPDATED", created_at: "2026-09-21T15:30:00Z" }] });
+    expect(JSON.stringify(result)).not.toMatch(/before_data|after_data|has_nss|actor|organization/);
+  });
+
+  it("passes a history failure through untouched", async () => {
+    apiRequestMock.mockResolvedValue({ ok: false, error: { message: "x", status: 500 } });
+
+    expect(await getRenovaHistory("abc")).toEqual({ ok: false, error: { message: "x", status: 500 } });
   });
 
   it("exposes no delete", async () => {

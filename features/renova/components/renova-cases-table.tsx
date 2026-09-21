@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FolderOpen, Loader2, Pencil, Search } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FolderOpen, ListFilter, Loader2, Pencil, Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
-import { RenovaCaseDetail } from "@/features/renova/components/renova-case-detail";
-import { RenovaCaseForm } from "@/features/renova/components/renova-case-form";
 import { getRenovaCases } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
-import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib";
+import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import {
   RENOVA_STATUSES,
   formatRenovaDate,
@@ -44,16 +46,20 @@ const SEARCH_DEBOUNCE_MS = 300;
  * the backend has no endpoint listing an organization's users, and the
  * `users` table has no names, so no other advisor can be named honestly.
  *
+ * Opening a case: a row click (or its "Abrir" link) goes to the detail page
+ * /leads/renova/[id]; "Editar" asks the parent to open the popup in edit mode
+ * (`onEdit`) — the table owns no dialog itself.
+ *
  * Only mounted while the Renova tab is active (see LeadsWorkspace), so
  * merely opening Leads → Todos / Clientes activos makes no Renova request.
  */
-export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
+export function RenovaCasesTable({ refreshKey = 0, onEdit }: { refreshKey?: number; onEdit?: (caseId: string) => void }) {
+  const router = useRouter();
   const { user } = useUser();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [advisorFilter, setAdvisorFilter] = useState<"all" | "mine">("all");
-  const [reloadToken, setReloadToken] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -62,7 +68,7 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
   }, [query]);
 
   const advisorId = advisorFilter === "mine" ? user?.id : undefined;
-  const requestKey = JSON.stringify([debouncedQuery, statusFilter, advisorId ?? null, refreshKey, reloadToken]);
+  const requestKey = JSON.stringify([debouncedQuery, statusFilter, advisorId ?? null, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +94,13 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
   // Anything not answering the CURRENT request (first load, or a filter just
   // changed) reads as loading — never stale rows under a new filter.
   const isLoading = loaded?.key !== requestKey;
-  const hasActiveFilters = debouncedQuery.trim() !== "" || statusFilter !== "all" || advisorFilter !== "all";
+  const activeFilterCount = [statusFilter !== "all", advisorFilter !== "all"].filter(Boolean).length;
+  const hasActiveFilters = debouncedQuery.trim() !== "" || activeFilterCount > 0;
+
+  function clearFilters() {
+    setStatusFilter("all");
+    setAdvisorFilter("all");
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -103,28 +115,60 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-          <SelectTrigger className="sm:w-52" aria-label="Filtrar por estado">
-            <SelectValue>{(v: string | null) => (!v || v === "all" ? "Todos los estados" : formatRenovaStatus(v))}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            {RENOVA_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {formatRenovaStatus(s)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={advisorFilter} onValueChange={(v) => setAdvisorFilter(v === "mine" ? "mine" : "all")}>
-          <SelectTrigger className="sm:w-52" aria-label="Filtrar por asesor">
-            <SelectValue>{(v: string | null) => (v === "mine" ? "Mis expedientes" : "Todos los asesores")}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los asesores</SelectItem>
-            <SelectItem value="mine">Mis expedientes</SelectItem>
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                className="sm:ml-auto"
+                aria-label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} activos)` : "Filtros"}
+              >
+                <ListFilter />
+                Filtros
+                {activeFilterCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            }
+          />
+          <PopoverContent>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="renova-filter-status">Estado</Label>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
+                  <SelectTrigger id="renova-filter-status" aria-label="Filtrar por estado">
+                    <SelectValue>{(v: string | null) => (!v || v === "all" ? "Todos los estados" : formatRenovaStatus(v))}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    {RENOVA_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {formatRenovaStatus(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="renova-filter-advisor">Asesor</Label>
+                <Select value={advisorFilter} onValueChange={(v) => setAdvisorFilter(v === "mine" ? "mine" : "all")}>
+                  <SelectTrigger id="renova-filter-advisor" aria-label="Filtrar por asesor">
+                    <SelectValue>{(v: string | null) => (v === "mine" ? "Mis expedientes" : "Todos los asesores")}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los asesores</SelectItem>
+                    <SelectItem value="mine">Mis expedientes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="ghost" size="sm" onClick={clearFilters} disabled={activeFilterCount === 0}>
+                Limpiar filtros
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {isLoading && (
@@ -175,7 +219,11 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
             </TableHeader>
             <TableBody>
               {loaded.cases.map((renovaCase) => (
-                <TableRow key={renovaCase.id}>
+                <TableRow
+                  key={renovaCase.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/leads/renova/${renovaCase.id}`)}
+                >
                   <TableCell className="font-medium">{renovaCase.owner_name}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{renovaCase.owner_phone}</TableCell>
                   <TableCell className="text-muted-foreground">{formatRenovaDwelling(renovaCase.dwelling_type)}</TableCell>
@@ -193,25 +241,23 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatRenovaDate(renovaCase.entry_date)}</TableCell>
                   <TableCell className="sticky right-0 bg-background">
-                    <div className="flex justify-end gap-1">
-                      <RenovaCaseDetail
-                        caseId={renovaCase.id}
-                        trigger={
-                          <Button variant="ghost" size="sm" aria-label={`Abrir expediente de ${renovaCase.owner_name}`}>
-                            Abrir
-                          </Button>
-                        }
-                      />
-                      <RenovaCaseForm
-                        caseId={renovaCase.id}
-                        onSaved={() => setReloadToken((t) => t + 1)}
-                        trigger={
-                          <Button variant="outline" size="sm" aria-label={`Editar expediente de ${renovaCase.owner_name}`}>
-                            <Pencil />
-                            Editar
-                          </Button>
-                        }
-                      />
+                    <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+                      <Link
+                        href={`/leads/renova/${renovaCase.id}`}
+                        className={buttonVariants({ variant: "ghost", size: "sm" })}
+                        aria-label={`Abrir expediente de ${renovaCase.owner_name}`}
+                      >
+                        Abrir
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Editar expediente de ${renovaCase.owner_name}`}
+                        onClick={() => onEdit?.(renovaCase.id)}
+                      >
+                        <Pencil />
+                        Editar
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

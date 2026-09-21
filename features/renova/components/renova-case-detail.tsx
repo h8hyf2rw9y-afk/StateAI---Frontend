@@ -1,154 +1,279 @@
 "use client";
 
-import { useState, type ReactElement, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { ArrowLeft, CheckCircle2, FolderOpen, Loader2, Pencil, Share2 } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormError } from "@/features/auth/components/form-error";
-import { getRenovaCase } from "@/lib/api/renova";
-import { useUser } from "@/hooks/useUser";
-import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib";
+import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
+import { RenovaShareDialog } from "@/features/renova/components/renova-share-dialog";
+import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
+import { renovaShortId } from "@/features/renova/lib/short-id";
 import {
+  RENOVA_STATUSES,
   formatRenovaDate,
+  formatRenovaDateTime,
   formatRenovaDeeds,
   formatRenovaDwelling,
+  formatRenovaHistoryAction,
   formatRenovaMaritalStatus,
   formatRenovaMoney,
-  formatRenovaSource,
+  formatRenovaOccupancy,
   formatRenovaStatus,
   getRenovaStatusClassName,
   type RenovaCase,
+  type RenovaHistoryEntry,
 } from "@/features/renova/types";
+import { getRenovaCase, getRenovaHistory, updateRenovaCase } from "@/lib/api/renova";
+import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{title}</h3>
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">{children}</dl>
-    </section>
-  );
-}
+type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; renovaCase: RenovaCase };
 
 function Row({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+  const empty = children === null || children === undefined || children === "" || children === false;
   return (
-    <div className={cn("min-w-0", wide && "sm:col-span-2")}>
+    <div className={cn("min-w-0", wide && "sm:col-span-2 lg:col-span-3")}>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm break-words whitespace-pre-wrap">{children || "—"}</dd>
+      <dd className="text-sm break-words whitespace-pre-wrap">{empty ? "—" : children}</dd>
     </div>
   );
 }
 
-/**
- * Read-only view of one Renova case ("Abrir"). Loads the full case when it
- * opens — the list rows are deliberately lean. NSS and número de crédito
- * appear ONLY as the server's masked strings ("••••1234"); the full values
- * are not retrievable through the API, so they cannot be shown here.
- */
-export function RenovaCaseDetail({ caseId, trigger }: { caseId: string; trigger: ReactElement }) {
-  const { user } = useUser();
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [renovaCase, setRenovaCase] = useState<RenovaCase | null>(null);
-  const [error, setError] = useState<string | null>(null);
+function Grid({ children }: { children: ReactNode }) {
+  return <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">{children}</dl>;
+}
 
-  async function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (!next) return;
-    setLoading(true);
-    setError(null);
-    setRenovaCase(null);
-    const response = await getRenovaCase(caseId);
-    setLoading(false);
-    if (!response.ok) {
-      setError(getRenovaErrorMessage(response.error));
-      return;
-    }
-    setRenovaCase(response.data);
+/**
+ * The detail view of one Renova case (the page a table row opens): owner,
+ * status, advisor, date, address, property, money, motivation and history,
+ * with the actions Editar (the same popup as creation, in edit mode), Cambiar
+ * estado and Ver ficha para compartir.
+ *
+ * Everything shown is the real saved case from the backend. NSS and número de
+ * crédito appear only as the server's masks; the history lists WHAT happened
+ * and WHEN — never the audit rows' data.
+ */
+export function RenovaCaseDetail({ caseId }: { caseId: string }) {
+  const { user } = useUser();
+  const [load, setLoad] = useState<LoadState>({ status: "loading" });
+  const [history, setHistory] = useState<RenovaHistoryEntry[]>([]);
+  const [historyKey, setHistoryKey] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [changingStatus, setChangingStatus] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRenovaCase(caseId).then((response) => {
+      if (cancelled) return;
+      setLoad(response.ok ? { status: "ready", renovaCase: response.data } : { status: "error", message: getRenovaErrorMessage(response.error) });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRenovaHistory(caseId).then((response) => {
+      if (!cancelled && response.ok) setHistory(response.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId, historyKey]);
+
+  function applySaved(saved: RenovaCase) {
+    setLoad({ status: "ready", renovaCase: saved });
+    setHistoryKey((key) => key + 1);
   }
 
+  async function handleStatusChange(next: string | null) {
+    if (load.status !== "ready" || !next || next === load.renovaCase.status || changingStatus) return;
+    setChangingStatus(true);
+    setActionError(null);
+    setNotice(null);
+    const response = await updateRenovaCase(caseId, { status: next });
+    setChangingStatus(false);
+    if (!response.ok) {
+      setActionError(getRenovaErrorMessage(response.error));
+      return;
+    }
+    applySaved(response.data);
+    setNotice(`Estado actualizado a “${formatRenovaStatus(next)}”.`);
+  }
+
+  const c = load.status === "ready" ? load.renovaCase : null;
+  const money = (value: string | null) => (c ? formatRenovaMoney(value, c.currency) : "—");
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={trigger} />
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{renovaCase ? renovaCase.owner_name : "Expediente Renova"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Link href="/leads?view=renova" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Volver a Renova
+      </Link>
 
-        {loading && (
-          <p className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Cargando expediente…
-          </p>
-        )}
-        <FormError message={error} />
+      {load.status === "loading" && (
+        <div className="flex flex-col items-center gap-2 rounded-xl border py-16 text-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Cargando expediente…</p>
+        </div>
+      )}
 
-        {renovaCase && (
-          <div className="flex flex-col gap-5">
-            <Section title="Registro">
-              <Row label="Estado">
-                <Badge variant="outline" className={cn("border-transparent", getRenovaStatusClassName(renovaCase.status))}>
-                  {formatRenovaStatus(renovaCase.status)}
+      {load.status === "error" && (
+        <div className="rounded-xl border p-6">
+          <FormError message={load.message} />
+        </div>
+      )}
+
+      {c && (
+        <>
+          <PageHeader
+            title={c.owner_name}
+            description={`${renovaShortId(c.id)} · ${advisorLabel(c.assigned_user_id, user?.id)} · Ingreso ${formatRenovaDate(c.entry_date)}`}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={cn("border-transparent", getRenovaStatusClassName(c.status))}>
+                  {formatRenovaStatus(c.status)}
                 </Badge>
-              </Row>
-              <Row label="Fecha de ingreso">{formatRenovaDate(renovaCase.entry_date)}</Row>
-              <Row label="Asesor responsable">{advisorLabel(renovaCase.assigned_user_id, user?.id)}</Row>
-              <Row label="Fuente">{formatRenovaSource(renovaCase.source)}</Row>
-            </Section>
+                <Select value={c.status} onValueChange={handleStatusChange}>
+                  <SelectTrigger size="sm" aria-label="Cambiar estado" disabled={changingStatus}>
+                    <SelectValue>{() => "Cambiar estado"}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RENOVA_STATUSES.filter((s) => s !== "draft" || c.status === "draft").map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {formatRenovaStatus(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil />
+                  Editar
+                </Button>
+                <Button size="sm" onClick={() => setSharing(true)}>
+                  <Share2 />
+                  Ver ficha para compartir
+                </Button>
+              </div>
+            }
+          />
 
-            <Section title="Propietario">
-              <Row label="Nombre del titular">{renovaCase.owner_name}</Row>
-              <Row label="Celular">{renovaCase.owner_phone}</Row>
-              <Row label="Estado civil al adquirir el inmueble">{formatRenovaMaritalStatus(renovaCase.marital_status)}</Row>
-              <Row label="Cónyuge">{renovaCase.spouse_name}</Row>
-              <Row label="Celular del cónyuge">{renovaCase.spouse_phone}</Row>
-              <Row label="NSS">{renovaCase.nss_masked ?? "No registrado"}</Row>
-              <Row label="Número de crédito">{renovaCase.credit_number_masked ?? "No registrado"}</Row>
-            </Section>
+          {notice && (
+            <p role="status" className="mb-4 flex items-center gap-2 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+              {notice}
+            </p>
+          )}
+          {actionError && (
+            <div className="mb-4">
+              <FormError message={actionError} />
+            </div>
+          )}
 
-            <Section title="Inmueble">
-              <Row label="Tipo de vivienda">{formatRenovaDwelling(renovaCase.dwelling_type)}</Row>
-              <Row label="Plantas">{renovaCase.floors}</Row>
-              <Row label="Recámaras">{renovaCase.bedrooms}</Row>
-              <Row label="Baños">{renovaCase.bathrooms}</Row>
-              <Row label="¿Tiene escrituras?">{formatRenovaDeeds(renovaCase.has_deeds)}</Row>
-              <Row label="Escrituras a nombre de">{renovaCase.deeds_holder_name}</Row>
-              <Row label="Condiciones de la vivienda" wide>
-                {renovaCase.conditions}
-              </Row>
-            </Section>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <SectionCard title="Propietario" contentClassName="gap-3">
+              <Grid>
+                <Row label="Nombre completo del titular">{c.owner_name}</Row>
+                <Row label="Celular del titular">{c.owner_phone}</Row>
+                <Row label="Estado civil al adquirir el inmueble">{c.marital_status ? formatRenovaMaritalStatus(c.marital_status) : null}</Row>
+                <Row label="Nombre completo del cónyuge">{c.spouse_name}</Row>
+                <Row label="Celular del cónyuge">{c.spouse_phone}</Row>
+                <Row label="NSS">{c.nss_masked ?? "No registrado"}</Row>
+                <Row label="Número de crédito">{c.credit_number_masked ?? "No registrado"}</Row>
+              </Grid>
+            </SectionCard>
 
-            <Section title="Finanzas">
-              <Row label="Valor de mercado">{formatRenovaMoney(renovaCase.market_value, renovaCase.currency)}</Row>
-              <Row label="Espera recibir el propietario">
-                {formatRenovaMoney(renovaCase.owner_expected_amount, renovaCase.currency)}
-              </Row>
-              <Row label="Propuesta final">{formatRenovaMoney(renovaCase.final_offer, renovaCase.currency)}</Row>
-              <Row label="Adeudos totales">{formatRenovaMoney(renovaCase.total_debt, renovaCase.currency)}</Row>
-              <Row label="Deuda predial">{formatRenovaMoney(renovaCase.property_tax_debt, renovaCase.currency)}</Row>
-              <Row label="Deuda de agua">{formatRenovaMoney(renovaCase.water_debt, renovaCase.currency)}</Row>
-              <Row label="Deuda de luz">{formatRenovaMoney(renovaCase.electricity_debt, renovaCase.currency)}</Row>
-              <Row label="Deuda de gas">{formatRenovaMoney(renovaCase.gas_debt, renovaCase.currency)}</Row>
-              <Row label="Otros adeudos">{formatRenovaMoney(renovaCase.other_debt, renovaCase.currency)}</Row>
-              <Row label="A quién se debe">{renovaCase.debt_owed_to}</Row>
-            </Section>
+            <SectionCard title="Ubicación e inmueble" contentClassName="gap-3">
+              <Grid>
+                <Row label="Calle y número" wide>
+                  {c.street_address}
+                </Row>
+                <Row label="Colonia">{c.neighborhood}</Row>
+                <Row label="Municipio">{c.municipality}</Row>
+                <Row label="Código postal">{c.postal_code}</Row>
+                <Row label="Tipo de vivienda">{c.dwelling_type ? formatRenovaDwelling(c.dwelling_type) : null}</Row>
+                <Row label="Plantas">{c.floors}</Row>
+                <Row label="Baños">{c.bathrooms}</Row>
+                <Row label="Recámaras">{c.bedrooms}</Row>
+                <Row label="Situación actual">{c.occupancy_status ? formatRenovaOccupancy(c.occupancy_status) : null}</Row>
+                <Row label="Escrituras">{formatRenovaDeeds(c.has_deeds)}</Row>
+                <Row label="A nombre de">{c.deeds_holder_name}</Row>
+                <Row label="Condiciones de la casa" wide>
+                  {c.conditions}
+                </Row>
+              </Grid>
+            </SectionCard>
 
-            <Section title="Motivación y evaluación">
-              <Row label="Razón por la que quiere vender" wide>
-                {renovaCase.sale_reason}
-              </Row>
-              <Row label="Preguntas clave" wide>
-                {renovaCase.key_questions}
-              </Row>
-              <Row label="Situación general" wide>
-                {renovaCase.general_situation}
-              </Row>
-              <Row label="Notas adicionales" wide>
-                {renovaCase.notes}
-              </Row>
-            </Section>
+            <SectionCard title="Información financiera" contentClassName="gap-3">
+              <Grid>
+                <Row label="Propuesta final">{money(c.final_offer)}</Row>
+                <Row label="Valor de mercado">{money(c.market_value)}</Row>
+                <Row label="Cuánto espera recibir">{money(c.owner_expected_amount)}</Row>
+                <Row label="Deuda predial">{money(c.property_tax_debt)}</Row>
+                <Row label="Otros adeudos">{money(c.other_debt)}</Row>
+                <Row label="Deuda de agua">{money(c.water_debt)}</Row>
+                <Row label="Deuda de luz">{money(c.electricity_debt)}</Row>
+                <Row label="Deuda de gas">{money(c.gas_debt)}</Row>
+                <Row label="Total estimado de adeudos">{money(c.total_debt)}</Row>
+                <Row label="A quién se debe">{c.debt_owed_to}</Row>
+              </Grid>
+            </SectionCard>
+
+            <SectionCard title="Motivación y comentarios" contentClassName="gap-3">
+              <Grid>
+                <Row label="¿Por qué la quiere vender?" wide>
+                  {c.sale_reason}
+                </Row>
+                <Row label="Comentarios generales" wide>
+                  {c.general_situation}
+                </Row>
+                <Row label="Notas adicionales o contexto de la conversación" wide>
+                  {c.notes}
+                </Row>
+              </Grid>
+            </SectionCard>
+
+            <SectionCard title="Historial" className="xl:col-span-2">
+              {history.length === 0 ? (
+                <EmptyState icon={FolderOpen} title="Sin movimientos registrados" description="Los cambios importantes del expediente aparecerán aquí." />
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {history.map((entry) => (
+                    <li key={entry.id} className="flex items-center justify-between gap-4 text-sm">
+                      <span>{formatRenovaHistoryAction(entry.action)}</span>
+                      <span className="text-muted-foreground">{formatRenovaDateTime(entry.created_at)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </SectionCard>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+
+      {editing && (
+        <RenovaCaseDialog
+          caseId={caseId}
+          onClose={() => setEditing(false)}
+          onSaved={(saved) => {
+            setEditing(false);
+            applySaved(saved);
+            setNotice("Cambios guardados.");
+            setActionError(null);
+          }}
+        />
+      )}
+      {sharing && <RenovaShareDialog caseId={caseId} onClose={() => setSharing(false)} />}
+    </>
   );
 }
