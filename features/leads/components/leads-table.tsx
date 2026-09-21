@@ -39,8 +39,9 @@ type Status = "loading" | "success" | "error";
  * comment for why a fresh type was introduced instead of stretching Lead
  * to fit.
  */
-export function LeadsTable() {
+export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
   const router = useRouter();
+  const isActiveView = view === "active";
   const [status, setStatus] = useState<Status>("loading");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -51,7 +52,9 @@ export function LeadsTable() {
     let cancelled = false;
 
     async function load() {
-      const response = await getContacts();
+      // "Clientes activos" is decided by the backend (?active=true) — see
+      // active_contact_condition in the API — not by filtering here.
+      const response = await getContacts(isActiveView ? { active: true } : undefined);
       if (cancelled) return;
 
       if (!response.ok) {
@@ -68,7 +71,7 @@ export function LeadsTable() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isActiveView]);
 
   const availableRoles = useMemo(() => {
     const roles = new Set<string>();
@@ -112,8 +115,12 @@ export function LeadsTable() {
       <div className="rounded-xl border">
         <EmptyState
           icon={Users}
-          title="No leads yet"
-          description="Contacts your organization adds will show up here."
+          title={isActiveView ? "No active clients yet" : "No leads yet"}
+          description={
+            isActiveView
+              ? "Contacts with an open opportunity or a live buyer search will show up here."
+              : "Contacts your organization adds will show up here."
+          }
         />
       </div>
     );

@@ -16,11 +16,20 @@ import type { Contact, ContactInput } from "@/features/leads/types";
  * reuse here, unlike lib/api/leads.ts's (never-implemented-backend-side)
  * assumption of one.
  */
-export function getContacts(): Promise<ApiResult<Contact[]>> {
+/**
+ * `active` maps to GET /contacts?active=… — the "Clientes activos" view is
+ * computed by the backend (an open Opportunity or a live Buyer Requirement),
+ * never reconstructed here. Omit it for every contact (the original behavior).
+ */
+export interface ContactFilters {
+  active?: boolean;
+}
+
+export function getContacts(filters: ContactFilters = {}): Promise<ApiResult<Contact[]>> {
   // The backend caps `limit` at 200 (app/api/routes/contacts.py) — good
   // enough for now given the demo org has 20 contacts; real pagination UI
   // is future work once an organization's contact count could exceed this.
-  return apiRequest<Contact[]>("/api/v1/contacts", { params: { limit: 200 } });
+  return apiRequest<Contact[]>("/api/v1/contacts", { params: { limit: 200, active: filters.active } });
 }
 
 export function getContact(contactId: string): Promise<ApiResult<Contact>> {

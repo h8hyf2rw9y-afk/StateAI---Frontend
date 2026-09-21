@@ -1,27 +1,22 @@
-import { PageHeader } from "@/components/shared/page-header";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { LeadsTable } from "@/features/leads/components/leads-table";
-import { ContactForm } from "@/features/leads/components/contact-form";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { LeadsWorkspace } from "@/features/leads/components/leads-workspace";
 
+/**
+ * LeadsWorkspace reads `?view=` via useSearchParams, which Next.js wants
+ * inside a Suspense boundary (see the useSearchParams docs); the fallback is
+ * only ever briefly visible on first load.
+ */
 export default function LeadsPage() {
   return (
-    <>
-      <PageHeader
-        title="Leads"
-        description="Every contact in your organization's CRM."
-        actions={
-          <ContactForm
-            trigger={
-              <Button>
-                <Plus />
-                Add lead
-              </Button>
-            }
-          />
-        }
-      />
-      <LeadsTable />
-    </>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading leads…
+        </div>
+      }
+    >
+      <LeadsWorkspace />
+    </Suspense>
   );
 }
