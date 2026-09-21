@@ -9,3 +9,4 @@ export * as tasksApi from "./tasks";
 export * as activitiesApi from "./activities";
 export * as notificationsApi from "./notifications";
 export * as aiApi from "./ai";
+export * as renovaApi from "./renova";
