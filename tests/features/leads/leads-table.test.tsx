@@ -7,7 +7,7 @@ const getContactsMock = vi.fn();
 const pushMock = vi.fn();
 
 vi.mock("@/lib/api/contacts", () => ({
-  getContacts: () => getContactsMock(),
+  getContacts: (...args: unknown[]) => getContactsMock(...args),
 }));
 
 vi.mock("next/navigation", () => ({
