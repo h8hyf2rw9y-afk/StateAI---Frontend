@@ -159,17 +159,18 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead>Propietario</TableHead>
+                <TableHead className="min-w-32">Propietario</TableHead>
                 <TableHead>Celular</TableHead>
                 <TableHead>Vivienda</TableHead>
                 <TableHead>Asesor</TableHead>
-                <TableHead className="text-right">Valor de mercado</TableHead>
-                <TableHead className="text-right">Expectativa del propietario</TableHead>
-                <TableHead className="text-right">Propuesta final</TableHead>
-                <TableHead className="text-right">Adeudos totales</TableHead>
+                <TableHead className="max-w-28 text-right whitespace-normal">Valor de mercado</TableHead>
+                <TableHead className="max-w-32 text-right whitespace-normal">Expectativa del propietario</TableHead>
+                <TableHead className="max-w-24 text-right whitespace-normal">Propuesta final</TableHead>
+                <TableHead className="max-w-24 text-right whitespace-normal">Adeudos totales</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                {/* Sticky: on narrower screens the table scrolls sideways, but Abrir/Editar must stay reachable. */}
+                <TableHead className="sticky right-0 bg-muted text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -191,7 +192,7 @@ export function RenovaCasesTable({ refreshKey = 0 }: { refreshKey?: number }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatRenovaDate(renovaCase.entry_date)}</TableCell>
-                  <TableCell>
+                  <TableCell className="sticky right-0 bg-background">
                     <div className="flex justify-end gap-1">
                       <RenovaCaseDetail
                         caseId={renovaCase.id}
