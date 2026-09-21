@@ -8,11 +8,13 @@ const updateRenovaCaseMock = vi.fn();
 const getRenovaCaseMock = vi.fn();
 const getContactsMock = vi.fn();
 const createContactMock = vi.fn();
+const getRenovaSensitiveDataMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   createRenovaCase: (...args: unknown[]) => createRenovaCaseMock(...args),
   updateRenovaCase: (...args: unknown[]) => updateRenovaCaseMock(...args),
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
+  getRenovaSensitiveData: (...args: unknown[]) => getRenovaSensitiveDataMock(...args),
   getRenovaCases: vi.fn(),
 }));
 vi.mock("@/lib/api/contacts", () => ({
@@ -55,7 +57,7 @@ function fillRequired() {
 }
 
 beforeEach(() => {
-  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock]) mock.mockReset();
+  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock, getRenovaSensitiveDataMock]) mock.mockReset();
   createRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
   updateRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
 });
@@ -479,24 +481,42 @@ describe("RenovaCaseDialog — saving", () => {
     await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalledTimes(1));
   });
 
-  it("sends NSS and número de crédito only when typed, and never shows them back", async () => {
+  it("NSS and número de crédito are visible numeric text inputs — not passwords — with their helper texts", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    for (const [label, helper] of [
+      ["NSS", "11 dígitos. Se almacenará cifrado."],
+      ["Número de crédito", "Se almacenará cifrado y no aparecerá en la ficha compartible."],
+    ]) {
+      const input = screen.getByLabelText(label);
+      expect(input).toHaveAttribute("type", "text");
+      expect(input).toHaveAttribute("inputmode", "numeric");
+      expect(input).toHaveAttribute("autocomplete", "off");
+      expect(input).toHaveAttribute("spellcheck", "false");
+      expect(input.getAttribute("style") ?? "").not.toMatch(/text-security/i);
+      expect(input.className).not.toMatch(/text-security/i);
+      expect(screen.getByText(helper)).toBeInTheDocument();
+    }
+    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.queryByText(/contraseña|password/i)).not.toBeInTheDocument();
+  });
+
+  it("shows what is typed in full, keeps leading zeros and sends bare digits", async () => {
     renderCreate();
     await screen.findByRole("dialog");
     fillRequired();
-    const nss = screen.getByLabelText("NSS");
-    expect(nss).toHaveAttribute("type", "password");
-    expect(nss).toHaveAttribute("autocomplete", "off");
-    type("NSS", "TESTNSS4455667");
-    type("Número de crédito", "TESTCRED9081");
 
+    type("NSS", "001 2345 6789");
+    type("Número de crédito", "0098765432");
+    expect(screen.getByLabelText("NSS")).toHaveValue("001 2345 6789");
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
 
     await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
-    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ nss: "TESTNSS4455667", credit_number: "TESTCRED9081" });
-    expect(document.body.textContent).not.toContain("TESTNSS4455667");
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ nss: "00123456789", credit_number: "0098765432" });
   });
 
-  it("a rejected NSS format is reported without echoing the value", async () => {
+  it("a badly formatted NSS is reported without echoing the value, and nothing is sent", async () => {
     renderCreate();
     await screen.findByRole("dialog");
     fillRequired();
@@ -504,9 +524,32 @@ describe("RenovaCaseDialog — saving", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
 
-    expect(await screen.findByText(/entre 4 y 30 caracteres/i)).toBeInTheDocument();
+    expect(await screen.findByText("El NSS debe tener 11 dígitos.")).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("no válido!!");
     expect(createRenovaCaseMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("NSS")).toHaveFocus();
+  });
+
+  it("when the server has no encryption key it keeps the whole form and explains it next to the protected data", async () => {
+    createRenovaCaseMock.mockResolvedValue({ ok: false, error: { message: "x", status: 503 } });
+    const { onSaved, onClose } = renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    type("Colonia", "Centro");
+    type("NSS", "00123456789");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+
+    const message =
+      "El servidor todavía no puede proteger estos datos. Configura la clave de cifrado antes de guardar NSS o número de crédito.";
+    const alert = await screen.findByText(message);
+    expect(alert.closest("section")).toHaveTextContent("Titular y cónyuge");
+    expect(screen.getByLabelText("NSS")).toHaveValue("00123456789");
+    expect(screen.getByLabelText("Colonia")).toHaveValue("Centro");
+    expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("María López");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getAllByText(message)).toHaveLength(1);
   });
 });
 
@@ -630,33 +673,112 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     expect(updateRenovaCaseMock.mock.calls[0][1].status).toBe("new");
   });
 
-  it("shows NSS and número de crédito only as the server's masks, never pre-filled", async () => {
+  it("shows the stored NSS and número de crédito as masks — no input, nothing pre-filled, nothing sent", async () => {
     await renderEdit();
 
-    expect(screen.getByLabelText("NSS")).toHaveValue("");
-    expect(screen.getByLabelText("NSS")).toHaveAttribute("placeholder", "••••4455");
-    expect(screen.getByText(/Guardado: ••••4455/)).toBeInTheDocument();
-    expect(screen.getByText(/Guardado: ••••9911/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Número de crédito")).toHaveValue("");
+    expect(screen.getByTestId("nss-display")).toHaveTextContent("•••••••4455");
+    expect(screen.getByTestId("credit_number-display")).toHaveTextContent("••••••9911");
+    expect(screen.queryByRole("textbox", { name: "NSS" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Número de crédito" })).not.toBeInTheDocument();
+    expect(getRenovaSensitiveDataMock).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Colonia"), { target: { value: "Obispado" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
     await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalled());
+    const payload = updateRenovaCaseMock.mock.calls[0][1];
+    expect(payload).not.toHaveProperty("nss");
+    expect(payload).not.toHaveProperty("credit_number");
+    expect(JSON.stringify(payload)).not.toMatch(/•|\*|4455|9911/);
+  });
+
+  it("'Reemplazar' shows an empty visible input; only the typed digits are sent, and an empty one sends nothing", async () => {
+    await renderEdit();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reemplazar NSS" }));
+    const input = screen.getByLabelText("NSS");
+    expect(input).toHaveValue("");
+    expect(input).toHaveAttribute("type", "text");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledTimes(1));
     expect(updateRenovaCaseMock.mock.calls[0][1]).not.toHaveProperty("nss");
+  });
+
+  it("'Reemplazar' then typing sends only the new digits", async () => {
+    await renderEdit();
+    fireEvent.click(screen.getByRole("button", { name: "Reemplazar NSS" }));
+    type("NSS", "99887766554");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledTimes(1));
+    expect(updateRenovaCaseMock.mock.calls[0][1].nss).toBe("99887766554");
     expect(updateRenovaCaseMock.mock.calls[0][1]).not.toHaveProperty("credit_number");
   });
 
-  it("'Quitar' removes only the chosen protected value; typing replaces it", async () => {
+  it("a mask typed into the replacement input is refused, never sent", async () => {
+    await renderEdit();
+    fireEvent.click(screen.getByRole("button", { name: "Reemplazar NSS" }));
+    type("NSS", "•••••••4455");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByText("El NSS debe tener 11 dígitos.")).toBeInTheDocument();
+    expect(updateRenovaCaseMock).not.toHaveBeenCalled();
+  });
+
+  it("cancelling a replacement returns to the mask and drops what was typed", async () => {
+    await renderEdit();
+    fireEvent.click(screen.getByRole("button", { name: "Reemplazar NSS" }));
+    type("NSS", "99887766554");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar reemplazo de NSS" }));
+
+    expect(screen.getByTestId("nss-display")).toHaveTextContent("•••••••4455");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalled());
+    expect(updateRenovaCaseMock.mock.calls[0][1]).not.toHaveProperty("nss");
+  });
+
+  it("'Quitar' asks for confirmation, and only then removes just that value (null); 'Deshacer' cancels it", async () => {
     await renderEdit();
 
     fireEvent.click(screen.getByRole("button", { name: "Quitar NSS" }));
+    expect(screen.getByText(/¿Quitar el NSS guardado\?/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "No quitar" }));
+    expect(screen.queryByText(/¿Quitar el NSS guardado\?/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar NSS" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sí, quitar" }));
     expect(screen.getByText("Se eliminará al guardar.")).toBeInTheDocument();
-    type("Número de crédito", "REPLACED12345");
+    fireEvent.click(screen.getByRole("button", { name: "Deshacer eliminación de NSS" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quitar NSS" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sí, quitar" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalled());
+    const payload = updateRenovaCaseMock.mock.calls[0][1];
+    expect(payload.nss).toBeNull();
+    expect(payload).not.toHaveProperty("credit_number");
+  });
+
+  it("replacing the credit number sends only that new value", async () => {
+    await renderEdit();
+    fireEvent.click(screen.getByRole("button", { name: "Reemplazar Número de crédito" }));
+    type("Número de crédito", "0011223344");
+
     fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalled());
     const payload = updateRenovaCaseMock.mock.calls[0][1];
-    expect(payload.nss).toBeNull();
-    expect(payload.credit_number).toBe("REPLACED12345");
-    expect(document.body.textContent).not.toContain("REPLACED12345");
+    expect(payload.credit_number).toBe("0011223344");
+    expect(payload).not.toHaveProperty("nss");
+  });
+
+  it("with nothing stored, the case has visible inputs directly (no mask, no reveal button)", async () => {
+    await renderEdit({ nss_masked: null, credit_number_masked: null, has_nss: false, has_credit_number: false });
+
+    expect(screen.getByLabelText("NSS")).toHaveAttribute("type", "text");
+    expect(screen.queryByRole("button", { name: "Mostrar datos protegidos" })).not.toBeInTheDocument();
   });
 
   it("protects unsaved edits too", async () => {

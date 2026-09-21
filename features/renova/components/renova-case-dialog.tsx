@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaCaseForm } from "@/features/renova/components/renova-case-form";
 import { fieldId } from "@/features/renova/components/renova-form-fields";
-import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
+import { ENCRYPTION_NOT_CONFIGURED_MESSAGE, advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import {
   emptyRenovaFormValues,
   isRenovaFormDirty,
@@ -16,6 +16,7 @@ import {
   type RenovaFormValues,
 } from "@/features/renova/lib/form-values";
 import { validateRenovaForm, type RenovaFormErrors } from "@/features/renova/lib/validation";
+import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import type { RenovaCase } from "@/features/renova/types";
 import { createRenovaCase, getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
@@ -71,6 +72,8 @@ export function RenovaCaseDialog({
   const [load, setLoad] = useState<LoadState>(caseId ? { status: "loading" } : { status: "ready", original: null });
   const [errors, setErrors] = useState<RenovaFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [protectedError, setProtectedError] = useState<string | null>(null);
+  const protectedData = useProtectedData(caseId);
   const [expanded, setExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -129,6 +132,7 @@ export function RenovaCaseDialog({
     setIsSubmitting(true);
     setErrors({});
     setFormError(null);
+    setProtectedError(null);
 
     const status = intent === "draft" ? "draft" : effective.status === "draft" ? "new" : effective.status;
     const payload = toRenovaPayload(effective, isEdit ? "edit" : "create", status);
@@ -137,7 +141,15 @@ export function RenovaCaseDialog({
     if (!response.ok) {
       submittingRef.current = false;
       setIsSubmitting(false);
-      setFormError(getRenovaErrorMessage(response.error));
+      // No encryption key on the server: the failure belongs to the protected-data
+      // section, and everything typed stays exactly as it is.
+      const sentProtected = "nss" in payload || "credit_number" in payload;
+      if (response.error.status === 503 && sentProtected) {
+        setProtectedError(ENCRYPTION_NOT_CONFIGURED_MESSAGE);
+        requestAnimationFrame(() => document.getElementById("renova-protected-error")?.focus());
+      } else {
+        setFormError(getRenovaErrorMessage(response.error));
+      }
       return;
     }
     onSaved(response.data, intent);
@@ -207,6 +219,8 @@ export function RenovaCaseDialog({
                 advisorOptions={advisorOptions}
                 maskedNss={original?.nss_masked ?? null}
                 maskedCreditNumber={original?.credit_number_masked ?? null}
+                protectedData={isEdit ? protectedData : null}
+                protectedError={protectedError}
               />
             </form>
           )}

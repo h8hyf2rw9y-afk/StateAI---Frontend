@@ -8,7 +8,7 @@ import {
   formatRenovaDeeds,
   formatRenovaDwelling,
   formatRenovaOccupancy,
-  type RenovaCase,
+  type RenovaShareCase,
 } from "@/features/renova/types";
 
 /** What the person chose to include. NSS, número de crédito and INE images have no option here — they can never be shown. */
@@ -71,7 +71,7 @@ export function RenovaShareCard({
   advisorName,
   ref,
 }: {
-  renovaCase: RenovaCase;
+  renovaCase: RenovaShareCase;
   options: RenovaShareOptions;
   advisorName?: string | null;
   ref?: Ref<HTMLDivElement>;

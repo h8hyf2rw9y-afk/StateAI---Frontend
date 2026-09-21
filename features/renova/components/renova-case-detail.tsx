@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
+import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
 import { RenovaShareDialog } from "@/features/renova/components/renova-share-dialog";
 import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import { renovaShortId } from "@/features/renova/lib/short-id";
+import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import {
   RENOVA_STATUSES,
   formatRenovaDate,
@@ -56,8 +58,11 @@ function Grid({ children }: { children: ReactNode }) {
  * estado and Ver ficha para compartir.
  *
  * Everything shown is the real saved case from the backend. NSS and número de
- * crédito appear only as the server's masks; the history lists WHAT happened
- * and WHEN — never the audit rows' data.
+ * crédito appear masked ("•••••••4821") until the person chooses "Mostrar datos
+ * protegidos": that asks for confirmation, calls the audited endpoint, shows
+ * the full values in memory for about a minute and drops them again on
+ * "Ocultar", on timeout, when the editor opens and when the page is left. The
+ * history lists WHAT happened and WHEN — never the audit rows' data.
  */
 export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const { user } = useUser();
@@ -69,6 +74,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
+  const protectedData = useProtectedData(caseId);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +162,14 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    protectedData.hide();
+                    setEditing(true);
+                  }}
+                >
                   <Pencil />
                   Editar
                 </Button>
@@ -188,9 +201,22 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <Row label="Estado civil al adquirir el inmueble">{c.marital_status ? formatRenovaMaritalStatus(c.marital_status) : null}</Row>
                 <Row label="Nombre completo del cónyuge">{c.spouse_name}</Row>
                 <Row label="Celular del cónyuge">{c.spouse_phone}</Row>
-                <Row label="NSS">{c.nss_masked ?? "No registrado"}</Row>
-                <Row label="Número de crédito">{c.credit_number_masked ?? "No registrado"}</Row>
+                <Row label="NSS">
+                  <span data-testid="nss-display" className="font-mono tracking-wide">
+                    {protectedData.values?.nss ?? c.nss_masked ?? "No registrado"}
+                  </span>
+                </Row>
+                <Row label="Número de crédito">
+                  <span data-testid="credit-number-display" className="font-mono tracking-wide">
+                    {protectedData.values?.credit_number ?? c.credit_number_masked ?? "No registrado"}
+                  </span>
+                </Row>
               </Grid>
+              {(c.has_nss || c.has_credit_number) && (
+                <div className="pt-2">
+                  <ProtectedDataControls protectedData={protectedData} />
+                </div>
+              )}
             </SectionCard>
 
             <SectionCard title="Ubicación e inmueble" contentClassName="gap-3">

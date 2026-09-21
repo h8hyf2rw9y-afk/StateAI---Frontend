@@ -67,9 +67,20 @@ export interface RenovaCase extends RenovaCaseListItem {
   key_questions: string | null;
   general_situation: string | null;
   notes: string | null;
-  /** "••••1234" when a value is stored, null when not. The full value is never available. */
+  /** "•••••••4821" when a value is stored, null when not. The full value only comes from the explicit reveal call. */
   nss_masked: string | null;
   credit_number_masked: string | null;
+  has_nss: boolean;
+  has_credit_number: boolean;
+}
+
+/** What the share card may know about a case: the saved data WITHOUT any protected-data field, not even the masks. */
+export type RenovaShareCase = Omit<RenovaCase, "nss_masked" | "credit_number_masked" | "has_nss" | "has_credit_number">;
+
+/** The full protected values — held only in memory, only while revealed (see lib/use-protected-data.ts). */
+export interface RenovaSensitiveData {
+  nss: string | null;
+  credit_number: string | null;
 }
 
 /** Outbound shape for POST/PATCH — see toRenovaPayload in lib/form-values.ts. On PATCH a `null` clears an optional field; an omitted key leaves it untouched. */

@@ -1,5 +1,6 @@
 import type { RenovaCase, RenovaCaseInput } from "@/features/renova/types";
 import { MONEY_FIELDS } from "@/features/renova/lib/money";
+import { normalizeIdentifier } from "@/features/renova/lib/identifiers";
 
 /**
  * The single source of truth for the Renova form's data (used by BOTH create
@@ -251,7 +252,10 @@ export function toRenovaPayload(values: RenovaFormValues, mode: "create" | "edit
     ["nss", "clear_nss"],
     ["credit_number", "clear_credit_number"],
   ] as const) {
-    const typed = values[field].trim();
+    // Only a value the person actually typed is ever sent (as bare digits).
+    // The mask shown for a stored value is display text and is not in the form
+    // values, so it can never be sent as if it were a new number.
+    const typed = normalizeIdentifier(values[field]);
     if (typed) out[field] = typed;
     else if (mode === "edit" && values[clearFlag]) out[field] = null;
   }

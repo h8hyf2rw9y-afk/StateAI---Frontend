@@ -5,8 +5,8 @@ import {
   FieldGrid,
   FormSection,
   MoneyField,
+  ProtectedIdentifierField,
   RenovaFormProvider,
-  SecretField,
   SegmentedField,
   SelectField,
   SubHeading,
@@ -14,7 +14,9 @@ import {
   TextField,
   type RenovaFormState,
 } from "@/features/renova/components/renova-form-fields";
+import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
 import { sumDebts } from "@/features/renova/lib/money";
+import type { ProtectedData } from "@/features/renova/lib/use-protected-data";
 import {
   RENOVA_DEEDS_STATUSES,
   RENOVA_DWELLING_TYPES,
@@ -37,6 +39,10 @@ export interface RenovaCaseFormProps extends RenovaFormState {
   /** The server's masks ("••••1234") when editing a saved case; the full values are never available. */
   maskedNss: string | null;
   maskedCreditNumber: string | null;
+  /** The temporary reveal of the stored values (edit mode with something stored); null otherwise. */
+  protectedData: ProtectedData | null;
+  /** Shown inside the protected-data section, e.g. when the server has no encryption key configured. */
+  protectedError: string | null;
 }
 
 /**
@@ -50,7 +56,14 @@ export interface RenovaCaseFormProps extends RenovaFormState {
  * computed here from the five debt fields as they are typed and is never
  * stored — the server derives the authoritative `total_debt`.
  */
-export function RenovaCaseForm({ advisorOptions, maskedNss, maskedCreditNumber, ...state }: RenovaCaseFormProps) {
+export function RenovaCaseForm({
+  advisorOptions,
+  maskedNss,
+  maskedCreditNumber,
+  protectedData,
+  protectedError,
+  ...state
+}: RenovaCaseFormProps) {
   const debtTotal = sumDebts(state.values);
   // "Borrador" is a system state (it is what "Guardar borrador" sets), so it is only offered while the case still is one.
   const statusOptions = toOptions(
@@ -136,8 +149,27 @@ export function RenovaCaseForm({ advisorOptions, maskedNss, maskedCreditNumber, 
               placeholder="Sin especificar"
               options={toOptions(RENOVA_MARITAL_STATUSES, formatRenovaMaritalStatus)}
             />
-            <SecretField name="nss" clearFlag="clear_nss" label="NSS" masked={maskedNss} />
-            <SecretField name="credit_number" clearFlag="clear_credit_number" label="Número de crédito" masked={maskedCreditNumber} />
+            {protectedData && (maskedNss !== null || maskedCreditNumber !== null) && (
+              <div className="sm:col-span-6 lg:col-span-12">
+                <ProtectedDataControls protectedData={protectedData} />
+              </div>
+            )}
+            <ProtectedIdentifierField
+              name="nss"
+              clearFlag="clear_nss"
+              label="NSS"
+              helper="11 dígitos. Se almacenará cifrado."
+              masked={maskedNss}
+              revealed={protectedData?.values?.nss ?? null}
+            />
+            <ProtectedIdentifierField
+              name="credit_number"
+              clearFlag="clear_credit_number"
+              label="Número de crédito"
+              helper="Se almacenará cifrado y no aparecerá en la ficha compartible."
+              masked={maskedCreditNumber}
+              revealed={protectedData?.values?.credit_number ?? null}
+            />
             <SubHeading>Cónyuge</SubHeading>
             <TextField name="spouse_name" label="Nombre completo del cónyuge" />
             <TextField name="spouse_phone" label="Celular del cónyuge" inputMode="tel" />
@@ -146,6 +178,11 @@ export function RenovaCaseForm({ advisorOptions, maskedNss, maskedCreditNumber, 
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
             NSS y número de crédito son datos protegidos y no aparecerán en la ficha compartible.
           </p>
+          {protectedError && (
+            <p id="renova-protected-error" role="alert" tabIndex={-1} className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {protectedError}
+            </p>
+          )}
         </FormSection>
 
         <FormSection id="preguntas" title="Preguntas clave" icon={MessageCircleQuestion}>

@@ -137,8 +137,9 @@ describe("RenovaShareDialog — the card and its options", () => {
     await openDialog();
     const dialog = screen.getByRole("dialog");
 
-    expect(dialog.textContent).not.toContain("••••4455");
-    expect(dialog.textContent).not.toContain("••••9911");
+    expect(dialog.textContent).not.toContain("4455");
+    expect(dialog.textContent).not.toContain("9911");
+    expect(dialog.textContent).not.toContain("•");
     expect(dialog.textContent).not.toContain("9f3a2c41-7b1d-4e0a-8c55-0d6e1f2a3b4c");
   });
 

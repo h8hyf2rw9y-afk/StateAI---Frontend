@@ -339,59 +339,132 @@ export function SegmentedField({
 }
 
 /**
- * A protected identifier (NSS / número de crédito). Write-only: when editing,
- * only the server's mask is shown and typing replaces it; "Quitar" deletes it.
- * `type="password"` + autoComplete off keep the browser from echoing or
- * remembering it. It is never pre-filled and never leaves this component
- * except as the typed replacement.
+ * A protected identifier (NSS / número de crédito). It is data to be typed and
+ * read, NOT a password: the input is plain visible text (numeric keypad, no
+ * autofill or spellcheck) so every digit can be checked before saving.
+ *
+ * Three situations:
+ *  - Nothing stored (a new case, or a case without the value): a visible input.
+ *  - A value is stored: the input is NOT shown. The person sees the server's
+ *    mask (or the full value while it is revealed) with "Reemplazar" and
+ *    "Quitar". The mask is display text only — it can never reach the payload,
+ *    because it is not in the form values at all. An untouched field sends
+ *    nothing, so the stored ciphertext is kept.
+ *  - Replacing: an empty visible input appears; only what is typed is sent. An
+ *    empty input does NOT mean "delete" — removal is its own confirmed action.
  */
-export function SecretField({
+export function ProtectedIdentifierField({
   name,
   clearFlag,
   label,
+  helper,
   masked,
+  revealed,
   size,
 }: {
   name: "nss" | "credit_number";
   clearFlag: "clear_nss" | "clear_credit_number";
   label: string;
+  helper: string;
+  /** The server's mask when a value is stored, null when none is. */
   masked: string | null;
+  /** The full value while the person has revealed it (in memory only), otherwise null. */
+  revealed: string | null;
   size?: FieldSize;
 }) {
   const { values, errors, set } = useRenovaForm();
+  const [replacing, setReplacing] = useState(false);
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
   const error = errors[name];
-  const cleared = values[clearFlag];
-  const hint = masked && !cleared ? `Guardado: ${masked}. Escribe para reemplazarlo.` : cleared ? "Se eliminará al guardar." : undefined;
+  const removed = values[clearFlag];
+  const hasStored = masked !== null;
+  const showInput = !hasStored || replacing;
+  const id = fieldId(name);
+
+  function startReplacing() {
+    setReplacing(true);
+    set(clearFlag, false);
+  }
+  function stopReplacing() {
+    setReplacing(false);
+    set(name, "");
+  }
+
+  if (showInput) {
+    return (
+      <FieldShell name={name} label={label} size={size} hint={helper} error={error}>
+        <div className="flex gap-2">
+          <Input
+            id={id}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-1p-ignore
+            data-lpignore="true"
+            value={values[name]}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy(name, error, helper)}
+            onChange={(event) => set(name, event.target.value)}
+          />
+          {hasStored && (
+            <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={stopReplacing} aria-label={`Cancelar reemplazo de ${label}`}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+      </FieldShell>
+    );
+  }
+
+  const labelId = `${id}-label`;
   return (
-    <FieldShell name={name} label={label} size={size} hint={hint} error={error}>
-      <div className="flex gap-2">
-        <Input
-          id={fieldId(name)}
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={values[name]}
-          disabled={cleared}
-          placeholder={masked && !cleared ? masked : undefined}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={describedBy(name, error, hint)}
-          onChange={(event) => set(name, event.target.value)}
-        />
-        {masked && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            aria-label={`${cleared ? "Deshacer" : "Quitar"} ${label}`}
-            onClick={() => {
-              const next = !cleared;
-              set(clearFlag, next);
-              if (next) set(name, "");
-            }}
-          >
-            {cleared ? "Deshacer" : "Quitar"}
-          </Button>
+    <FieldShell name={name} label={label} size={size} groupLabelId={labelId} hint={removed ? "Se eliminará al guardar." : undefined}>
+      <div className="flex flex-col gap-2">
+        <p
+          aria-labelledby={labelId}
+          data-testid={`${name}-display`}
+          className={cn("min-h-8 rounded-lg border border-dashed px-2.5 py-1.5 font-mono text-sm tracking-wide break-all", removed && "text-muted-foreground line-through")}
+        >
+          {revealed ?? masked}
+        </p>
+        {confirmingRemoval ? (
+          <div role="alertdialog" aria-label={`Confirmar eliminación de ${label}`} className="flex flex-col gap-2 rounded-md border p-2 text-xs">
+            <p>¿Quitar el {label} guardado? Se eliminará al guardar los cambios.</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  set(name, "");
+                  set(clearFlag, true);
+                  setConfirmingRemoval(false);
+                }}
+              >
+                Sí, quitar
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setConfirmingRemoval(false)}>
+                No quitar
+              </Button>
+            </div>
+          </div>
+        ) : removed ? (
+          <div>
+            <Button type="button" size="sm" variant="outline" onClick={() => set(clearFlag, false)} aria-label={`Deshacer eliminación de ${label}`}>
+              Deshacer
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={startReplacing}>
+              Reemplazar {label}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setConfirmingRemoval(true)} aria-label={`Quitar ${label}`}>
+              Quitar
+            </Button>
+          </div>
         )}
       </div>
     </FieldShell>

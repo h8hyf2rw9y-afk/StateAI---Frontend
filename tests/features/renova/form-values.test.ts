@@ -81,10 +81,29 @@ describe("validateRenovaForm", () => {
 
   it("validates NSS / credit-number format without ever echoing the typed value", () => {
     const bad = validateRenovaForm({ ...validValues(), nss: "no válido!!", credit_number: "ab" });
-    expect(bad.errors.nss).toBeDefined();
-    expect(bad.errors.credit_number).toBeDefined();
+    expect(bad.errors.nss).toBe("El NSS debe tener 11 dígitos.");
+    expect(bad.errors.credit_number).toBe("El número de crédito debe tener de 6 a 20 dígitos.");
     expect(JSON.stringify(bad.errors)).not.toContain("no válido!!");
-    expect(validateRenovaForm({ ...validValues(), nss: "TESTNSS4455667" }).errors.nss).toBeUndefined();
+    expect(validateRenovaForm({ ...validValues(), nss: "00123456789" }).errors.nss).toBeUndefined();
+  });
+
+  it("NSS is exactly 11 digits and credit number 6-20 digits; separators are allowed, letters and masks are not", () => {
+    const nss = (value: string) => validateRenovaForm({ ...validValues(), nss: value }).errors.nss;
+    const credit = (value: string) => validateRenovaForm({ ...validValues(), credit_number: value }).errors.credit_number;
+    expect(nss("001 2345 6789")).toBeUndefined();
+    expect(nss("001-23456-789")).toBeUndefined();
+    for (const bad of ["1234567890", "123456789012", "0012345678A", "•••••••4821", "***********"]) expect(nss(bad)).toBeDefined();
+    expect(credit("0908 1726 30")).toBeUndefined();
+    expect(credit("123456")).toBeUndefined();
+    for (const bad of ["12345", "1".repeat(21), "12345ABC90", "••••••7104", "**********"]) expect(credit(bad)).toBeDefined();
+  });
+
+  it("sends typed identifiers as bare digits, keeping leading zeros — and never a mask", () => {
+    const payload = toRenovaPayload({ ...validValues(), nss: "001 2345 6789", credit_number: "0908-1726-30" }, "edit", "new");
+    expect(payload.nss).toBe("00123456789");
+    expect(payload.credit_number).toBe("0908172630");
+    const untouched = toRenovaPayload(valuesFromRenovaCase(makeRenovaCase()), "edit", "new");
+    expect(JSON.stringify(untouched)).not.toMatch(/nss|credit_number|•|\*/);
   });
 
   it("points at the first invalid field in on-screen order", () => {

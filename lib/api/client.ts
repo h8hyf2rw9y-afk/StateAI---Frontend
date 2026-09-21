@@ -20,6 +20,8 @@ export interface RequestOptions {
   /** Extra query params appended to the URL. */
   params?: Record<string, string | number | boolean | undefined>;
   signal?: AbortSignal;
+  /** Passed to fetch; sensitive reads use "no-store" so nothing is kept by the browser's HTTP cache. */
+  cache?: RequestCache;
   /**
    * Milliseconds before this request is aborted client-side. Defaults to
    * 30s. Real AI-agent calls (lib/api/ai.ts) run local inference that can
@@ -70,7 +72,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<ApiResult<T>> {
-  const { method = "GET", body, params, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { method = "GET", body, params, signal, cache, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
 
   // Aborts the request client-side after timeoutMs, combined with any
   // caller-supplied signal — never an infinite wait, but never shorter than
@@ -93,6 +95,7 @@ export async function apiRequest<T>(
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: timeoutController.signal,
+      ...(cache ? { cache } : {}),
     });
 
     if (!response.ok) {

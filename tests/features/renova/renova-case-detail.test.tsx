@@ -89,8 +89,8 @@ describe("RenovaCaseDetail", () => {
   it("shows NSS and número de crédito ONLY as the server's masks", async () => {
     await renderDetail();
 
-    expect(document.body).toHaveTextContent("••••4455");
-    expect(document.body).toHaveTextContent("••••9911");
+    expect(document.body).toHaveTextContent("•••••••4455");
+    expect(document.body).toHaveTextContent("••••••9911");
     expect(document.body.textContent).not.toMatch(/\bNC\b/);
   });
 

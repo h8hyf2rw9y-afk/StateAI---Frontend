@@ -1,6 +1,12 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { RenovaCase, RenovaCaseInput, RenovaCaseListItem, RenovaHistoryEntry } from "@/features/renova/types";
+import type {
+  RenovaCase,
+  RenovaCaseInput,
+  RenovaCaseListItem,
+  RenovaHistoryEntry,
+  RenovaSensitiveData,
+} from "@/features/renova/types";
 
 /**
  * Typed surface for the backend's Renova API (app/api/routes/renova.py) — the
@@ -64,4 +70,16 @@ export async function getRenovaHistory(caseId: string): Promise<ApiResult<Renova
     ...response,
     data: response.data.map(({ id, action, created_at }) => ({ id, action, created_at })),
   };
+}
+
+/**
+ * The full NSS and número de crédito of one case — the ONLY call that returns
+ * them. The backend authorizes it (owner/admin or assigned advisor), audits it
+ * without the values and marks it no-store; `cache: "no-store"` keeps the
+ * browser from holding on to it too. Callers must keep the result in memory
+ * only (see features/renova/lib/use-protected-data.ts): never storage, URLs,
+ * logs or analytics.
+ */
+export function getRenovaSensitiveData(caseId: string): Promise<ApiResult<RenovaSensitiveData>> {
+  return apiRequest<RenovaSensitiveData>(`/api/v1/renova/cases/${caseId}/sensitive-data`, { cache: "no-store" });
 }

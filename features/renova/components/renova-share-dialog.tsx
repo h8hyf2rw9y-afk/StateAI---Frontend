@@ -18,11 +18,22 @@ import {
   shareOrDownload,
 } from "@/features/renova/lib/export-image";
 import { renovaShortId } from "@/features/renova/lib/short-id";
-import type { RenovaCase } from "@/features/renova/types";
+import type { RenovaCase, RenovaShareCase } from "@/features/renova/types";
 import { getRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
 
 const DOWNLOAD_FALLBACK_MESSAGE = "La imagen se descargó. Ahora puedes adjuntarla en tu grupo de WhatsApp.";
+
+/**
+ * The card gets the case WITHOUT any protected-data field — not the full
+ * values (which this dialog never loads) and not even the masks or flags — so
+ * there is nothing sensitive for it to render, in the DOM or in the PNG.
+ */
+function toShareCase(renovaCase: RenovaCase): RenovaShareCase {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { nss_masked, credit_number_masked, has_nss, has_credit_number, ...shareable } = renovaCase;
+  return shareable;
+}
 
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; renovaCase: RenovaCase };
 
@@ -151,7 +162,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <div className="min-w-0 flex-1 rounded-xl bg-muted/40 p-3 sm:p-4">
                 <ScaledPreview>
-                  <RenovaShareCard ref={cardRef} renovaCase={renovaCase} options={options} advisorName={advisorName} />
+                  <RenovaShareCard ref={cardRef} renovaCase={toShareCase(renovaCase)} options={options} advisorName={advisorName} />
                 </ScaledPreview>
               </div>
               <div className="w-full shrink-0 lg:w-80">

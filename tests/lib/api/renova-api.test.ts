@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRenovaCase, getRenovaCase, getRenovaCases, getRenovaHistory, updateRenovaCase } from "@/lib/api/renova";
+import { createRenovaCase, getRenovaCase, getRenovaCases, getRenovaHistory, getRenovaSensitiveData, updateRenovaCase } from "@/lib/api/renova";
 import { getContacts } from "@/lib/api/contacts";
 
 const apiRequestMock = vi.fn();
@@ -88,6 +88,22 @@ describe("Renova API client", () => {
     apiRequestMock.mockResolvedValue({ ok: false, error: { message: "x", status: 500 } });
 
     expect(await getRenovaHistory("abc")).toEqual({ ok: false, error: { message: "x", status: 500 } });
+  });
+
+  it("reveals protected data only through the dedicated endpoint, asking the browser not to cache it", async () => {
+    apiRequestMock.mockResolvedValue({ ok: true, data: { nss: "00123456789", credit_number: null } });
+
+    const result = await getRenovaSensitiveData("abc");
+
+    expect(apiRequestMock).toHaveBeenCalledWith("/api/v1/renova/cases/abc/sensitive-data", { cache: "no-store" });
+    expect(result).toEqual({ ok: true, data: { nss: "00123456789", credit_number: null } });
+  });
+
+  it("no other Renova call asks for or sends protected values by itself", async () => {
+    await getRenovaCase("abc");
+    await getRenovaCases();
+
+    for (const call of apiRequestMock.mock.calls) expect(String(call[0])).not.toContain("sensitive-data");
   });
 
   it("exposes no delete", async () => {

@@ -1,4 +1,5 @@
 import { RENOVA_FIELD_ORDER, type RenovaFormValues } from "@/features/renova/lib/form-values";
+import { normalizeIdentifier } from "@/features/renova/lib/identifiers";
 import { MAX_MONEY, MONEY_FIELDS } from "@/features/renova/lib/money";
 
 export type RenovaFormErrors = Partial<Record<keyof RenovaFormValues, string>>;
@@ -25,6 +26,11 @@ const MAX_LENGTH: Partial<Record<keyof RenovaFormValues, number>> = {
   general_situation: 5000,
   notes: 5000,
 };
+
+const NSS_LENGTH = 11;
+const CREDIT_MIN = 6;
+const CREDIT_MAX = 20;
+const DIGITS = /^[0-9]+$/;
 
 function isNegative(value: string): boolean {
   return Number(value) < 0;
@@ -80,14 +86,15 @@ export function validateRenovaForm(values: RenovaFormValues): RenovaValidation {
     else if (!/^\d+(\.\d)?$/.test(bathrooms)) errors.bathrooms = "Usa máximo un decimal (por ejemplo 1.5).";
   }
 
-  // The backend accepts only letters, digits and hyphens for these; caught here
-  // WITHOUT ever echoing what was typed.
-  for (const field of ["nss", "credit_number"] as const) {
-    const value = values[field].trim();
-    if (!value) continue;
-    if (value.length < 4 || value.length > 30 || !/^[A-Za-z0-9-]+$/.test(value)) {
-      errors[field] = "Debe tener entre 4 y 30 caracteres: solo letras, números y guiones.";
-    }
+  // Identifiers, not numbers: digits only (spaces/hyphens are fine while typing
+  // and are dropped), leading zeros kept. Anything else — including a masked
+  // display value like "•••••••4821" — is refused here, WITHOUT ever echoing
+  // what was typed.
+  const nss = normalizeIdentifier(values.nss);
+  if (nss && !(DIGITS.test(nss) && nss.length === NSS_LENGTH)) errors.nss = `El NSS debe tener ${NSS_LENGTH} dígitos.`;
+  const credit = normalizeIdentifier(values.credit_number);
+  if (credit && !(DIGITS.test(credit) && credit.length >= CREDIT_MIN && credit.length <= CREDIT_MAX)) {
+    errors.credit_number = `El número de crédito debe tener de ${CREDIT_MIN} a ${CREDIT_MAX} dígitos.`;
   }
 
   const firstInvalidField = RENOVA_FIELD_ORDER.find((field) => errors[field]) ?? null;
