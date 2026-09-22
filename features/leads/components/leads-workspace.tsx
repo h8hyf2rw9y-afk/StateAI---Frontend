@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GooeyNav } from "@/components/ui/gooey-nav";
 import { ContactForm } from "@/features/leads/components/contact-form";
 import { LeadsTable } from "@/features/leads/components/leads-table";
 import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
@@ -30,10 +30,11 @@ const DESCRIPTIONS: Record<LeadsView, string> = {
  * (back/forward work) and the URL is shareable; the view is always derived
  * from the URL, never from separate state, so the two can't drift.
  *
- * Only the ACTIVE tab's panel is mounted (Base UI unmounts inactive panels),
- * which is what guarantees Todos / Clientes activos never touch the Renova
- * API and Renova never touches the Contacts API — each side fetches only
- * when its own tab is showing.
+ * Only the ACTIVE view's panel is mounted (plain conditional rendering below,
+ * since the tab switcher itself — GooeyNav — is a nav control, not a
+ * content-swapping primitive), which is what guarantees Todos / Clientes
+ * activos never touch the Renova API and Renova never touches the Contacts
+ * API — each side fetches only when its own tab is showing.
  *
  * "Add lead" (Todos, Clientes activos) is the unchanged Contact form;
  * "Nuevo prospecto Renova" opens only the Renova popup (RenovaCaseDialog),
@@ -112,27 +113,21 @@ export function LeadsWorkspace() {
         </div>
       )}
 
-      <Tabs value={view} onValueChange={handleViewChange} className="gap-4">
+      <div className="flex flex-col gap-4">
         <div className="-mx-1 overflow-x-auto px-1">
-          <TabsList aria-label="Vistas de leads">
-            {LEADS_VIEWS.map((v) => (
-              <TabsTrigger key={v} value={v} className="px-3">
-                {LEADS_VIEW_LABELS[v]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <GooeyNav
+            aria-label="Vistas de leads"
+            size="sm"
+            items={LEADS_VIEWS.map((v) => LEADS_VIEW_LABELS[v])}
+            value={LEADS_VIEWS.indexOf(view)}
+            onChange={(index) => handleViewChange(LEADS_VIEWS[index])}
+          />
         </div>
 
-        <TabsContent value="all">
-          <LeadsTable view="all" />
-        </TabsContent>
-        <TabsContent value="active">
-          <LeadsTable view="active" />
-        </TabsContent>
-        <TabsContent value="renova">
-          <RenovaCasesTable refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} />
-        </TabsContent>
-      </Tabs>
+        {view === "all" && <LeadsTable view="all" />}
+        {view === "active" && <LeadsTable view="active" />}
+        {view === "renova" && <RenovaCasesTable refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} />}
+      </div>
 
       {renovaDialog && (
         <RenovaCaseDialog caseId={renovaDialog.caseId} onClose={() => setRenovaDialog(null)} onSaved={handleRenovaSaved} />

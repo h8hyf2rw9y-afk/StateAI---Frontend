@@ -25,6 +25,7 @@ vi.mock("@/components/ui/popover", () => import("@/tests/test-utils/popover-stub
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useSearchParams: () => currentSearch,
+  usePathname: () => "/leads",
 }));
 vi.mock("@/hooks/useUser", () => ({
   useUser: () => ({ user: { id: "user-me" }, isLoading: false, isAuthenticated: true }),
@@ -68,23 +69,23 @@ describe("LeadsWorkspace", () => {
   it("shows the three tabs: Todos, Clientes activos and Renova", async () => {
     renderAt("");
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Clientes activos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Renova" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clientes activos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Renova" })).toBeInTheDocument();
     await screen.findByText("Carlos Mendoza");
   });
 
   it("defaults to Todos when there is no ?view parameter", async () => {
     renderAt("");
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-current", "true");
     await screen.findByText("Carlos Mendoza");
   });
 
   it("falls back to Todos for an unrecognized ?view value", async () => {
     renderAt("view=bogus");
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-current", "true");
     await screen.findByText("Carlos Mendoza");
   });
 
@@ -95,7 +96,7 @@ describe("LeadsWorkspace", () => {
   ])("?%s selects the %s tab (state comes from the URL)", async (query, label) => {
     renderAt(query);
 
-    expect(screen.getByRole("tab", { name: label })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-current", "true");
     await waitFor(() => expect(getContactsMock.mock.calls.length + getRenovaCasesMock.mock.calls.length).toBeGreaterThan(0));
   });
 
@@ -103,10 +104,10 @@ describe("LeadsWorkspace", () => {
     renderAt("");
     await screen.findByText("Carlos Mendoza");
 
-    fireEvent.click(screen.getByRole("tab", { name: "Clientes activos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clientes activos" }));
     expect(pushMock).toHaveBeenLastCalledWith("/leads?view=active");
 
-    fireEvent.click(screen.getByRole("tab", { name: "Renova" }));
+    fireEvent.click(screen.getByRole("button", { name: "Renova" }));
     expect(pushMock).toHaveBeenLastCalledWith("/leads?view=renova");
     expect(pushMock).toHaveBeenCalledTimes(2);
   });
@@ -115,27 +116,27 @@ describe("LeadsWorkspace", () => {
     renderAt("view=active");
     await waitFor(() => expect(getContactsMock).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole("tab", { name: "Clientes activos" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clientes activos" }));
 
     expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("follows the URL on back/forward: changing the search params changes the view", async () => {
     const { rerender } = renderAt("view=active");
-    expect(screen.getByRole("tab", { name: "Clientes activos" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Clientes activos" })).toHaveAttribute("aria-current", "true");
 
     currentSearch = new URLSearchParams("view=all");
     rerender(<LeadsWorkspace />);
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "Clientes activos" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("button", { name: "Todos" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: "Clientes activos" })).not.toHaveAttribute("aria-current");
   });
 
-  it("tabs are keyboard-focusable and expose tab semantics", () => {
+  it("the tab switcher is keyboard-focusable", () => {
     renderAt("");
 
-    expect(screen.getByRole("tablist", { name: /vistas de leads/i })).toBeInTheDocument();
-    const tab = screen.getByRole("tab", { name: "Renova" });
+    expect(screen.getByRole("navigation", { name: /vistas de leads/i })).toBeInTheDocument();
+    const tab = screen.getByRole("button", { name: "Renova" });
     tab.focus();
     expect(tab).toHaveFocus();
   });

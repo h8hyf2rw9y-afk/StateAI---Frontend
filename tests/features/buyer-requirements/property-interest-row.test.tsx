@@ -118,13 +118,28 @@ describe("PropertyInterestRow", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith(updated));
   });
 
-  it("removes only the relationship, then reports its id", async () => {
+  it("clicking Remove does not delete immediately — it asks for confirmation first", async () => {
+    const onRemoved = vi.fn();
+
+    render(<PropertyInterestRow interest={makeInterest()} onRemoved={onRemoved} />);
+    await screen.findByRole("link", { name: "Casa XYZ" });
+    fireEvent.click(screen.getByRole("button", { name: /remove property from this client/i }));
+
+    expect(deletePropertyInterestMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirm removal" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel removal" }));
+    expect(deletePropertyInterestMock).not.toHaveBeenCalled();
+    expect(onRemoved).not.toHaveBeenCalled();
+  });
+
+  it("removes only the relationship after confirming, then reports its id", async () => {
     deletePropertyInterestMock.mockResolvedValue({ ok: true, data: undefined });
     const onRemoved = vi.fn();
 
     render(<PropertyInterestRow interest={makeInterest()} onRemoved={onRemoved} />);
     await screen.findByRole("link", { name: "Casa XYZ" });
     fireEvent.click(screen.getByRole("button", { name: /remove property from this client/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm removal" }));
 
     await waitFor(() => expect(deletePropertyInterestMock).toHaveBeenCalledWith("i-1"));
     await waitFor(() => expect(onRemoved).toHaveBeenCalledWith("i-1"));
@@ -137,9 +152,12 @@ describe("PropertyInterestRow", () => {
     render(<PropertyInterestRow interest={makeInterest()} onRemoved={onRemoved} />);
     await screen.findByRole("link", { name: "Casa XYZ" });
     fireEvent.click(screen.getByRole("button", { name: /remove property from this client/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm removal" }));
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "Casa XYZ" })).toBeInTheDocument();
+    // The control returns to its closed state so the person can retry.
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Confirm removal" })).not.toBeInTheDocument());
   });
 });

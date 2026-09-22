@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Trash2, UserRound } from "lucide-react";
+import { Loader2, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { DeleteButton } from "@/components/ui/delete-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getProperty } from "@/lib/api/properties";
 import { deletePropertyInterest, updatePropertyInterest } from "@/lib/api/property-interests";
@@ -70,14 +70,12 @@ export function PropertyInterestRow({
   }
 
   async function handleRemove() {
-    if (busy) return;
     setBusy(true);
     setError(null);
     const response = await deletePropertyInterest(interest.id);
     setBusy(false);
     if (!response.ok) {
-      setError(getApiErrorMessage(response.error));
-      return;
+      throw new Error(getApiErrorMessage(response.error));
     }
     onRemoved?.(interest.id);
   }
@@ -141,15 +139,15 @@ export function PropertyInterestRow({
             <Badge variant="outline">{formatPropertyInterestStatus(interest.status)}</Badge>
           )}
           {onRemoved && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleRemove}
+            <DeleteButton
+              size="sm"
               disabled={busy}
-              aria-label="Remove property from this client"
-            >
-              <Trash2 />
-            </Button>
+              onConfirm={handleRemove}
+              onError={(err) => setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")}
+              label="Remove property from this client"
+              confirmLabel="Confirm removal"
+              cancelLabel="Cancel removal"
+            />
           )}
         </div>
       </div>
