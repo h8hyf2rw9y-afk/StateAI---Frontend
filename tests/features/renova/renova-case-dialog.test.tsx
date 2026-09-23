@@ -148,7 +148,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
 
     expect(within(dialog).getByLabelText(/nombre completo del titular/i)).toHaveAttribute("aria-required", "true");
     expect(within(dialog).getByText("* Campos necesarios para crear el expediente")).toBeInTheDocument();
-    expect(within(dialog).getByText("NSS y número de crédito son datos protegidos y no aparecerán en la ficha compartible.")).toBeInTheDocument();
+    expect(within(dialog).getByText("NSS y número de crédito son datos protegidos. Puedes incluirlos expresamente al preparar la ficha compartible.")).toBeInTheDocument();
     for (const name of ["Cancelar", "Guardar borrador", "Guardar prospecto"]) {
       expect(within(dialog).getByRole("button", { name })).toBeInTheDocument();
     }
