@@ -165,11 +165,12 @@ describe("RenovaCasesTable", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/tu sesión expiró/i);
   });
 
-  it("offers an Abrir link to the detail page and an Editar button for each row", async () => {
+  it("offers Editar and share actions for each row, with no separate Abrir action", async () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
-    expect(screen.getByRole("link", { name: /abrir expediente de maría lópez/i })).toHaveAttribute("href", "/leads/renova/case-1");
+    expect(screen.queryByRole("link", { name: /abrir expediente de maría lópez/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ver ficha y compartir de maría lópez/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /editar expediente de maría lópez/i })).toBeInTheDocument();
   });
 
@@ -180,6 +181,20 @@ describe("RenovaCasesTable", () => {
     fireEvent.click(screen.getByText("María López"));
 
     expect(pushMock).toHaveBeenCalledWith("/leads/renova/case-1");
+  });
+
+  it("opens and shares the selected client's case, even when it is not the first row", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase(), makeCase({ id: "case-2", owner_name: "Luis García" })] });
+    const onShare = vi.fn();
+    render(<RenovaCasesTable onShare={onShare} />);
+    await screen.findByText("Luis García");
+
+    fireEvent.click(screen.getByRole("button", { name: /ver ficha y compartir de luis garcía/i }));
+    expect(onShare).toHaveBeenCalledWith("case-2");
+    expect(pushMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Luis García"));
+    expect(pushMock).toHaveBeenCalledWith("/leads/renova/case-2");
   });
 
   it("Editar asks the parent to open the popup in edit mode and does not navigate", async () => {

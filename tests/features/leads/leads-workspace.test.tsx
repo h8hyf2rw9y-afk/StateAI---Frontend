@@ -217,7 +217,7 @@ describe("LeadsWorkspace", () => {
     expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
   });
 
-  it("creating a prospect closes the popup, reloads the table and offers the detail page and the share card — creating no Contact", async () => {
+  it("creating a prospect closes the popup and reloads the table without a stale share link — creating no Contact", async () => {
     const created = makeRenovaCase({ id: "new-case-1", assigned_user_id: "user-me" });
     createRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
     getRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
@@ -235,12 +235,22 @@ describe("LeadsWorkspace", () => {
     expect(await screen.findByText("Prospecto guardado.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalled());
-    expect(screen.getByRole("link", { name: "Abrir expediente" })).toHaveAttribute("href", "/leads/renova/new-case-1");
+    expect(screen.queryByRole("link", { name: "Abrir expediente" })).not.toBeInTheDocument();
     expect(getContactsMock).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ver ficha para compartir" }));
-    expect(await screen.findByTestId("renova-share-card")).toHaveTextContent("COMPRA DE CASAS");
-    expect(getRenovaCaseMock).toHaveBeenCalledWith("new-case-1");
+  it("opens the selected Renova client's share card from the Leads table", async () => {
+    const first = makeRenovaCase({ id: "case-1", owner_name: "María López" });
+    const second = makeRenovaCase({ id: "case-2", owner_name: "Luis García" });
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [first, second] });
+    getRenovaCaseMock.mockImplementation(async (id: string) => ({ ok: true, data: id === "case-2" ? second : first }));
+    renderAt("view=renova");
+    await screen.findByText("Luis García");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver ficha y compartir de Luis García" }));
+    expect(await screen.findByTestId("renova-share-card")).toHaveTextContent("Luis García");
+    expect(getRenovaCaseMock).toHaveBeenCalledWith("case-2");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("saving a draft says so", async () => {

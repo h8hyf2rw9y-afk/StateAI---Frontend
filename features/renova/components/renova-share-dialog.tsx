@@ -19,7 +19,7 @@ import {
 } from "@/features/renova/lib/export-image";
 import { renovaShortId } from "@/features/renova/lib/short-id";
 import type { RenovaCase, RenovaShareCase } from "@/features/renova/types";
-import { getRenovaCase } from "@/lib/api/renova";
+import { getRenovaCase, getRenovaIne, getRenovaSensitiveData, saveRenovaIne, type IneSide } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
 
 const DOWNLOAD_FALLBACK_MESSAGE = "La imagen se descargó. Ahora puedes adjuntarla en tu grupo de WhatsApp.";
@@ -86,6 +86,9 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [options, setOptions] = useState<RenovaShareOptions>(DEFAULT_SHARE_OPTIONS);
   const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
+  const [identifiers, setIdentifiers] = useState<{ nss: string | null; credit_number: string | null } | null>(null);
+  const [ineImages, setIneImages] = useState<{ front: string | null; back: string | null } | null>(null);
+  const [loadingProtected, setLoadingProtected] = useState(false);
   const [canShareFiles] = useState(() => canShareFile(new File([], "probe.png", { type: "image/png" })));
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +103,66 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
     };
   }, [caseId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!options.includeIdentifiers && !options.includeIne) return;
+    async function loadProtected() {
+      setLoadingProtected(true);
+      if (options.includeIdentifiers) setIdentifiers(null);
+      if (options.includeIne) setIneImages(null);
+      setExportState({ kind: "idle" });
+      if (options.includeIdentifiers) {
+        const response = await getRenovaSensitiveData(caseId);
+        if (cancelled) return;
+        if (!response.ok) {
+          setExportState({ kind: "error", message: getRenovaErrorMessage(response.error) });
+          setLoadingProtected(false);
+          return;
+        }
+        setIdentifiers(response.data);
+      }
+      if (options.includeIne) {
+        const [front, back] = await Promise.all([getRenovaIne(caseId, "front"), getRenovaIne(caseId, "back")]);
+        if (cancelled) return;
+        const failed = [front, back].find((result) => !result.ok && result.error.status !== 404);
+        if (failed && !failed.ok) {
+          setExportState({ kind: "error", message: getRenovaErrorMessage(failed.error) });
+          setLoadingProtected(false);
+          return;
+        }
+        setIneImages({ front: front.ok ? front.data.image : null, back: back.ok ? back.data.image : null });
+      }
+      setLoadingProtected(false);
+    }
+    void loadProtected();
+    return () => { cancelled = true; };
+  }, [caseId, options.includeIdentifiers, options.includeIne]);
+
+  async function handleIneUpload(side: IneSide, file: File) {
+    if (file.size > 2 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setExportState({ kind: "error", message: "Usa una imagen JPEG, PNG o WebP menor de 2 MB." });
+      return;
+    }
+    setLoadingProtected(true);
+    try {
+      const image = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const response = await saveRenovaIne(caseId, side, image);
+      if (!response.ok) throw new Error(getRenovaErrorMessage(response.error));
+      setIneImages((previous) => ({ front: previous?.front ?? null, back: previous?.back ?? null, [side]: image }));
+      setOptions((previous) => ({ ...previous, includeIne: true }));
+      setExportState({ kind: "ready", message: `INE ${side === "front" ? "frente" : "reverso"} guardado.` });
+    } catch (error) {
+      setExportState({ kind: "error", message: error instanceof Error ? error.message : "No se pudo guardar el INE." });
+    } finally {
+      setLoadingProtected(false);
+    }
+  }
+
   const renovaCase = load.status === "ready" ? load.renovaCase : null;
   // Only the signed-in user's name is knowable (the backend has no user directory); anyone else reads "Pendiente" on the card.
   const advisorName = renovaCase && user && renovaCase.assigned_user_id === user.id ? getDisplayName(user) : null;
@@ -110,6 +173,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
   async function buildFile(): Promise<File> {
     const node = cardRef.current;
     if (!node || !renovaCase) throw new Error("card not ready");
+    if ((options.includeIdentifiers && !identifiers) || (options.includeIne && !ineImages)) throw new Error("protected data not ready");
     return pngFileFromBlob(await renderNodeToPng(node), `renova-${renovaShortId(renovaCase.id)}.png`);
   }
 
@@ -162,10 +226,13 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               <div className="min-w-0 flex-1 rounded-xl bg-muted/40 p-3 sm:p-4">
                 <ScaledPreview>
-                  <RenovaShareCard ref={cardRef} renovaCase={toShareCase(renovaCase)} options={options} advisorName={advisorName} />
+                  <RenovaShareCard ref={cardRef} renovaCase={toShareCase(renovaCase)} options={options} advisorName={advisorName} identifiers={options.includeIdentifiers ? identifiers : null} ineImages={options.includeIne ? ineImages : null} />
                 </ScaledPreview>
               </div>
               <div className="w-full shrink-0 lg:w-80">
+                {options.includeIne && ineImages && !ineImages.front && !ineImages.back && (
+                  <p className="mb-3 text-sm text-amber-600">Aún no hay imágenes del INE guardadas. Súbelas aquí para incluirlas.</p>
+                )}
                 <RenovaShareOptionsPanel
                   options={options}
                   onChange={setOptions}
@@ -174,6 +241,8 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
                   hasPendingData={hasPendingData}
                   onShare={() => void handleShare()}
                   onDownload={() => void handleDownload()}
+                  onIneUpload={(side, file) => void handleIneUpload(side, file)}
+                  loadingProtected={loadingProtected || (options.includeIdentifiers && !identifiers) || (options.includeIne && !ineImages)}
                 />
               </div>
             </div>

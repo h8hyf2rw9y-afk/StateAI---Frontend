@@ -176,7 +176,7 @@ export function RenovaCaseForm({
           </FieldGrid>
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            NSS y número de crédito son datos protegidos y no aparecerán en la ficha compartible.
+            NSS y número de crédito son datos protegidos. Puedes incluirlos expresamente al preparar la ficha compartible.
           </p>
           {protectedError && (
             <p id="renova-protected-error" role="alert" tabIndex={-1} className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">

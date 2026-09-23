@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderOpen, ListFilter, Loader2, Pencil, Search } from "lucide-react";
+import { FolderOpen, ListFilter, Loader2, Pencil, Search, Share2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -46,14 +45,14 @@ const SEARCH_DEBOUNCE_MS = 300;
  * the backend has no endpoint listing an organization's users, and the
  * `users` table has no names, so no other advisor can be named honestly.
  *
- * Opening a case: a row click (or its "Abrir" link) goes to the detail page
+ * Opening a case: a row click goes to the detail page
  * /leads/renova/[id]; "Editar" asks the parent to open the popup in edit mode
  * (`onEdit`) — the table owns no dialog itself.
  *
  * Only mounted while the Renova tab is active (see LeadsWorkspace), so
  * merely opening Leads → Todos / Clientes activos makes no Renova request.
  */
-export function RenovaCasesTable({ refreshKey = 0, onEdit }: { refreshKey?: number; onEdit?: (caseId: string) => void }) {
+export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshKey?: number; onEdit?: (caseId: string) => void; onShare?: (caseId: string) => void }) {
   const router = useRouter();
   const { user } = useUser();
   const [query, setQuery] = useState("");
@@ -213,7 +212,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit }: { refreshKey?: numb
                 <TableHead className="max-w-24 text-right whitespace-normal">Adeudos totales</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
-                {/* Sticky: on narrower screens the table scrolls sideways, but Abrir/Editar must stay reachable. */}
+                {/* Sticky: on narrower screens the table scrolls sideways, but Editar/Compartir must stay reachable. */}
                 <TableHead className="sticky right-0 bg-muted text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -242,13 +241,16 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit }: { refreshKey?: numb
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatRenovaDate(renovaCase.entry_date)}</TableCell>
                   <TableCell className="sticky right-0 bg-background">
                     <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
-                      <Link
-                        href={`/leads/renova/${renovaCase.id}`}
-                        className={buttonVariants({ variant: "ghost", size: "sm" })}
-                        aria-label={`Abrir expediente de ${renovaCase.owner_name}`}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Ver ficha y compartir de ${renovaCase.owner_name}`}
+                        title={`Ver ficha y compartir de ${renovaCase.owner_name}`}
+                        onClick={() => onShare?.(renovaCase.id)}
                       >
-                        Abrir
-                      </Link>
+                        <Share2 />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
