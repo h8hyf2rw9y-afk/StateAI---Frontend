@@ -4,10 +4,14 @@ import { RenovaShareDialog } from "@/features/renova/components/renova-share-dia
 import { makeRenovaCase } from "@/tests/test-utils/renova-fixtures";
 
 const getRenovaCaseMock = vi.fn();
+const getSensitiveMock = vi.fn();
+const getIneMock = vi.fn();
 const toBlobMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
+  getRenovaSensitiveData: (...args: unknown[]) => getSensitiveMock(...args),
+  getRenovaIne: (...args: unknown[]) => getIneMock(...args),
 }));
 vi.mock("html-to-image", () => ({ toBlob: (...args: unknown[]) => toBlobMock(...args) }));
 vi.mock("@/hooks/useUser", () => ({
@@ -44,6 +48,10 @@ async function openDialog(overrides = {}) {
 
 beforeEach(() => {
   getRenovaCaseMock.mockReset();
+  getSensitiveMock.mockReset();
+  getIneMock.mockReset();
+  getSensitiveMock.mockResolvedValue({ ok: true, data: { nss: "12345678901", credit_number: "9876543210" } });
+  getIneMock.mockResolvedValue({ ok: false, error: { status: 404, message: "Missing" } });
   toBlobMock.mockReset();
   toBlobMock.mockResolvedValue(PNG());
   anchorClicks = [];
@@ -105,7 +113,8 @@ describe("RenovaShareDialog — the card and its options", () => {
     expect(within(panel).getByLabelText("Incluir teléfono del titular")).toBeChecked();
     expect(within(panel).getByLabelText("Incluir montos y adeudos")).toBeChecked();
     expect(within(panel).getByLabelText("Incluir información del cónyuge")).not.toBeChecked();
-    expect(within(panel).getByText("NSS, número de crédito e imágenes del INE nunca se incluyen.")).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Incluir NSS y número de crédito")).not.toBeChecked();
+    expect(within(panel).getByLabelText("Incluir imágenes del INE")).not.toBeChecked();
     expect(within(panel).getByRole("button", { name: "Compartir imagen" })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Descargar PNG" })).toBeInTheDocument();
     expect(card.querySelector("input, button")).toBeNull();
@@ -141,6 +150,16 @@ describe("RenovaShareDialog — the card and its options", () => {
     expect(dialog.textContent).not.toContain("9911");
     expect(dialog.textContent).not.toContain("•");
     expect(dialog.textContent).not.toContain("9f3a2c41-7b1d-4e0a-8c55-0d6e1f2a3b4c");
+  });
+
+  it("loads protected identifiers only after the person opts in and includes them in the card", async () => {
+    await openDialog();
+    expect(getSensitiveMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Incluir NSS y número de crédito"));
+    await waitFor(() => expect(screen.getByTestId("renova-share-card")).toHaveTextContent("12345678901"));
+    expect(screen.getByTestId("renova-share-card")).toHaveTextContent("9876543210");
+    fireEvent.click(screen.getByLabelText("Incluir NSS y número de crédito"));
+    expect(screen.getByTestId("renova-share-card")).not.toHaveTextContent("12345678901");
   });
 
   it("can be closed", async () => {

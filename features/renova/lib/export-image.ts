@@ -19,6 +19,8 @@ export async function renderNodeToPng(node: HTMLElement): Promise<Blob> {
   if (typeof document !== "undefined" && document.fonts?.ready) {
     await document.fonts.ready;
   }
+  // A freshly loaded INE image must finish decoding before html-to-image clones the card.
+  await Promise.all(Array.from(node.querySelectorAll("img")).map((img) => img.decode()));
   const blob = await toBlob(node, {
     pixelRatio: EXPORT_PIXEL_RATIO,
     backgroundColor: "#ffffff",

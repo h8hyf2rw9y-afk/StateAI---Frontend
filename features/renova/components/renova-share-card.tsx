@@ -11,14 +11,15 @@ import {
   type RenovaShareCase,
 } from "@/features/renova/types";
 
-/** What the person chose to include. NSS, número de crédito and INE images have no option here — they can never be shown. */
 export interface RenovaShareOptions {
   includePhone: boolean;
   includeAmounts: boolean;
   includeSpouse: boolean;
+  includeIdentifiers: boolean;
+  includeIne: boolean;
 }
 
-export const DEFAULT_SHARE_OPTIONS: RenovaShareOptions = { includePhone: true, includeAmounts: true, includeSpouse: false };
+export const DEFAULT_SHARE_OPTIONS: RenovaShareOptions = { includePhone: true, includeAmounts: true, includeSpouse: false, includeIdentifiers: false, includeIne: false };
 
 const PENDING = "Pendiente";
 
@@ -59,8 +60,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
  * paper, dark text), never theme tokens, so it stays legible inside the dark
  * app. There are no controls in here — everything inside is part of the image.
  *
- * What is NEVER rendered, whatever the options: NSS, número de crédito, INE
- * images, the case's full UUID (only the short "RN-…" reference), storage
+ * The case's full UUID (only the short "RN-…" reference), storage
  * paths, signed URLs, audit data, tokens, anything technical. The phone,
  * amounts/debts and spouse appear only when their option is on. A missing
  * value reads "Pendiente" — never "undefined", "null" or "NaN".
@@ -69,11 +69,15 @@ export function RenovaShareCard({
   renovaCase,
   options,
   advisorName,
+  identifiers,
+  ineImages,
   ref,
 }: {
   renovaCase: RenovaShareCase;
   options: RenovaShareOptions;
   advisorName?: string | null;
+  identifiers?: { nss: string | null; credit_number: string | null } | null;
+  ineImages?: { front: string | null; back: string | null } | null;
   ref?: Ref<HTMLDivElement>;
 }) {
   const c = renovaCase;
@@ -163,6 +167,29 @@ export function RenovaShareCard({
             )}
           </dl>
         </Block>
+
+        {options.includeIdentifiers && identifiers && (
+          <Block title="Datos del crédito">
+            <dl className="grid grid-cols-2 gap-x-10 gap-y-5">
+              <Item label="NSS" value={present(identifiers.nss)} />
+              <Item label="Número de crédito" value={present(identifiers.credit_number)} />
+            </dl>
+          </Block>
+        )}
+
+        {options.includeIne && ineImages && (ineImages.front || ineImages.back) && (
+          <Block title="Identificación oficial (INE)">
+            <div className="grid grid-cols-2 gap-6">
+              {(["front", "back"] as const).map((side) => ineImages[side] && (
+                <div key={side}>
+                  <p className="mb-2 text-sm text-slate-500">{side === "front" ? "Frente" : "Reverso"}</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ineImages[side]!} alt={`INE ${side === "front" ? "frente" : "reverso"}`} className="w-full rounded border border-slate-200 object-contain" />
+                </div>
+              ))}
+            </div>
+          </Block>
+        )}
 
         <Block title="Preguntas clave">
           <dl className="grid grid-cols-1 gap-y-5">

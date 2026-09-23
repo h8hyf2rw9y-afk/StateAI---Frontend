@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Loader2, Share2, ShieldCheck } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RenovaShareOptions } from "@/features/renova/components/renova-share-card";
 
@@ -14,6 +14,8 @@ const TOGGLES: { key: keyof RenovaShareOptions; label: string }[] = [
   { key: "includePhone", label: "Incluir teléfono del titular" },
   { key: "includeAmounts", label: "Incluir montos y adeudos" },
   { key: "includeSpouse", label: "Incluir información del cónyuge" },
+  { key: "includeIdentifiers", label: "Incluir NSS y número de crédito" },
+  { key: "includeIne", label: "Incluir imágenes del INE" },
 ];
 
 /**
@@ -29,6 +31,8 @@ export function RenovaShareOptionsPanel({
   hasPendingData,
   onShare,
   onDownload,
+  onIneUpload,
+  loadingProtected,
 }: {
   options: RenovaShareOptions;
   onChange: (options: RenovaShareOptions) => void;
@@ -39,6 +43,8 @@ export function RenovaShareOptionsPanel({
   hasPendingData: boolean;
   onShare: () => void;
   onDownload: () => void;
+  onIneUpload?: (side: "front" | "back", file: File) => void;
+  loadingProtected?: boolean;
 }) {
   const generating = exportState.kind === "generating";
 
@@ -60,21 +66,29 @@ export function RenovaShareOptionsPanel({
         ))}
       </div>
 
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
-        <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        NSS, número de crédito e imágenes del INE nunca se incluyen.
-      </p>
+      <p className="text-xs text-muted-foreground">Estos datos se incluirán únicamente al activar sus opciones. Revisa la vista previa antes de compartir.</p>
+      <div className="flex flex-col gap-2 text-xs">
+        {(["front", "back"] as const).map((side) => (
+          <label key={side}>Guardar INE {side === "front" ? "frente" : "reverso"} (JPEG, PNG o WebP; máximo 2 MB)
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="mt-1 block w-full" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onIneUpload?.(side, file);
+              event.target.value = "";
+            }} />
+          </label>
+        ))}
+      </div>
 
       {hasPendingData && (
         <p className="text-xs text-muted-foreground">Este expediente aún tiene datos incompletos; en la ficha aparecerán como “Pendiente”.</p>
       )}
 
       <div className="flex flex-col gap-2">
-        <Button type="button" onClick={onShare} disabled={generating}>
+        <Button type="button" onClick={onShare} disabled={generating || loadingProtected}>
           {generating ? <Loader2 className="animate-spin" /> : <Share2 />}
           Compartir imagen
         </Button>
-        <Button type="button" variant="outline" onClick={onDownload} disabled={generating}>
+        <Button type="button" variant="outline" onClick={onDownload} disabled={generating || loadingProtected}>
           <Download />
           Descargar PNG
         </Button>

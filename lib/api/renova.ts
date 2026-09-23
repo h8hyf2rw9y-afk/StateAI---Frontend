@@ -83,3 +83,13 @@ export async function getRenovaHistory(caseId: string): Promise<ApiResult<Renova
 export function getRenovaSensitiveData(caseId: string): Promise<ApiResult<RenovaSensitiveData>> {
   return apiRequest<RenovaSensitiveData>(`/api/v1/renova/cases/${caseId}/sensitive-data`, { cache: "no-store" });
 }
+
+export type IneSide = "front" | "back";
+
+export function getRenovaIne(caseId: string, side: IneSide): Promise<ApiResult<{ image: string }>> {
+  return apiRequest<{ image: string }>(`/api/v1/renova/cases/${caseId}/ine/${side}`, { cache: "no-store" });
+}
+
+export function saveRenovaIne(caseId: string, side: IneSide, image: string): Promise<ApiResult<void>> {
+  return apiRequest<void>(`/api/v1/renova/cases/${caseId}/ine/${side}`, { method: "PUT", body: { image }, cache: "no-store" });
+}

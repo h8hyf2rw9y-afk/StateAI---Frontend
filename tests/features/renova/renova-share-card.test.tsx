@@ -222,6 +222,6 @@ describe("RenovaShareCard — options", () => {
   });
 
   it("defaults: phone on, amounts on, spouse off", () => {
-    expect(DEFAULT_SHARE_OPTIONS).toEqual({ includePhone: true, includeAmounts: true, includeSpouse: false });
+    expect(DEFAULT_SHARE_OPTIONS).toEqual({ includePhone: true, includeAmounts: true, includeSpouse: false, includeIdentifiers: false, includeIne: false });
   });
 });
