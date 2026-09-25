@@ -111,7 +111,7 @@ export function RenovaCaseForm({
         <FormSection id="adeudos" title="Adeudos" icon={Receipt}>
           <FieldGrid>
             <MoneyField name="property_tax_debt" label="Deuda predial" />
-            <MoneyField name="other_debt" label="Otros adeudos" />
+            <MoneyField name="other_debt" label="Adeudo" />
             <MoneyField name="water_debt" label="Deuda de agua" />
             <MoneyField name="electricity_debt" label="Deuda de luz" />
             <MoneyField name="gas_debt" label="Deuda de gas" />

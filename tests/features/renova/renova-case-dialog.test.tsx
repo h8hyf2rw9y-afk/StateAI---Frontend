@@ -116,7 +116,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
       "Baños",
       "Recámaras",
       "Deuda predial",
-      "Otros adeudos",
+      "Adeudo",
       "Deuda de agua",
       "Deuda de luz",
       "Deuda de gas",
@@ -212,7 +212,7 @@ describe("RenovaCaseDialog — money and debts", () => {
     type("Deuda de luz", "450");
     expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos: $13,250 MXN");
 
-    type("Otros adeudos", "3000.5");
+    type("Adeudo", "3000.5");
     expect(screen.getByTestId("debt-total")).toHaveTextContent("$16,250.50 MXN");
     // The market value is not a debt.
     type("Valor de mercado", "9999999");
@@ -223,7 +223,7 @@ describe("RenovaCaseDialog — money and debts", () => {
     renderCreate();
     await screen.findByRole("dialog");
     type("Deuda predial", "1000");
-    type("Otros adeudos", "-500");
+    type("Adeudo", "-500");
 
     expect(screen.getByTestId("debt-total")).toHaveTextContent("$1,000 MXN");
     fillRequired();
