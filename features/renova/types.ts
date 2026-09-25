@@ -149,7 +149,7 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Borrador",
   new: "Nuevo",
   reviewing: "En revisión",
-  offer_preparation: "Preparando oferta",
+  offer_preparation: "Preparación de oferta",
   offer_sent: "Oferta enviada",
   negotiating: "Negociando",
   accepted: "Aceptado",
@@ -320,4 +320,83 @@ export function formatRenovaDateTime(isoTimestamp: string): string {
   const date = new Date(isoTimestamp);
   if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
+// --- Renova pipeline (Kanban board, GET /renova/pipeline) -------------------
+//
+// A card is deliberately a LEAN subset of RenovaCase — mirrors the backend's
+// RenovaPipelineCase field-for-field, never NSS/credit number/INE/ciphertext.
+
+/** The board's six columns, in display order — a purchase-flow SUBSET of RENOVA_STATUSES; see app/schemas/enums.py's RENOVA_PIPELINE_STAGES for why draft/reviewing/rejected/cancelled are excluded. */
+export const RENOVA_PIPELINE_STAGES = [
+  "new",
+  "offer_preparation",
+  "offer_sent",
+  "negotiating",
+  "accepted",
+  "purchased",
+] as const;
+export type RenovaPipelineStageStatus = (typeof RENOVA_PIPELINE_STAGES)[number];
+
+/** The two ways a case can leave the board without being deleted — kept, audited, just no longer a pipeline column. */
+export const RENOVA_PIPELINE_EXIT_STATUSES = ["rejected", "cancelled"] as const;
+
+export interface RenovaPipelineCase {
+  id: string;
+  owner_name: string;
+  owner_phone: string;
+  status: string;
+  assigned_user_id: string | null;
+  dwelling_type: string | null;
+  is_duplex: boolean;
+  final_offer: string | null;
+  market_value: string | null;
+  other_debt: string | null;
+  property_tax_debt: string | null;
+  property_tax_debt_unit: string;
+  owner_expected_amount: string | null;
+  updated_at: string;
+}
+
+export interface RenovaPipelineStageData {
+  status: string;
+  cases: RenovaPipelineCase[];
+}
+
+export interface RenovaPipelineResponse {
+  stages: RenovaPipelineStageData[];
+}
+
+/**
+ * "Falta información fundamental para preparar la oferta": no market value
+ * AND no owner-expected amount captured yet — the two figures the
+ * "Preparación de oferta" stage itself is defined around. A discreet signal
+ * on the card, never a block on moving stages.
+ */
+export function isRenovaPipelineCaseIncomplete(card: RenovaPipelineCase): boolean {
+  return card.market_value === null && card.owner_expected_amount === null;
+}
+
+/** "Predial: $12,000" or, when only the years owed are known, "Predial: 4 años · Importe por confirmar" — never a fabricated peso figure. Null when nothing was captured at all. */
+export function formatRenovaPipelinePropertyTaxDebt(card: RenovaPipelineCase): string | null {
+  if (card.property_tax_debt === null) return null;
+  if (card.property_tax_debt_unit === "years") {
+    const years = Number(card.property_tax_debt);
+    const label = Number.isFinite(years) ? `${years} ${years === 1 ? "año" : "años"}` : "—";
+    return `Predial: ${label} · Importe por confirmar`;
+  }
+  return `Predial: ${formatMoney(card.property_tax_debt)}`;
+}
+
+/** "Hoy" / "Ayer" / "Hace 4 días" for a card's last update, falling back to a short date further back — Spanish, like the rest of Renova. */
+export function formatRenovaPipelineUpdatedAt(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) return "—";
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "Ayer";
+  if (diffDays > 1 && diffDays < 7) return `Hace ${diffDays} días`;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return formatRenovaDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`);
 }

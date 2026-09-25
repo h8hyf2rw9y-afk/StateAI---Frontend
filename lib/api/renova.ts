@@ -5,6 +5,7 @@ import type {
   RenovaCaseInput,
   RenovaCaseListItem,
   RenovaHistoryEntry,
+  RenovaPipelineResponse,
   RenovaSensitiveData,
 } from "@/features/renova/types";
 
@@ -48,6 +49,11 @@ export function createRenovaCase(input: RenovaCaseInput): Promise<ApiResult<Reno
 
 export function updateRenovaCase(caseId: string, input: RenovaCaseInput): Promise<ApiResult<RenovaCase>> {
   return apiRequest<RenovaCase>(`/api/v1/renova/cases/${caseId}`, { method: "PATCH", body: input });
+}
+
+/** The Renova Kanban board: every active-flow case, already grouped by stage — see GET /renova/pipeline. */
+export function getRenovaPipeline(): Promise<ApiResult<RenovaPipelineResponse>> {
+  return apiRequest<RenovaPipelineResponse>("/api/v1/renova/pipeline");
 }
 
 interface AuditLogRow {
