@@ -191,6 +191,14 @@ describe("RenovaShareCard — dwelling type vs. duplex configuration", () => {
   });
 });
 
+describe("RenovaShareCard — deuda predial in years", () => {
+  it("shows the years, not a fabricated peso amount, when property_tax_debt_unit is 'years'", () => {
+    const c = card({ property_tax_debt: "3.00", property_tax_debt_unit: "years" });
+
+    expect(c).toHaveTextContent("3 años");
+  });
+});
+
 describe("RenovaShareCard — what can never appear", () => {
   const ALWAYS_ON = { includePhone: true, includeAmounts: true, includeSpouse: true };
 

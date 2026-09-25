@@ -174,6 +174,7 @@ describe("toRenovaPayload", () => {
       owner_phone: "+52 81 5555 0101",
       has_deeds: "unknown",
       is_duplex: false,
+      property_tax_debt_unit: "mxn",
     });
     for (const key of ["organization_id", "nss", "source", "key_questions"]) expect(payload).not.toHaveProperty(key);
   });

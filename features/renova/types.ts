@@ -38,6 +38,8 @@ export interface RenovaCaseListItem {
   final_offer: string | null;
   market_value: string | null;
   property_tax_debt: string | null;
+  /** "mxn" (default, a real peso figure) or "years" — a WhatsApp conversation sometimes only reveals how many years of property tax are owed, never the peso amount. See formatRenovaPropertyTaxDebt. */
+  property_tax_debt_unit: string;
   other_debt: string | null;
   water_debt: string | null;
   electricity_debt: string | null;
@@ -115,6 +117,7 @@ export interface RenovaCaseInput {
   final_offer?: string | null;
   market_value?: string | null;
   property_tax_debt?: string | null;
+  property_tax_debt_unit?: string;
   other_debt?: string | null;
   water_debt?: string | null;
   electricity_debt?: string | null;
@@ -237,6 +240,28 @@ export function formatRenovaDwellingWithDuplex(dwellingType: string | null, isDu
     return isDuplex ? `${base} dúplex` : base;
   }
   return isDuplex ? "Dúplex — tipo base por confirmar" : "—";
+}
+
+// What unit "Deuda predial" was captured in. A WhatsApp conversation
+// sometimes only reveals how many YEARS of property tax are owed, never the
+// peso amount — "years" records that honestly instead of forcing it into a
+// peso field. Money and years are never interchangeable: total_debt (server-
+// computed) only sums property_tax_debt when its unit is "mxn".
+export const RENOVA_PROPERTY_TAX_DEBT_UNITS = ["mxn", "years"] as const;
+const PROPERTY_TAX_DEBT_UNIT_LABELS: Record<string, string> = { mxn: "Pesos (MXN)", years: "Años" };
+export function formatRenovaPropertyTaxDebtUnit(value: string): string {
+  return PROPERTY_TAX_DEBT_UNIT_LABELS[value] ?? value;
+}
+
+/** "Deuda predial" reads in whatever unit it was actually captured in — a peso amount, or a plain count of years. Null when not captured. */
+export function formatRenovaPropertyTaxDebt(value: string | null, unit: string, currency = "MXN"): string | null {
+  if (value === null || value === "") return null;
+  if (unit === "years") {
+    const years = Number(value);
+    if (!Number.isFinite(years)) return null;
+    return `${years} ${years === 1 ? "año" : "años"}`;
+  }
+  return formatMoney(value, currency);
 }
 
 export const RENOVA_OCCUPANCY_STATUSES = ["lives_there", "vacant", "rented", "lent", "other"] as const;

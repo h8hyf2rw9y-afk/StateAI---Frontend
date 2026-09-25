@@ -40,6 +40,7 @@ function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListIt
     final_offer: "950000.00",
     market_value: "1400000.00",
     property_tax_debt: "12000.00",
+    property_tax_debt_unit: "mxn",
     other_debt: null,
     water_debt: "800.00",
     electricity_debt: null,

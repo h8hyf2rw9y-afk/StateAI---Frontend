@@ -8,6 +8,7 @@ import {
   formatRenovaDeeds,
   formatRenovaDwellingWithDuplex,
   formatRenovaOccupancy,
+  formatRenovaPropertyTaxDebt,
   type RenovaShareCase,
 } from "@/features/renova/types";
 
@@ -121,7 +122,7 @@ export function RenovaShareCard({
         {options.includeAmounts && (
           <div>
             <dl className="grid grid-cols-3 gap-x-10">
-              <Item label="Deuda predial" value={money(c.property_tax_debt)} />
+              <Item label="Deuda predial" value={formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency)} />
               <Item label="Deudas de servicios" value={servicesDebt === null ? null : formatMoney(servicesDebt, c.currency)} />
               <Item label="Total de adeudos" value={money(c.total_debt)} />
             </dl>

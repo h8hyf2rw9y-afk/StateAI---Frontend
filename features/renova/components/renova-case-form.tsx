@@ -23,12 +23,14 @@ import {
   RENOVA_DWELLING_TYPES,
   RENOVA_MARITAL_STATUSES,
   RENOVA_OCCUPANCY_STATUSES,
+  RENOVA_PROPERTY_TAX_DEBT_UNITS,
   RENOVA_STATUSES,
   formatRenovaDeeds,
   formatRenovaDwelling,
   formatRenovaMaritalStatus,
   formatRenovaMoney,
   formatRenovaOccupancy,
+  formatRenovaPropertyTaxDebtUnit,
   formatRenovaStatus,
 } from "@/features/renova/types";
 
@@ -65,7 +67,9 @@ export function RenovaCaseForm({
   protectedError,
   ...state
 }: RenovaCaseFormProps) {
-  const debtTotal = sumDebts(state.values);
+  const propertyTaxDebtInYears = state.values.property_tax_debt_unit === "years";
+  // Years and pesos can't be summed — a years-unit value never enters the live total (the server excludes it from total_debt the same way).
+  const debtTotal = sumDebts(propertyTaxDebtInYears ? { ...state.values, property_tax_debt: "" } : state.values);
   // "Borrador" is a system state (it is what "Guardar borrador" sets), so it is only offered while the case still is one.
   const statusOptions = toOptions(
     RENOVA_STATUSES.filter((status) => status !== "draft" || state.values.status === "draft"),
@@ -110,7 +114,17 @@ export function RenovaCaseForm({
 
         <FormSection id="adeudos" title="Adeudos" icon={Receipt}>
           <FieldGrid>
-            <MoneyField name="property_tax_debt" label="Deuda predial" />
+            <SegmentedField
+              name="property_tax_debt_unit"
+              label="Deuda predial — ¿en pesos o en años?"
+              size="sm"
+              options={toOptions(RENOVA_PROPERTY_TAX_DEBT_UNITS, formatRenovaPropertyTaxDebtUnit)}
+            />
+            {propertyTaxDebtInYears ? (
+              <TextField name="property_tax_debt" label="Deuda predial (años)" type="number" size="sm" hint="Años que se deben de predial, no el monto en pesos." />
+            ) : (
+              <MoneyField name="property_tax_debt" label="Deuda predial" />
+            )}
             <MoneyField name="other_debt" label="Adeudo" />
             <MoneyField name="water_debt" label="Deuda de agua" />
             <MoneyField name="electricity_debt" label="Deuda de luz" />

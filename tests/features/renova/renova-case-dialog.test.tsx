@@ -401,6 +401,58 @@ describe("RenovaCaseDialog — dwelling type vs. duplex configuration", () => {
   });
 });
 
+describe("RenovaCaseDialog — deuda predial: pesos vs. años", () => {
+  it("defaults to pesos, and switching to años swaps the amount field for a whole-years field", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    expect(screen.getByRole("radio", { name: "Pesos (MXN)" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Deuda predial")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+
+    expect(screen.getByRole("radio", { name: "Años" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByLabelText("Deuda predial")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Deuda predial (años)")).toBeInTheDocument();
+  });
+
+  it("sends the unit and the years value, and excludes it from the live debt total (years and pesos can't be summed)", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    type("Deuda de agua", "800");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+    type("Deuda predial (años)", "3");
+
+    expect(screen.getByTestId("debt-total")).toHaveTextContent("$800 MXN");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({
+      property_tax_debt_unit: "years",
+      property_tax_debt: "3",
+    });
+  });
+
+  it("rejects a non-integer or over-60 years value", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+
+    type("Deuda predial (años)", "3.5");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    expect(await screen.findByText("Ingresa un número entero de años.")).toBeInTheDocument();
+    expect(createRenovaCaseMock).not.toHaveBeenCalled();
+
+    type("Deuda predial (años)", "61");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    expect(await screen.findByText("Máximo 60 años.")).toBeInTheDocument();
+    expect(createRenovaCaseMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("RenovaCaseDialog — saving", () => {
   it("creates a prospect with only the mandatory fields — status new, nothing else invented", async () => {
     const { onSaved } = renderCreate();

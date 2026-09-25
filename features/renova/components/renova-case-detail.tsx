@@ -26,6 +26,7 @@ import {
   formatRenovaMaritalStatus,
   formatRenovaMoney,
   formatRenovaOccupancy,
+  formatRenovaPropertyTaxDebt,
   formatRenovaStatus,
   getRenovaStatusClassName,
   type RenovaCase,
@@ -245,7 +246,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <Row label="Propuesta final">{money(c.final_offer)}</Row>
                 <Row label="Valor de mercado">{money(c.market_value)}</Row>
                 <Row label="Cuánto espera recibir">{money(c.owner_expected_amount)}</Row>
-                <Row label="Deuda predial">{money(c.property_tax_debt)}</Row>
+                <Row label="Deuda predial">{formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency) ?? "—"}</Row>
                 <Row label="Adeudo">{money(c.other_debt)}</Row>
                 <Row label="Deuda de agua">{money(c.water_debt)}</Row>
                 <Row label="Deuda de luz">{money(c.electricity_debt)}</Row>
