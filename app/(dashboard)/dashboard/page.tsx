@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Handshake, ListChecks, Users } from "lucide-react";
+import { Activity as ActivityIcon, Building2, Handshake, ListChecks, Radio, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SectionCard } from "@/components/shared/section-card";
@@ -135,10 +135,26 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title={`Welcome back, ${firstName}`}
-        description="Here's what needs your attention today."
-      />
+      <div className="relative mb-6 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/45 px-6 pb-6 pt-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-8 sm:pt-8">
+        <div className="pointer-events-none absolute -right-20 -top-36 size-80 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-12 h-px w-56 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        <div className="relative grid gap-6 xl:grid-cols-[1fr_auto] xl:items-end">
+          <PageHeader
+            title={`Welcome back, ${firstName}`}
+            description="Your live command surface for the relationships, properties, and decisions that need momentum today."
+          />
+          <div className="mb-7 flex w-fit items-center gap-3 rounded-2xl border border-border/70 bg-background/40 px-4 py-3 backdrop-blur-sm">
+            <span className="relative flex size-8 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+              <Radio className="size-4" aria-hidden="true" />
+              <span className={status === "success" ? "signal-dot absolute right-0 top-0 size-1.5 rounded-full bg-emerald-400" : "absolute right-0 top-0 size-1.5 rounded-full bg-amber-300"} />
+            </span>
+            <div>
+              <p className="text-xs font-medium">{status === "loading" ? "Syncing workspace" : status === "success" ? "Workspace synced" : "Workspace needs attention"}</p>
+              <p className="text-[11px] text-muted-foreground">{status === "loading" ? "Reading your CRM…" : status === "success" ? "Real CRM data · live now" : "Check the data connection below"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {status === "error" && (
         <div className="rounded-xl border p-6">
@@ -148,7 +164,7 @@ export default function DashboardPage() {
 
       {status !== "error" && (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Total leads" value={status === "loading" ? "—" : String(contacts.length)} icon={Users} />
             <StatCard
               label="Open opportunities"
@@ -169,13 +185,20 @@ export default function DashboardPage() {
             <StatCard label="Available properties" value={status === "loading" ? "—" : String(availableProperties)} icon={Building2} />
           </div>
 
-          <div className="mt-4">
-            <SectionCard title="Today's priorities">
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <SectionCard title="Today's priorities" className="relative overflow-hidden xl:col-span-2">
+              <div className="absolute right-5 top-4 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-primary/70">
+                <ActivityIcon className="size-3" /> Priority pulse
+              </div>
               {status === "loading" ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
               ) : (
                 <TodaysPriorities notifications={priorityNotifications} />
               )}
+            </SectionCard>
+            <SectionCard title="State AI on demand" className="surface-glass relative overflow-hidden border-primary/15">
+              <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-primary/15 blur-3xl" />
+              <div className="relative"><AiAssistantCta /></div>
             </SectionCard>
           </div>
 
@@ -204,10 +227,6 @@ export default function DashboardPage() {
               ) : (
                 <PipelineSummary rows={pipelineSummary.rows} currency={pipelineSummary.currency} />
               )}
-            </SectionCard>
-
-            <SectionCard title="AI Assistant">
-              <AiAssistantCta />
             </SectionCard>
 
             <SectionCard title="Recent activity" className="xl:col-span-3">

@@ -104,12 +104,12 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por propietario o celular…"
             aria-label="Buscar expedientes Renova"
-            className="pl-8"
+            className="h-10 rounded-xl border-border/70 bg-background/45 pl-9 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -119,7 +119,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
             render={
               <Button
                 variant="outline"
-                className="sm:ml-auto"
+                className="h-10 rounded-xl border-border/70 bg-background/45 sm:ml-auto"
                 aria-label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} activos)` : "Filtros"}
               >
                 <ListFilter />
@@ -198,10 +198,10 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       )}
 
       {!isLoading && loaded?.cases && loaded.cases.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-2xl border border-border/70 bg-background/20">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/40">
+              <TableRow className="bg-muted/25 text-[11px] uppercase tracking-[0.08em]">
                 <TableHead className="min-w-32">Propietario</TableHead>
                 <TableHead>Celular</TableHead>
                 <TableHead>Vivienda</TableHead>
@@ -220,10 +220,10 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
               {loaded.cases.map((renovaCase) => (
                 <TableRow
                   key={renovaCase.id}
-                  className="cursor-pointer"
+                  className="group cursor-pointer transition-colors hover:bg-primary/[0.045]"
                   onClick={() => router.push(`/leads/renova/${renovaCase.id}`)}
                 >
-                  <TableCell className="font-medium">{renovaCase.owner_name}</TableCell>
+                  <TableCell className="font-medium transition-colors group-hover:text-primary">{renovaCase.owner_name}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{renovaCase.owner_phone}</TableCell>
                   <TableCell className="text-muted-foreground">{formatRenovaDwelling(renovaCase.dwelling_type)}</TableCell>
                   <TableCell className="text-muted-foreground">{advisorLabel(renovaCase.assigned_user_id, user?.id)}</TableCell>

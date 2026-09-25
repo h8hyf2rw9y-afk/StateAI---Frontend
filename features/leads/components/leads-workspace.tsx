@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Plus, X } from "lucide-react";
+import { CheckCircle2, CircleDot, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { GooeyNav } from "@/components/ui/gooey-nav";
@@ -102,20 +102,28 @@ export function LeadsWorkspace() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        <div className="-mx-1 overflow-x-auto px-1">
-          <GooeyNav
-            aria-label="Vistas de leads"
-            size="sm"
-            items={LEADS_VIEWS.map((v) => LEADS_VIEW_LABELS[v])}
-            value={LEADS_VIEWS.indexOf(view)}
-            onChange={(index) => handleViewChange(LEADS_VIEWS[index])}
-          />
+      <div className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-card/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-4">
+        <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="-mx-1 overflow-x-auto px-1">
+            <GooeyNav
+              aria-label="Vistas de leads"
+              size="sm"
+              items={LEADS_VIEWS.map((v) => LEADS_VIEW_LABELS[v])}
+              value={LEADS_VIEWS.indexOf(view)}
+              onChange={(index) => handleViewChange(LEADS_VIEWS[index])}
+            />
+          </div>
+          <div className="hidden items-center gap-2 pr-1 text-[11px] text-muted-foreground sm:flex">
+            <CircleDot className="size-3 text-emerald-400" aria-hidden="true" />
+            {view === "renova" ? "Expedientes independientes" : "CRM conectado"}
+          </div>
         </div>
 
-        {view === "all" && <LeadsTable view="all" />}
-        {view === "active" && <LeadsTable view="active" />}
-        {view === "renova" && <RenovaCasesTable refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} onShare={(caseId) => setShareCaseId(caseId)} />}
+        <div className="animate-enter">
+          {view === "all" && <LeadsTable view="all" />}
+          {view === "active" && <LeadsTable view="active" />}
+          {view === "renova" && <RenovaCasesTable refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} onShare={(caseId) => setShareCaseId(caseId)} />}
+        </div>
       </div>
 
       {renovaDialog && (
