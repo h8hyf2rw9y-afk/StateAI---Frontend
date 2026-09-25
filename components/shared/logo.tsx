@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Orbit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -15,11 +15,12 @@ interface LogoProps {
 export function Logo({ className, showParentBrand = true }: LogoProps) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm shadow-primary/30">
-        <Sparkles className="size-4" aria-hidden="true" />
+      <span className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_0_28px_-8px_var(--primary)]">
+        <span className="absolute inset-x-1 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+        <Orbit className="size-[18px]" aria-hidden="true" />
       </span>
       <span className="flex flex-col leading-none">
-        <span className="text-sm font-semibold tracking-tight">PropPilot</span>
+        <span className="text-sm font-semibold tracking-[-0.02em]">PropPilot</span>
         {showParentBrand && (
           <span className="text-[11px] text-muted-foreground">by State AI</span>
         )}

@@ -12,6 +12,7 @@ export interface NavItem {
   label: string;
   href: string;
   icon: NavIconName;
+  group: "workspace" | "organize" | "system";
 }
 
 /**
@@ -27,12 +28,12 @@ export interface NavItem {
  * name to a component locally instead.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
-  { label: "Leads", href: "/leads", icon: "leads" },
-  { label: "Properties", href: "/properties", icon: "properties" },
-  { label: "Pipeline", href: "/pipeline", icon: "pipeline" },
-  { label: "Tasks", href: "/tasks", icon: "tasks" },
-  { label: "Appointments", href: "/appointments", icon: "appointments" },
-  { label: "AI Assistant", href: "/ai-assistant", icon: "ai-assistant" },
-  { label: "Settings", href: "/settings", icon: "settings" },
+  { label: "Dashboard", href: "/dashboard", icon: "dashboard", group: "workspace" },
+  { label: "Leads", href: "/leads", icon: "leads", group: "workspace" },
+  { label: "Properties", href: "/properties", icon: "properties", group: "workspace" },
+  { label: "Pipeline", href: "/pipeline", icon: "pipeline", group: "workspace" },
+  { label: "Tasks", href: "/tasks", icon: "tasks", group: "organize" },
+  { label: "Appointments", href: "/appointments", icon: "appointments", group: "organize" },
+  { label: "AI Assistant", href: "/ai-assistant", icon: "ai-assistant", group: "system" },
+  { label: "Settings", href: "/settings", icon: "settings", group: "system" },
 ];

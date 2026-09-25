@@ -162,11 +162,11 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search leads by name or email…"
-            className="pl-8"
+            className="h-10 rounded-xl border-border/70 bg-background/45 pl-9 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -183,7 +183,7 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
             render={
               <Button
                 variant="outline"
-                className="sm:ml-auto"
+                className="h-10 rounded-xl border-border/70 bg-background/45 sm:ml-auto"
                 aria-label={activeFilterCount > 0 ? `Filters (${activeFilterCount} active)` : "Filters"}
               >
                 <ListFilter />
@@ -261,10 +261,10 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
         </Popover>
       </div>
 
-      <div className="overflow-hidden rounded-xl border">
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/20">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/40">
+            <TableRow className="bg-muted/25 text-[11px] uppercase tracking-[0.08em]">
               <TableHead>Lead</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Role</TableHead>
@@ -278,7 +278,7 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
               return (
                 <TableRow
                   key={contact.id}
-                  className="cursor-pointer hover:bg-muted/40"
+                  className="group cursor-pointer transition-colors hover:bg-primary/[0.045]"
                   onClick={() => router.push(`/leads/${contact.id}`)}
                 >
                   <TableCell>
@@ -287,7 +287,7 @@ export function LeadsTable({ view = "all" }: { view?: "all" | "active" }) {
                         <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="font-medium">{name}</span>
+                        <span className="font-medium transition-colors group-hover:text-primary">{name}</span>
                         <span className="text-xs text-muted-foreground">{contact.email ?? "—"}</span>
                       </div>
                     </div>

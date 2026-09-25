@@ -97,37 +97,37 @@
  * toggle is a small change, not a rewrite.
  */
 .dark {
-  --background: oklch(0.145 0.019 293);
-  --foreground: oklch(0.96 0.005 293);
-  --card: oklch(0.195 0.024 293);
-  --card-foreground: oklch(0.96 0.005 293);
-  --popover: oklch(0.195 0.024 293);
-  --popover-foreground: oklch(0.96 0.005 293);
-  --primary: oklch(0.606 0.25 292.717);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.245 0.03 293);
-  --secondary-foreground: oklch(0.96 0.005 293);
-  --muted: oklch(0.235 0.027 293);
-  --muted-foreground: oklch(0.66 0.02 293);
-  --accent: oklch(0.27 0.035 293);
-  --accent-foreground: oklch(0.96 0.005 293);
+  --background: oklch(0.12 0.018 270);
+  --foreground: oklch(0.96 0.008 255);
+  --card: oklch(0.17 0.021 268);
+  --card-foreground: oklch(0.96 0.008 255);
+  --popover: oklch(0.18 0.024 268);
+  --popover-foreground: oklch(0.96 0.008 255);
+  --primary: oklch(0.72 0.17 285);
+  --primary-foreground: oklch(0.12 0.018 270);
+  --secondary: oklch(0.22 0.025 268);
+  --secondary-foreground: oklch(0.96 0.008 255);
+  --muted: oklch(0.205 0.022 268);
+  --muted-foreground: oklch(0.69 0.025 265);
+  --accent: oklch(0.235 0.035 274);
+  --accent-foreground: oklch(0.97 0.008 255);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.606 0.25 292.717);
-  --chart-1: oklch(0.702 0.183 293.541);
-  --chart-2: oklch(0.65 0.17 250);
-  --chart-3: oklch(0.65 0.15 165);
-  --chart-4: oklch(0.75 0.16 70);
+  --border: oklch(0.88 0.025 270 / 12%);
+  --input: oklch(0.88 0.025 270 / 16%);
+  --ring: oklch(0.72 0.17 285);
+  --chart-1: oklch(0.76 0.16 285);
+  --chart-2: oklch(0.78 0.17 160);
+  --chart-3: oklch(0.72 0.14 235);
+  --chart-4: oklch(0.82 0.15 85);
   --chart-5: oklch(0.7 0.2 340);
-  --sidebar: oklch(0.125 0.017 293);
-  --sidebar-foreground: oklch(0.96 0.005 293);
-  --sidebar-primary: oklch(0.606 0.25 292.717);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.22 0.03 293);
-  --sidebar-accent-foreground: oklch(0.96 0.005 293);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.606 0.25 292.717);
+  --sidebar: oklch(0.105 0.018 270);
+  --sidebar-foreground: oklch(0.94 0.01 255);
+  --sidebar-primary: oklch(0.72 0.17 285);
+  --sidebar-primary-foreground: oklch(0.12 0.018 270);
+  --sidebar-accent: oklch(0.19 0.027 270);
+  --sidebar-accent-foreground: oklch(0.97 0.008 255);
+  --sidebar-border: oklch(0.88 0.025 270 / 10%);
+  --sidebar-ring: oklch(0.72 0.17 285);
 }
 
 @layer base {
@@ -136,9 +136,51 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 78% -12%, oklch(0.55 0.16 285 / 12%), transparent 34rem),
+      radial-gradient(circle at 18% 110%, oklch(0.65 0.14 165 / 7%), transparent 30rem);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans;
     color-scheme: dark;
+  }
+}
+
+@layer utilities {
+  .workspace-grid {
+    background-image:
+      linear-gradient(oklch(1 0 0 / 2.5%) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 2.5%) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
+  }
+
+  .surface-glass {
+    background: linear-gradient(145deg, oklch(0.22 0.03 275 / 78%), oklch(0.15 0.018 266 / 88%));
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 6%), 0 18px 70px oklch(0.03 0.01 270 / 20%);
+    backdrop-filter: blur(18px);
+  }
+
+  .signal-dot {
+    box-shadow: 0 0 0 4px oklch(0.78 0.17 160 / 10%), 0 0 18px oklch(0.78 0.17 160 / 45%);
+  }
+
+  .animate-enter {
+    animation: workspace-enter 420ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+}
+
+@keyframes workspace-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
     "PropPilot is the AI-first CRM by State AI for real estate professionals — centralizing leads, properties, pipeline, and appointments.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // PropPilot is dark-first by design (see globals.css) — `dark` is applied
     // unconditionally for now rather than behind a toggle that doesn't exist yet.
