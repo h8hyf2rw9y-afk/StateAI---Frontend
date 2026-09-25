@@ -70,6 +70,19 @@ describe("apiRequest", () => {
     });
   });
 
+  it("preserves structured backend error codes and retry metadata", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(429, { error: { code: "AI_COOLDOWN", message: "Wait before retrying.", retry_after: 42 } })
+    );
+
+    const result = await apiRequest("/ai/lead-intelligence/abc");
+
+    expect(result).toEqual({
+      ok: false,
+      error: { message: "Wait before retrying.", status: 429, code: "AI_COOLDOWN", retryAfter: 42 },
+    });
+  });
+
   it("aborts and returns a timeout error if the request exceeds timeoutMs", async () => {
     vi.useFakeTimers();
     // A fetch that never resolves on its own — only the internal AbortController should end it.

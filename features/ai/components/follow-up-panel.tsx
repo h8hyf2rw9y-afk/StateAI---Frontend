@@ -17,6 +17,7 @@ import {
 } from "@/features/ai/lib";
 import type { FollowUpResult } from "@/features/ai/types";
 import { cn } from "@/lib/utils";
+import { useAiCooldown } from "@/features/ai/use-ai-cooldown";
 
 type Status = "checking" | "idle" | "loading" | "success" | "error";
 
@@ -30,6 +31,7 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
   const [result, setResult] = useState<FollowUpResult | null>(null);
   const [isStale, setIsStale] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const cooldown = useAiCooldown();
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +63,8 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
     const response = await getFollowUpRecommendation(contactId);
 
     if (!response.ok) {
-      setStatus("error");
+      cooldown.start(response.error.retryAfter);
+      setStatus(result ? "success" : "error");
       setErrorMessage(getAiErrorMessage(response.error));
       return;
     }
@@ -72,6 +75,7 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
   }
 
   const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Regenerate" : "Generate follow-up";
+  const buttonLabel = cooldown.isCoolingDown ? `Try again in ${cooldown.remainingSeconds}s` : actionLabel;
 
   return (
     <Card>
@@ -80,9 +84,9 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
           <MessageCircleMore className="size-4 text-primary" aria-hidden="true" />
           Follow-up
         </CardTitle>
-        <Button size="sm" onClick={handleGenerate} disabled={status === "loading" || status === "checking"}>
+        <Button size="sm" onClick={handleGenerate} disabled={status === "loading" || status === "checking" || cooldown.isCoolingDown}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {actionLabel}
+          {buttonLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -104,7 +108,7 @@ export function FollowUpPanel({ contactId }: { contactId: string }) {
           </div>
         )}
 
-        {status === "error" && <FormError message={errorMessage} />}
+        {errorMessage && <FormError message={errorMessage} />}
 
         {status === "success" && result && (
           <div className="flex flex-col gap-3">

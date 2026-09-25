@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { AgentExecutionLatest, AgentName } from "@/features/ai/types";
+import type { AgentExecution, AgentExecutionLatest, AgentName } from "@/features/ai/types";
 
 /**
  * GET /ai/agent-executions/latest — the read path behind restoring a
@@ -21,4 +21,28 @@ export function getLatestAgentExecution<TOutput>(
   return apiRequest<AgentExecutionLatest<TOutput> | null>("/api/v1/ai/agent-executions/latest", {
     params: { contact_id: contactId, agent_name: agentName },
   });
+}
+
+export function getAgentExecution<TOutput>(executionId: string): Promise<ApiResult<AgentExecution<TOutput>>> {
+  return apiRequest<AgentExecution<TOutput>>(`/api/v1/ai/agent-executions/${executionId}`, {
+    cache: "no-store",
+  });
+}
+
+export async function waitForAgentExecution<TOutput>(
+  executionId: string,
+  retryAfterSeconds = 2,
+  timeoutMs = 260_000
+): Promise<ApiResult<TOutput>> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, Math.max(1, retryAfterSeconds) * 1000));
+    const response = await getAgentExecution<TOutput>(executionId);
+    if (!response.ok) return response;
+    if (response.data.status === "succeeded") return { ok: true, data: response.data.output };
+    if (response.data.status === "failed") {
+      return { ok: false, error: { status: 502, code: "AI_EXECUTION_FAILED", message: "The AI analysis failed." } };
+    }
+  }
+  return { ok: false, error: { code: "timeout", message: "The AI analysis took too long." } };
 }

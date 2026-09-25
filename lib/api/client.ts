@@ -31,6 +31,8 @@ export interface RequestOptions {
    * (OLLAMA_TIMEOUT_SECONDS) would.
    */
   timeoutMs?: number;
+  /** Additional non-secret request headers, e.g. Idempotency-Key. */
+  headers?: Record<string, string>;
 }
 
 function buildUrl(path: string, params?: RequestOptions["params"]): string {
@@ -72,7 +74,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<ApiResult<T>> {
-  const { method = "GET", body, params, signal, cache, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const { method = "GET", body, params, signal, cache, timeoutMs = DEFAULT_TIMEOUT_MS, headers } = options;
 
   // Aborts the request client-side after timeoutMs, combined with any
   // caller-supplied signal — never an infinite wait, but never shorter than
@@ -92,6 +94,7 @@ export async function apiRequest<T>(
         "Content-Type": "application/json",
         Accept: "application/json",
         ...authHeaders,
+        ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: timeoutController.signal,
@@ -100,15 +103,30 @@ export async function apiRequest<T>(
 
     if (!response.ok) {
       let message = response.statusText || "Request failed";
+      let code: string | undefined;
+      let retryAfter: number | undefined;
+      let executionId: string | undefined;
       try {
         const payload = await response.json();
-        message = payload?.detail ?? payload?.message ?? message;
+        const backendError = payload?.error;
+        message = backendError?.message ?? payload?.detail ?? payload?.message ?? message;
+        code = backendError?.code;
+        retryAfter = backendError?.retry_after;
+        executionId = backendError?.execution_id;
       } catch {
         // Response had no JSON body — fall back to statusText.
       }
+      const retryHeader = response.headers?.get?.("Retry-After");
+      const parsedRetryAfter = retryAfter ?? (retryHeader ? Number(retryHeader) : undefined);
       return {
         ok: false,
-        error: { message, status: response.status },
+        error: {
+          message,
+          status: response.status,
+          ...(code ? { code } : {}),
+          ...(parsedRetryAfter !== undefined ? { retryAfter: parsedRetryAfter } : {}),
+          ...(executionId ? { executionId } : {}),
+        },
       };
     }
 

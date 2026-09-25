@@ -1,6 +1,7 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
-import type { FollowUpResult, LeadIntelligenceResult, PipelineResult } from "@/features/ai/types";
+import type { AgentRunInProgress, FollowUpResult, LeadIntelligenceResult, PipelineResult } from "@/features/ai/types";
+import { waitForAgentExecution } from "@/lib/api/agent-executions";
 
 /**
  * The three real, implemented agents — see app/api/routes/ai.py in the
@@ -31,18 +32,35 @@ import type { FollowUpResult, LeadIntelligenceResult, PipelineResult } from "@/f
  */
 const AI_AGENT_TIMEOUT_MS = 260_000;
 
-export function getLeadIntelligence(contactId: string): Promise<ApiResult<LeadIntelligenceResult>> {
-  return apiRequest<LeadIntelligenceResult>(`/api/v1/ai/lead-intelligence/${contactId}`, {
+function isRunInProgress(value: unknown): value is AgentRunInProgress {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "execution_id" in value &&
+      "status" in value &&
+      ((value as AgentRunInProgress).status === "queued" || (value as AgentRunInProgress).status === "running")
+  );
+}
+
+async function runAgent<T>(path: string): Promise<ApiResult<T>> {
+  const response = await apiRequest<T | AgentRunInProgress>(path, {
     method: "POST",
     timeoutMs: AI_AGENT_TIMEOUT_MS,
+    headers: { "Idempotency-Key": crypto.randomUUID() },
   });
+  if (!response.ok) return response;
+  if (isRunInProgress(response.data)) {
+    return waitForAgentExecution<T>(response.data.execution_id, response.data.retry_after_seconds);
+  }
+  return { ok: true, data: response.data };
+}
+
+export function getLeadIntelligence(contactId: string): Promise<ApiResult<LeadIntelligenceResult>> {
+  return runAgent<LeadIntelligenceResult>(`/api/v1/ai/lead-intelligence/${contactId}`);
 }
 
 export function getFollowUpRecommendation(contactId: string): Promise<ApiResult<FollowUpResult>> {
-  return apiRequest<FollowUpResult>(`/api/v1/ai/follow-up/${contactId}`, {
-    method: "POST",
-    timeoutMs: AI_AGENT_TIMEOUT_MS,
-  });
+  return runAgent<FollowUpResult>(`/api/v1/ai/follow-up/${contactId}`);
 }
 
 /**
@@ -55,8 +73,5 @@ export function getFollowUpRecommendation(contactId: string): Promise<ApiResult<
  * this task gave it a UI).
  */
 export function getPipelineAnalysis(contactId: string): Promise<ApiResult<PipelineResult>> {
-  return apiRequest<PipelineResult>(`/api/v1/ai/pipeline/${contactId}`, {
-    method: "POST",
-    timeoutMs: AI_AGENT_TIMEOUT_MS,
-  });
+  return runAgent<PipelineResult>(`/api/v1/ai/pipeline/${contactId}`);
 }
