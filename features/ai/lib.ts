@@ -21,6 +21,12 @@ import type {
  * call or a plain CRM one.
  */
 export function getAiErrorMessage(error: ApiError): string {
+  if (error.code === "AI_COOLDOWN") {
+    return `This analysis was refreshed recently. Try again in ${error.retryAfter ?? 60} seconds.`;
+  }
+  if (error.status === 429) {
+    return `The AI analysis limit was reached. Try again in ${error.retryAfter ?? 60} seconds.`;
+  }
   if (error.status === 503) {
     return "AI is currently unavailable. Please make sure the local AI service is running and try again.";
   }

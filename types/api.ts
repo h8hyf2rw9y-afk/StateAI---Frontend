@@ -8,6 +8,8 @@ export interface ApiError {
   message: string;
   code?: string;
   status?: number;
+  retryAfter?: number;
+  executionId?: string;
 }
 
 export interface PaginatedResponse<T> {

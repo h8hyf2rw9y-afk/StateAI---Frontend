@@ -11,6 +11,7 @@ import { getLatestAgentExecution } from "@/lib/api/agent-executions";
 import { getAiErrorMessage, getNextActionLabel, getPriorityBadgeClassName, formatConfidence } from "@/features/ai/lib";
 import type { LeadIntelligenceResult } from "@/features/ai/types";
 import { cn } from "@/lib/utils";
+import { useAiCooldown } from "@/features/ai/use-ai-cooldown";
 
 type Status = "checking" | "idle" | "loading" | "success" | "error";
 
@@ -40,6 +41,7 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
   const [result, setResult] = useState<LeadIntelligenceResult | null>(null);
   const [isStale, setIsStale] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const cooldown = useAiCooldown();
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +81,8 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
     const response = await getLeadIntelligence(contactId);
 
     if (!response.ok) {
-      setStatus("error");
+      cooldown.start(response.error.retryAfter);
+      setStatus(result ? "success" : "error");
       setErrorMessage(getAiErrorMessage(response.error));
       return;
     }
@@ -90,6 +93,7 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
   }
 
   const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Re-analyze lead" : "Analyze lead";
+  const buttonLabel = cooldown.isCoolingDown ? `Try again in ${cooldown.remainingSeconds}s` : actionLabel;
 
   return (
     <Card>
@@ -98,9 +102,9 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
           <BrainCircuit className="size-4 text-primary" aria-hidden="true" />
           Lead Intelligence
         </CardTitle>
-        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking"}>
+        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking" || cooldown.isCoolingDown}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {actionLabel}
+          {buttonLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -122,7 +126,7 @@ export function LeadIntelligencePanel({ contactId }: { contactId: string }) {
           </div>
         )}
 
-        {status === "error" && <FormError message={errorMessage} />}
+        {errorMessage && <FormError message={errorMessage} />}
 
         {status === "success" && result && (
           <div className="flex flex-col gap-3">

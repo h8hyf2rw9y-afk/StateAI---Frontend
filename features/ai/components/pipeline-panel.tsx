@@ -15,6 +15,7 @@ import { getTaskPriorityBadgeClassName, formatTaskPriority } from "@/features/ta
 import type { PipelineResult } from "@/features/ai/types";
 import type { Opportunity } from "@/features/pipeline/types";
 import { cn } from "@/lib/utils";
+import { useAiCooldown } from "@/features/ai/use-ai-cooldown";
 
 type Status = "checking" | "idle" | "loading" | "success" | "error";
 
@@ -46,6 +47,7 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
   const [isStale, setIsStale] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const cooldown = useAiCooldown();
 
   // Same persistence/restore contract as LeadIntelligencePanel/FollowUpPanel
   // — see LeadIntelligencePanel's doc comment. Opportunities are re-fetched
@@ -89,7 +91,8 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
     ]);
 
     if (!analysisResponse.ok) {
-      setStatus("error");
+      cooldown.start(analysisResponse.error.retryAfter);
+      setStatus(result ? "success" : "error");
       setErrorMessage(getAiErrorMessage(analysisResponse.error));
       return;
     }
@@ -108,6 +111,7 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
   }
 
   const actionLabel = status === "success" && isStale ? "Refresh analysis" : status === "success" ? "Re-analyze pipeline" : "Analyze pipeline";
+  const buttonLabel = cooldown.isCoolingDown ? `Try again in ${cooldown.remainingSeconds}s` : actionLabel;
 
   return (
     <Card>
@@ -116,9 +120,9 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
           <Waypoints className="size-4 text-primary" aria-hidden="true" />
           Pipeline
         </CardTitle>
-        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking"}>
+        <Button size="sm" onClick={handleAnalyze} disabled={status === "loading" || status === "checking" || cooldown.isCoolingDown}>
           {status === "loading" && <Loader2 className="size-4 animate-spin" />}
-          {actionLabel}
+          {buttonLabel}
         </Button>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -140,7 +144,7 @@ export function PipelinePanel({ contactId }: { contactId: string }) {
           </div>
         )}
 
-        {status === "error" && <FormError message={errorMessage} />}
+        {errorMessage && <FormError message={errorMessage} />}
 
         {status === "success" && result && (
           <div className="flex flex-col gap-4">

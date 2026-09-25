@@ -108,6 +108,23 @@ describe("LeadIntelligencePanel", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/ai is currently unavailable/i);
   });
 
+  it("shows and enforces the backend cooldown instead of calling the agent again", async () => {
+    getLeadIntelligenceMock.mockResolvedValue({
+      ok: false,
+      error: { message: "recent", status: 429, code: "AI_COOLDOWN", retryAfter: 30 },
+    });
+
+    render(<LeadIntelligencePanel contactId="contact-123" />);
+    await waitForIdle();
+    fireEvent.click(screen.getByRole("button", { name: /analyze lead/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/try again in 30 seconds/i);
+    const button = screen.getByRole("button", { name: /try again in 30s/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(getLeadIntelligenceMock).toHaveBeenCalledTimes(1);
+  });
+
   it("shows a friendly message on an authentication failure", async () => {
     getLeadIntelligenceMock.mockResolvedValue({
       ok: false,

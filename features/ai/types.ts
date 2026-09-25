@@ -191,6 +191,21 @@ export interface PipelineResult {
 
 export type AgentName = "lead_intelligence" | "follow_up" | "pipeline";
 
+export interface AgentRunInProgress {
+  status: "queued" | "running";
+  execution_id: string;
+  retry_after_seconds: number;
+}
+
+export interface AgentExecution<TOutput> {
+  id: string;
+  agent_name: AgentName;
+  contact_id: string | null;
+  output: TOutput;
+  status: "queued" | "running" | "succeeded" | "failed";
+  created_at: string;
+}
+
 /**
  * One stored AgentExecution row, as returned by
  * GET /ai/agent-executions/latest — the previous analysis to restore when a
@@ -199,12 +214,6 @@ export type AgentName = "lead_intelligence" | "follow_up" | "pipeline";
  * LeadIntelligenceResult/FollowUpResult/PipelineResult this execution's
  * `agent_name` corresponds to.
  */
-export interface AgentExecutionLatest<TOutput> {
-  id: string;
-  agent_name: AgentName;
-  contact_id: string | null;
-  output: TOutput;
-  status: string;
-  created_at: string;
+export interface AgentExecutionLatest<TOutput> extends AgentExecution<TOutput> {
   is_stale: boolean;
 }
