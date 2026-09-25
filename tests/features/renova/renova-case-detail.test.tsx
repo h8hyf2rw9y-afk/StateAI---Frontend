@@ -61,7 +61,7 @@ describe("RenovaCaseDetail", () => {
       "Centro",
       "Monterrey",
       "64000",
-      "Dúplex",
+      "Departamento dúplex",
       "Rentada",
       "Requiere pintura",
       "Casado(a) — sociedad conyugal",

@@ -12,6 +12,7 @@ import {
   SubHeading,
   TextAreaField,
   TextField,
+  ToggleField,
   type RenovaFormState,
 } from "@/features/renova/components/renova-form-fields";
 import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
@@ -96,10 +97,11 @@ export function RenovaCaseForm({
             <SegmentedField
               name="dwelling_type"
               label="Tipo de vivienda"
-              size="half"
+              size="sm"
               allowClear
               options={toOptions(RENOVA_DWELLING_TYPES, formatRenovaDwelling)}
             />
+            <ToggleField name="is_duplex" label="Dúplex" size="xs" />
             <TextField name="floors" label="Plantas" type="number" size="xs" />
             <TextField name="bathrooms" label="Baños" type="number" size="xs" />
             <TextField name="bedrooms" label="Recámaras" type="number" size="xs" />

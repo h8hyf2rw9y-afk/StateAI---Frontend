@@ -18,7 +18,7 @@ import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/error
 import {
   RENOVA_STATUSES,
   formatRenovaDate,
-  formatRenovaDwelling,
+  formatRenovaDwellingWithDuplex,
   formatRenovaMoney,
   formatRenovaStatus,
   getRenovaStatusClassName,
@@ -225,7 +225,9 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                 >
                   <TableCell className="font-medium transition-colors group-hover:text-primary">{renovaCase.owner_name}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{renovaCase.owner_phone}</TableCell>
-                  <TableCell className="text-muted-foreground">{formatRenovaDwelling(renovaCase.dwelling_type)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatRenovaDwellingWithDuplex(renovaCase.dwelling_type, renovaCase.is_duplex)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{advisorLabel(renovaCase.assigned_user_id, user?.id)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatRenovaMoney(renovaCase.market_value, renovaCase.currency)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">

@@ -34,7 +34,8 @@ function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListIt
     status: "reviewing",
     owner_name: "María López",
     owner_phone: "+52 81 5555 0101",
-    dwelling_type: "duplex",
+    dwelling_type: "apartment",
+    is_duplex: true,
     currency: "MXN",
     final_offer: "950000.00",
     market_value: "1400000.00",
@@ -91,7 +92,7 @@ describe("RenovaCasesTable", () => {
       expect(screen.getByRole("columnheader", { name: header })).toBeInTheDocument();
     }
     expect(screen.getByText("+52 81 5555 0101")).toBeInTheDocument();
-    expect(screen.getByText("Dúplex")).toBeInTheDocument();
+    expect(screen.getByText("Departamento dúplex")).toBeInTheDocument();
     // selector: the status filter (a stubbed native select in tests) also has an "En revisión" <option>.
     expect(screen.getByText("En revisión", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Yo" })).toBeInTheDocument();

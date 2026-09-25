@@ -26,7 +26,8 @@ export interface RenovaFormValues {
   neighborhood: string;
   municipality: string;
   postal_code: string;
-  dwelling_type: string; // "" = not specified
+  dwelling_type: string; // "" = not specified — the mutually-exclusive BASE type only ("house"/"apartment"), never "duplex"
+  is_duplex: boolean; // independent configuration; can be true with either base type, or with no base type yet
   floors: string;
   bathrooms: string;
   bedrooms: string;
@@ -71,6 +72,7 @@ export const RENOVA_FIELD_ORDER: (keyof RenovaFormValues)[] = [
   "municipality",
   "postal_code",
   "dwelling_type",
+  "is_duplex",
   "floors",
   "bathrooms",
   "bedrooms",
@@ -115,6 +117,7 @@ export function emptyRenovaFormValues(assignedUserId = ""): RenovaFormValues {
     municipality: "",
     postal_code: "",
     dwelling_type: "",
+    is_duplex: false,
     floors: "",
     bathrooms: "",
     bedrooms: "",
@@ -159,6 +162,7 @@ export function valuesFromRenovaCase(renovaCase: RenovaCase): RenovaFormValues {
     municipality: s(renovaCase.municipality),
     postal_code: s(renovaCase.postal_code),
     dwelling_type: s(renovaCase.dwelling_type),
+    is_duplex: renovaCase.is_duplex,
     floors: s(renovaCase.floors),
     bathrooms: s(renovaCase.bathrooms),
     bedrooms: s(renovaCase.bedrooms),
@@ -233,6 +237,7 @@ export function toRenovaPayload(values: RenovaFormValues, mode: "create" | "edit
     owner_name: values.owner_name.trim(),
     owner_phone: values.owner_phone.trim(),
     has_deeds: values.has_deeds,
+    is_duplex: values.is_duplex,
   };
 
   const out = payload as Record<string, unknown>;

@@ -21,7 +21,7 @@ import {
   formatRenovaDate,
   formatRenovaDateTime,
   formatRenovaDeeds,
-  formatRenovaDwelling,
+  formatRenovaDwellingWithDuplex,
   formatRenovaHistoryAction,
   formatRenovaMaritalStatus,
   formatRenovaMoney,
@@ -227,7 +227,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <Row label="Colonia">{c.neighborhood}</Row>
                 <Row label="Municipio">{c.municipality}</Row>
                 <Row label="Código postal">{c.postal_code}</Row>
-                <Row label="Tipo de vivienda">{c.dwelling_type ? formatRenovaDwelling(c.dwelling_type) : null}</Row>
+                <Row label="Tipo de vivienda">{formatRenovaDwellingWithDuplex(c.dwelling_type, c.is_duplex)}</Row>
                 <Row label="Plantas">{c.floors}</Row>
                 <Row label="Baños">{c.bathrooms}</Row>
                 <Row label="Recámaras">{c.bedrooms}</Row>

@@ -336,6 +336,71 @@ describe("RenovaCaseDialog — segmented controls", () => {
   });
 });
 
+describe("RenovaCaseDialog — dwelling type vs. duplex configuration", () => {
+  it("Casa and Departamento remain mutually exclusive, and Dúplex is a separate checkbox — not a third radio option", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    expect(screen.getByRole("radiogroup", { name: "Tipo de vivienda" }).querySelectorAll('[role="radio"]')).toHaveLength(2);
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toBeInTheDocument();
+  });
+
+  it("Dúplex can be combined with Casa", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Casa" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+
+    expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ dwelling_type: "house", is_duplex: true });
+  });
+
+  it("Dúplex can be combined with Departamento", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ dwelling_type: "apartment", is_duplex: true });
+  });
+
+  it("Dúplex can be selected with no base type yet, and clicking it again clears it", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    const duplex = screen.getByRole("checkbox", { name: "Dúplex" });
+    fireEvent.click(duplex);
+    expect(duplex).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(duplex);
+    expect(duplex).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("changing the base type never turns Dúplex off, in either direction", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Casa" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+  });
+});
+
 describe("RenovaCaseDialog — saving", () => {
   it("creates a prospect with only the mandatory fields — status new, nothing else invented", async () => {
     const { onSaved } = renderCreate();
@@ -372,7 +437,8 @@ describe("RenovaCaseDialog — saving", () => {
     type("Colonia", "Centro");
     type("Municipio", "Monterrey");
     type("Código postal", "64000");
-    fireEvent.click(screen.getByRole("radio", { name: "Dúplex" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
     type("Plantas", "2");
     type("Baños", "2.5");
     type("Recámaras", "3");
@@ -394,7 +460,8 @@ describe("RenovaCaseDialog — saving", () => {
       neighborhood: "Centro",
       municipality: "Monterrey",
       postal_code: "64000",
-      dwelling_type: "duplex",
+      dwelling_type: "apartment",
+      is_duplex: true,
       floors: 2,
       bathrooms: "2.5",
       bedrooms: 3,
@@ -624,7 +691,8 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("María López");
     expect(screen.getByLabelText("Calle y número")).toHaveValue("Av. Constitución 123");
     expect(screen.getByLabelText("Código postal")).toHaveValue("64000");
-    expect(screen.getByRole("radio", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Rentada" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Valor de mercado")).toHaveValue("1,400,000");
     // Same layout, same six sections.

@@ -30,7 +30,10 @@ export interface RenovaCaseListItem {
   status: string;
   owner_name: string;
   owner_phone: string;
+  /** Mutually-exclusive BASE type only ("house"/"apartment"); never "duplex" — see `is_duplex`. */
   dwelling_type: string | null;
+  /** Independent configuration: can be true with either base type, or with dwelling_type still null ("tipo base por confirmar"). */
+  is_duplex: boolean;
   currency: string;
   final_offer: string | null;
   market_value: string | null;
@@ -102,6 +105,7 @@ export interface RenovaCaseInput {
   postal_code?: string | null;
   occupancy_status?: string | null;
   dwelling_type?: string | null;
+  is_duplex?: boolean;
   floors?: number | null;
   bathrooms?: string | null;
   bedrooms?: number | null;
@@ -207,11 +211,32 @@ export function formatRenovaMaritalStatus(value: string | null): string {
   return MARITAL_LABELS[value] ?? value;
 }
 
-export const RENOVA_DWELLING_TYPES = ["house", "apartment", "duplex"] as const;
-const DWELLING_LABELS: Record<string, string> = { house: "Casa", apartment: "Departamento", duplex: "Dúplex" };
+// Mutually-exclusive BASE type only. "Duplex" is a separate CONFIGURATION
+// (RenovaCase.is_duplex) either base type can carry — see formatRenovaDwellingWithDuplex,
+// which builds the single combined phrase ("Casa dúplex", "Dúplex — tipo base
+// por confirmar", …) that every display of a case's dwelling should use
+// instead of showing the base type and "Dúplex" as separate, disconnected facts.
+export const RENOVA_DWELLING_TYPES = ["house", "apartment"] as const;
+const DWELLING_LABELS: Record<string, string> = { house: "Casa", apartment: "Departamento" };
 export function formatRenovaDwelling(value: string | null): string {
   if (!value) return "—";
   return DWELLING_LABELS[value] ?? value;
+}
+
+/**
+ * The one phrase every view of a case's dwelling should show — never the base
+ * type and "Dúplex" as separate lines. Reads, in order:
+ *   - dwelling_type set, not duplex  → "Casa" / "Departamento"
+ *   - dwelling_type set, duplex      → "Casa dúplex" / "Departamento dúplex"
+ *   - no dwelling_type, duplex       → "Dúplex — tipo base por confirmar"
+ *   - neither captured yet           → "—"
+ */
+export function formatRenovaDwellingWithDuplex(dwellingType: string | null, isDuplex: boolean): string {
+  if (dwellingType) {
+    const base = formatRenovaDwelling(dwellingType);
+    return isDuplex ? `${base} dúplex` : base;
+  }
+  return isDuplex ? "Dúplex — tipo base por confirmar" : "—";
 }
 
 export const RENOVA_OCCUPANCY_STATUSES = ["lives_there", "vacant", "rented", "lent", "other"] as const;

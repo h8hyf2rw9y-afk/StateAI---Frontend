@@ -338,6 +338,42 @@ export function SegmentedField({
   );
 }
 
+type BooleanField = {
+  [K in keyof RenovaFormValues]: RenovaFormValues[K] extends boolean ? K : never;
+}[keyof RenovaFormValues];
+
+/**
+ * A single yes/no CONFIGURATION toggle — same visual language as
+ * SegmentedField's buttons, but for one independent boolean rather than a
+ * mutually-exclusive group (e.g. "Dúplex": a house or an apartment can
+ * additionally have this, so it must never share a radiogroup with, or clear,
+ * the base "Tipo de vivienda" selection). A real toggle button (`role`
+ * defaults to none, native `<button>` semantics), so Enter/Space and Tab
+ * already work with no extra key handling.
+ */
+export function ToggleField({ name, label, size = "xs" }: { name: BooleanField; label: string; size?: FieldSize }) {
+  const { values, expanded, set } = useRenovaForm();
+  const active = Boolean(values[name]);
+
+  return (
+    <div className={cn("flex min-w-0 flex-col justify-end", SPAN[expanded ? "expanded" : "normal"][size])}>
+      <Button
+        id={fieldId(name)}
+        type="button"
+        role="checkbox"
+        aria-checked={active}
+        variant="outline"
+        size="sm"
+        className={cn("w-fit", active && "border-primary bg-primary/15 text-foreground hover:bg-primary/20")}
+        onClick={() => set(name, !active as RenovaFormValues[BooleanField])}
+      >
+        {active && <Check aria-hidden="true" />}
+        {label}
+      </Button>
+    </div>
+  );
+}
+
 /**
  * A protected identifier (NSS / número de crédito). It is data to be typed and
  * read, NOT a password: the input is plain visible text (numeric keypad, no
