@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Menu, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { NAV_ITEMS } from "@/components/navigation/nav-config";
 import { NavLink } from "@/components/navigation/nav-link";
@@ -51,11 +51,17 @@ export function AppHeader() {
 
       <div className="flex-1" />
 
-      <Button variant="ghost" className="hidden h-9 gap-2 border border-border/70 bg-background/50 px-3 text-muted-foreground hover:text-foreground md:inline-flex" render={<Link href="/ai-assistant" />}>
+      <Link
+        href="/ai-assistant"
+        className={buttonVariants({
+          variant: "ghost",
+          className: "hidden h-9 gap-2 border border-border/70 bg-background/50 px-3 text-muted-foreground hover:text-foreground md:inline-flex",
+        })}
+      >
         <Sparkles className="size-3.5 text-primary" />
         Ask State AI
         <ArrowUpRight className="ml-2 size-3.5" />
-      </Button>
+      </Link>
 
       <NotificationBell />
       <UserMenu />
