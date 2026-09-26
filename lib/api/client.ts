@@ -35,8 +35,20 @@ export interface RequestOptions {
   headers?: Record<string, string>;
 }
 
-function buildUrl(path: string, params?: RequestOptions["params"]): string {
-  const url = new URL(path.replace(/^\//, ""), `${API_BASE_URL}/`);
+/** 
+ * Build one canonical API URL even when an environment was configured with
+ * the version prefix already included (for example
+ * `http://localhost:8000/api/v1`). Domain clients intentionally pass their
+ * complete `/api/v1/...` paths, so retaining that suffix on the base would
+ * otherwise produce `/api/v1/api/v1/...` and a misleading 404.
+ */
+export function buildApiUrl(
+  path: string,
+  params?: RequestOptions["params"],
+  baseUrl = API_BASE_URL
+): string {
+  const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, "").replace(/\/api\/v1$/i, "");
+  const url = new URL(path.replace(/^\/+/, ""), `${normalizedBaseUrl}/`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) url.searchParams.set(key, String(value));
@@ -88,7 +100,7 @@ export async function apiRequest<T>(
 
   try {
     const authHeaders = await getAuthHeaders();
-    const response = await fetch(buildUrl(path, params), {
+    const response = await fetch(buildApiUrl(path, params), {
       method,
       headers: {
         "Content-Type": "application/json",
