@@ -21,11 +21,12 @@ import {
   formatRenovaDate,
   formatRenovaDateTime,
   formatRenovaDeeds,
-  formatRenovaDwelling,
+  formatRenovaDwellingWithDuplex,
   formatRenovaHistoryAction,
   formatRenovaMaritalStatus,
   formatRenovaMoney,
   formatRenovaOccupancy,
+  formatRenovaPropertyTaxDebt,
   formatRenovaStatus,
   getRenovaStatusClassName,
   type RenovaCase,
@@ -227,7 +228,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <Row label="Colonia">{c.neighborhood}</Row>
                 <Row label="Municipio">{c.municipality}</Row>
                 <Row label="Código postal">{c.postal_code}</Row>
-                <Row label="Tipo de vivienda">{c.dwelling_type ? formatRenovaDwelling(c.dwelling_type) : null}</Row>
+                <Row label="Tipo de vivienda">{formatRenovaDwellingWithDuplex(c.dwelling_type, c.is_duplex)}</Row>
                 <Row label="Plantas">{c.floors}</Row>
                 <Row label="Baños">{c.bathrooms}</Row>
                 <Row label="Recámaras">{c.bedrooms}</Row>
@@ -245,8 +246,8 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <Row label="Propuesta final">{money(c.final_offer)}</Row>
                 <Row label="Valor de mercado">{money(c.market_value)}</Row>
                 <Row label="Cuánto espera recibir">{money(c.owner_expected_amount)}</Row>
-                <Row label="Deuda predial">{money(c.property_tax_debt)}</Row>
-                <Row label="Otros adeudos">{money(c.other_debt)}</Row>
+                <Row label="Deuda predial">{formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency) ?? "—"}</Row>
+                <Row label="Adeudo">{money(c.other_debt)}</Row>
                 <Row label="Deuda de agua">{money(c.water_debt)}</Row>
                 <Row label="Deuda de luz">{money(c.electricity_debt)}</Row>
                 <Row label="Deuda de gas">{money(c.gas_debt)}</Row>

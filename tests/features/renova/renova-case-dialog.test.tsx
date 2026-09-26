@@ -116,7 +116,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
       "Baños",
       "Recámaras",
       "Deuda predial",
-      "Otros adeudos",
+      "Adeudo",
       "Deuda de agua",
       "Deuda de luz",
       "Deuda de gas",
@@ -212,7 +212,7 @@ describe("RenovaCaseDialog — money and debts", () => {
     type("Deuda de luz", "450");
     expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos: $13,250 MXN");
 
-    type("Otros adeudos", "3000.5");
+    type("Adeudo", "3000.5");
     expect(screen.getByTestId("debt-total")).toHaveTextContent("$16,250.50 MXN");
     // The market value is not a debt.
     type("Valor de mercado", "9999999");
@@ -223,7 +223,7 @@ describe("RenovaCaseDialog — money and debts", () => {
     renderCreate();
     await screen.findByRole("dialog");
     type("Deuda predial", "1000");
-    type("Otros adeudos", "-500");
+    type("Adeudo", "-500");
 
     expect(screen.getByTestId("debt-total")).toHaveTextContent("$1,000 MXN");
     fillRequired();
@@ -336,6 +336,123 @@ describe("RenovaCaseDialog — segmented controls", () => {
   });
 });
 
+describe("RenovaCaseDialog — dwelling type vs. duplex configuration", () => {
+  it("Casa and Departamento remain mutually exclusive, and Dúplex is a separate checkbox — not a third radio option", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    expect(screen.getByRole("radiogroup", { name: "Tipo de vivienda" }).querySelectorAll('[role="radio"]')).toHaveLength(2);
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toBeInTheDocument();
+  });
+
+  it("Dúplex can be combined with Casa", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Casa" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+
+    expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ dwelling_type: "house", is_duplex: true });
+  });
+
+  it("Dúplex can be combined with Departamento", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ dwelling_type: "apartment", is_duplex: true });
+  });
+
+  it("Dúplex can be selected with no base type yet, and clicking it again clears it", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    const duplex = screen.getByRole("checkbox", { name: "Dúplex" });
+    fireEvent.click(duplex);
+    expect(duplex).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(duplex);
+    expect(duplex).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("changing the base type never turns Dúplex off, in either direction", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Casa" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+  });
+});
+
+describe("RenovaCaseDialog — deuda predial: pesos vs. años", () => {
+  it("defaults to pesos, and switching to años swaps the amount field for a whole-years field", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    expect(screen.getByRole("radio", { name: "Pesos (MXN)" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Deuda predial")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+
+    expect(screen.getByRole("radio", { name: "Años" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByLabelText("Deuda predial")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Deuda predial (años)")).toBeInTheDocument();
+  });
+
+  it("sends the unit and the years value, and excludes it from the live debt total (years and pesos can't be summed)", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    type("Deuda de agua", "800");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+    type("Deuda predial (años)", "3");
+
+    expect(screen.getByTestId("debt-total")).toHaveTextContent("$800 MXN");
+
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({
+      property_tax_debt_unit: "years",
+      property_tax_debt: "3",
+    });
+  });
+
+  it("rejects a non-integer or over-60 years value", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    fireEvent.click(screen.getByRole("radio", { name: "Años" }));
+
+    type("Deuda predial (años)", "3.5");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    expect(await screen.findByText("Ingresa un número entero de años.")).toBeInTheDocument();
+    expect(createRenovaCaseMock).not.toHaveBeenCalled();
+
+    type("Deuda predial (años)", "61");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
+    expect(await screen.findByText("Máximo 60 años.")).toBeInTheDocument();
+    expect(createRenovaCaseMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("RenovaCaseDialog — saving", () => {
   it("creates a prospect with only the mandatory fields — status new, nothing else invented", async () => {
     const { onSaved } = renderCreate();
@@ -372,7 +489,8 @@ describe("RenovaCaseDialog — saving", () => {
     type("Colonia", "Centro");
     type("Municipio", "Monterrey");
     type("Código postal", "64000");
-    fireEvent.click(screen.getByRole("radio", { name: "Dúplex" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Departamento" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Dúplex" }));
     type("Plantas", "2");
     type("Baños", "2.5");
     type("Recámaras", "3");
@@ -394,7 +512,8 @@ describe("RenovaCaseDialog — saving", () => {
       neighborhood: "Centro",
       municipality: "Monterrey",
       postal_code: "64000",
-      dwelling_type: "duplex",
+      dwelling_type: "apartment",
+      is_duplex: true,
       floors: 2,
       bathrooms: "2.5",
       bedrooms: 3,
@@ -624,7 +743,8 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("María López");
     expect(screen.getByLabelText("Calle y número")).toHaveValue("Av. Constitución 123");
     expect(screen.getByLabelText("Código postal")).toHaveValue("64000");
-    expect(screen.getByRole("radio", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Departamento" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Rentada" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Valor de mercado")).toHaveValue("1,400,000");
     // Same layout, same six sections.

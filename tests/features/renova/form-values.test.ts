@@ -8,7 +8,13 @@ import {
 import { validateRenovaForm } from "@/features/renova/lib/validation";
 import { formatMoney, formatMoneyInputDisplay, normalizeMoneyInput, sumDebts } from "@/features/renova/lib/money";
 import { renovaShortId } from "@/features/renova/lib/short-id";
-import { formatRenovaDate, formatRenovaMoney, formatRenovaOccupancy, formatRenovaStatus } from "@/features/renova/types";
+import {
+  formatRenovaDate,
+  formatRenovaDwellingWithDuplex,
+  formatRenovaMoney,
+  formatRenovaOccupancy,
+  formatRenovaStatus,
+} from "@/features/renova/types";
 import { parseLeadsView } from "@/features/leads/views";
 import { makeRenovaCase } from "@/tests/test-utils/renova-fixtures";
 
@@ -167,6 +173,8 @@ describe("toRenovaPayload", () => {
       owner_name: "María López",
       owner_phone: "+52 81 5555 0101",
       has_deeds: "unknown",
+      is_duplex: false,
+      property_tax_debt_unit: "mxn",
     });
     for (const key of ["organization_id", "nss", "source", "key_questions"]) expect(payload).not.toHaveProperty(key);
   });
@@ -270,6 +278,15 @@ describe("formatting", () => {
     expect(renovaShortId(id)).toBe("RN-9F3A2C");
     expect(renovaShortId(id)).not.toContain(id);
     expect(renovaShortId("")).toBe("RN-000000");
+  });
+
+  it("builds one combined dwelling phrase — base type and duplex are never shown as disconnected facts", () => {
+    expect(formatRenovaDwellingWithDuplex("house", false)).toBe("Casa");
+    expect(formatRenovaDwellingWithDuplex("apartment", false)).toBe("Departamento");
+    expect(formatRenovaDwellingWithDuplex("house", true)).toBe("Casa dúplex");
+    expect(formatRenovaDwellingWithDuplex("apartment", true)).toBe("Departamento dúplex");
+    expect(formatRenovaDwellingWithDuplex(null, true)).toBe("Dúplex — tipo base por confirmar");
+    expect(formatRenovaDwellingWithDuplex(null, false)).toBe("—");
   });
 });
 

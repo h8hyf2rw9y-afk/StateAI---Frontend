@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { DEFAULT_SHARE_OPTIONS, RenovaShareCard, type RenovaShareOptions } from "@/features/renova/components/renova-share-card";
 import { makeRenovaCase } from "@/tests/test-utils/renova-fixtures";
 import type { RenovaCase } from "@/features/renova/types";
@@ -38,7 +38,7 @@ describe("RenovaShareCard — content from a real case", () => {
       "Municipio",
       "Código postal",
       "Resumen del inmueble",
-      "Tipo",
+      "Vivienda",
       "Plantas",
       "Baños",
       "Recámaras",
@@ -74,7 +74,7 @@ describe("RenovaShareCard — content from a real case", () => {
     expect(c).toHaveTextContent("Centro");
     expect(c).toHaveTextContent("Monterrey");
     expect(c).toHaveTextContent("64000");
-    expect(c).toHaveTextContent("Dúplex");
+    expect(c).toHaveTextContent("Departamento dúplex");
     expect(c).toHaveTextContent("Rentada");
     expect(c).toHaveTextContent("Infonavit");
     expect(c).toHaveTextContent("Requiere pintura");
@@ -132,6 +132,7 @@ describe("RenovaShareCard — incomplete cases", () => {
         municipality: null,
         postal_code: null,
         dwelling_type: null,
+        is_duplex: false,
         floors: null,
         bathrooms: null,
         bedrooms: null,
@@ -156,6 +157,45 @@ describe("RenovaShareCard — incomplete cases", () => {
     expect(card({ bathrooms: "2.0" })).toHaveTextContent(/Baños\s*2(?!\.)/);
     document.body.innerHTML = "";
     expect(card({ bathrooms: "2.5" })).toHaveTextContent("2.5");
+  });
+});
+
+describe("RenovaShareCard — dwelling type vs. duplex configuration", () => {
+  it('shows "Casa" plainly when it is not a duplex', () => {
+    const c = card({ dwelling_type: "house", is_duplex: false });
+    expect(c).toHaveTextContent("Vivienda");
+    expect(c).toHaveTextContent("Casa");
+    expect(c.textContent).not.toContain("Departamento");
+    expect(c.textContent).not.toMatch(/dúplex/i);
+  });
+
+  it('shows "Casa dúplex" as one combined phrase — never as disconnected facts', () => {
+    const c = card({ dwelling_type: "house", is_duplex: true });
+    expect(c).toHaveTextContent("Casa dúplex");
+  });
+
+  it('shows "Departamento dúplex" as one combined phrase', () => {
+    const c = card({ dwelling_type: "apartment", is_duplex: true });
+    expect(c).toHaveTextContent("Departamento dúplex");
+  });
+
+  it('an old record with an unknown base type reads "Dúplex — tipo base por confirmar", never a bare "Dúplex"', () => {
+    const c = card({ dwelling_type: null, is_duplex: true });
+    expect(c).toHaveTextContent("Dúplex — tipo base por confirmar");
+  });
+
+  it("shows Pendiente when neither the base type nor duplex was captured", () => {
+    const c = card({ dwelling_type: null, is_duplex: false });
+    const dwellingValue = within(c).getByText("Vivienda").nextElementSibling;
+    expect(dwellingValue).toHaveTextContent("Pendiente");
+  });
+});
+
+describe("RenovaShareCard — deuda predial in years", () => {
+  it("shows the years, not a fabricated peso amount, when property_tax_debt_unit is 'years'", () => {
+    const c = card({ property_tax_debt: "3.00", property_tax_debt_unit: "years" });
+
+    expect(c).toHaveTextContent("3 años");
   });
 });
 

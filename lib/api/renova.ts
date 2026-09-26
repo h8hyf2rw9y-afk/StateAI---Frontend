@@ -5,6 +5,7 @@ import type {
   RenovaCaseInput,
   RenovaCaseListItem,
   RenovaHistoryEntry,
+  RenovaPipelineResponse,
   RenovaSensitiveData,
 } from "@/features/renova/types";
 
@@ -25,6 +26,8 @@ export interface RenovaCaseFilters {
   q?: string;
   status?: string;
   assigned_user_id?: string;
+  /** Omitted -> only non-archived cases (the default "Activos" view). true -> only archived ("Archivados"). */
+  archived?: boolean;
 }
 
 export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResult<RenovaCaseListItem[]>> {
@@ -34,6 +37,7 @@ export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResu
       q: filters.q?.trim() || undefined,
       status: filters.status || undefined,
       assigned_user_id: filters.assigned_user_id || undefined,
+      archived: filters.archived,
     },
   });
 }
@@ -48,6 +52,11 @@ export function createRenovaCase(input: RenovaCaseInput): Promise<ApiResult<Reno
 
 export function updateRenovaCase(caseId: string, input: RenovaCaseInput): Promise<ApiResult<RenovaCase>> {
   return apiRequest<RenovaCase>(`/api/v1/renova/cases/${caseId}`, { method: "PATCH", body: input });
+}
+
+/** The Renova Kanban board: every active-flow case, already grouped by stage — see GET /renova/pipeline. */
+export function getRenovaPipeline(): Promise<ApiResult<RenovaPipelineResponse>> {
+  return apiRequest<RenovaPipelineResponse>("/api/v1/renova/pipeline");
 }
 
 interface AuditLogRow {

@@ -6,8 +6,9 @@ import {
   formatRenovaDate,
   formatRenovaDateTime,
   formatRenovaDeeds,
-  formatRenovaDwelling,
+  formatRenovaDwellingWithDuplex,
   formatRenovaOccupancy,
+  formatRenovaPropertyTaxDebt,
   type RenovaShareCase,
 } from "@/features/renova/types";
 
@@ -84,7 +85,9 @@ export function RenovaShareCard({
   const money = (value: string | number | null) => (value === null ? null : formatMoney(value, c.currency));
   const servicesDebt = sumDebts({ water_debt: c.water_debt ?? "", electricity_debt: c.electricity_debt ?? "", gas_debt: c.gas_debt ?? "" });
   const otherDebt = c.other_debt !== null && Number(c.other_debt) > 0 ? formatMoney(c.other_debt, c.currency) : null;
-  const dwelling = c.dwelling_type ? formatRenovaDwelling(c.dwelling_type) : null;
+  // One combined phrase ("Casa dúplex", "Dúplex — tipo base por confirmar", …)
+  // — never the base type and "Dúplex" shown as disconnected facts.
+  const dwelling = c.dwelling_type || c.is_duplex ? formatRenovaDwellingWithDuplex(c.dwelling_type, c.is_duplex) : null;
 
   return (
     <div
@@ -119,7 +122,7 @@ export function RenovaShareCard({
         {options.includeAmounts && (
           <div>
             <dl className="grid grid-cols-3 gap-x-10">
-              <Item label="Deuda predial" value={money(c.property_tax_debt)} />
+              <Item label="Deuda predial" value={formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency)} />
               <Item label="Deudas de servicios" value={servicesDebt === null ? null : formatMoney(servicesDebt, c.currency)} />
               <Item label="Total de adeudos" value={money(c.total_debt)} />
             </dl>
@@ -138,7 +141,7 @@ export function RenovaShareCard({
 
         <Block title="Resumen del inmueble">
           <dl className="grid grid-cols-5 gap-x-6">
-            <Item label="Tipo" value={dwelling} />
+            <Item label="Vivienda" value={dwelling} />
             <Item label="Plantas" value={present(c.floors)} />
             <Item label="Baños" value={present(c.bathrooms)?.replace(/\.0$/, "") ?? null} />
             <Item label="Recámaras" value={present(c.bedrooms)} />

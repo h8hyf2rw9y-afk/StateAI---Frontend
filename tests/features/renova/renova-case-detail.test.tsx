@@ -61,7 +61,7 @@ describe("RenovaCaseDetail", () => {
       "Centro",
       "Monterrey",
       "64000",
-      "Dúplex",
+      "Departamento dúplex",
       "Rentada",
       "Requiere pintura",
       "Casado(a) — sociedad conyugal",
@@ -84,6 +84,13 @@ describe("RenovaCaseDetail", () => {
     for (const amount of ["$950,000", "$1,400,000", "$1,100,000", "$12,000", "$13,250"]) {
       expect(document.body).toHaveTextContent(amount);
     }
+  });
+
+  it("shows 'Deuda predial' in years, not as a peso amount, when that's how it was captured", async () => {
+    await renderDetail({ property_tax_debt: "3.00", property_tax_debt_unit: "years" });
+
+    expect(document.body).toHaveTextContent("3 años");
+    expect(document.body).not.toHaveTextContent("$3");
   });
 
   it("shows NSS and número de crédito ONLY as the server's masks", async () => {

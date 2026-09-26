@@ -26,12 +26,14 @@ export interface RenovaFormValues {
   neighborhood: string;
   municipality: string;
   postal_code: string;
-  dwelling_type: string; // "" = not specified
+  dwelling_type: string; // "" = not specified — the mutually-exclusive BASE type only ("house"/"apartment"), never "duplex"
+  is_duplex: boolean; // independent configuration; can be true with either base type, or with no base type yet
   floors: string;
   bathrooms: string;
   bedrooms: string;
   // Adeudos
   property_tax_debt: string;
+  property_tax_debt_unit: string; // "mxn" or "years" — see RENOVA_PROPERTY_TAX_DEBT_UNITS
   other_debt: string;
   water_debt: string;
   electricity_debt: string;
@@ -71,10 +73,12 @@ export const RENOVA_FIELD_ORDER: (keyof RenovaFormValues)[] = [
   "municipality",
   "postal_code",
   "dwelling_type",
+  "is_duplex",
   "floors",
   "bathrooms",
   "bedrooms",
   "property_tax_debt",
+  "property_tax_debt_unit",
   "other_debt",
   "water_debt",
   "electricity_debt",
@@ -115,10 +119,12 @@ export function emptyRenovaFormValues(assignedUserId = ""): RenovaFormValues {
     municipality: "",
     postal_code: "",
     dwelling_type: "",
+    is_duplex: false,
     floors: "",
     bathrooms: "",
     bedrooms: "",
     property_tax_debt: "",
+    property_tax_debt_unit: "mxn",
     other_debt: "",
     water_debt: "",
     electricity_debt: "",
@@ -159,10 +165,12 @@ export function valuesFromRenovaCase(renovaCase: RenovaCase): RenovaFormValues {
     municipality: s(renovaCase.municipality),
     postal_code: s(renovaCase.postal_code),
     dwelling_type: s(renovaCase.dwelling_type),
+    is_duplex: renovaCase.is_duplex,
     floors: s(renovaCase.floors),
     bathrooms: s(renovaCase.bathrooms),
     bedrooms: s(renovaCase.bedrooms),
     property_tax_debt: money(renovaCase.property_tax_debt),
+    property_tax_debt_unit: renovaCase.property_tax_debt_unit,
     other_debt: money(renovaCase.other_debt),
     water_debt: money(renovaCase.water_debt),
     electricity_debt: money(renovaCase.electricity_debt),
@@ -233,6 +241,8 @@ export function toRenovaPayload(values: RenovaFormValues, mode: "create" | "edit
     owner_name: values.owner_name.trim(),
     owner_phone: values.owner_phone.trim(),
     has_deeds: values.has_deeds,
+    is_duplex: values.is_duplex,
+    property_tax_debt_unit: values.property_tax_debt_unit,
   };
 
   const out = payload as Record<string, unknown>;

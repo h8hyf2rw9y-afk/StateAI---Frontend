@@ -31,6 +31,8 @@ const NSS_LENGTH = 11;
 const CREDIT_MIN = 6;
 const CREDIT_MAX = 20;
 const DIGITS = /^[0-9]+$/;
+/** Mirrors the backend's PROPERTY_TAX_DEBT_MAX_YEARS (app/schemas/renova_case.py). */
+const PROPERTY_TAX_DEBT_MAX_YEARS = 60;
 
 function isNegative(value: string): boolean {
   return Number(value) < 0;
@@ -59,13 +61,24 @@ export function validateRenovaForm(values: RenovaFormValues): RenovaValidation {
     }
   }
 
+  const propertyTaxDebtInYears = values.property_tax_debt_unit === "years";
   for (const field of MONEY_FIELDS) {
+    // "Deuda predial" in years isn't a peso amount — validated separately below.
+    if (field === "property_tax_debt" && propertyTaxDebtInYears) continue;
     const value = values[field].trim();
     if (!value) continue;
     if (Number.isNaN(Number(value))) errors[field] = "Ingresa un monto válido.";
     else if (isNegative(value)) errors[field] = "El monto no puede ser negativo.";
     else if (Number(value) > MAX_MONEY) errors[field] = "El monto es demasiado grande.";
     else if (!/^\d+(\.\d{1,2})?$/.test(value)) errors[field] = "Usa máximo dos decimales.";
+  }
+  if (propertyTaxDebtInYears) {
+    const years = values.property_tax_debt.trim();
+    if (years) {
+      if (Number.isNaN(Number(years)) || !Number.isInteger(Number(years))) errors.property_tax_debt = "Ingresa un número entero de años.";
+      else if (isNegative(years)) errors.property_tax_debt = "No puede ser negativo.";
+      else if (Number(years) > PROPERTY_TAX_DEBT_MAX_YEARS) errors.property_tax_debt = `Máximo ${PROPERTY_TAX_DEBT_MAX_YEARS} años.`;
+    }
   }
 
   const postalCode = values.postal_code.trim();
