@@ -35,7 +35,7 @@ export interface RequestOptions {
   headers?: Record<string, string>;
 }
 
-/** 
+/**
  * Build one canonical API URL even when an environment was configured with
  * the version prefix already included (for example
  * `http://localhost:8000/api/v1`). Domain clients intentionally pass their
