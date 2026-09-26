@@ -40,6 +40,20 @@ describe("RenovaChatWorkspace", () => {
     expect(screen.getByText("¿Cuántos leads activos tengo?")).toBeInTheDocument();
   });
 
+  it("explains how to recover when the configured backend does not expose Chat Renova", async () => {
+    listConversationsMock.mockResolvedValue({
+      ok: false,
+      error: { message: "Not Found", status: 404 },
+    });
+
+    render(<RenovaChatWorkspace />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /actualiza main, reinicia FastAPI y verifica NEXT_PUBLIC_API_URL/i
+    );
+    expect(screen.queryByText("This couldn't be found.")).not.toBeInTheDocument();
+  });
+
   it("creates a conversation, sends a question and renders the persisted answer", async () => {
     createConversationMock.mockResolvedValue({ ok: true, data: conversation });
     askMock.mockResolvedValue({
