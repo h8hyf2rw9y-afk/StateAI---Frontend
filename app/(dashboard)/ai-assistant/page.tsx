@@ -17,6 +17,9 @@ import { getApiErrorMessage } from "@/lib/api/errors";
 import { FormError } from "@/features/auth/components/form-error";
 import type { AiAgent } from "@/features/ai/types";
 import type { Contact } from "@/features/leads/types";
+import { RenovaChatWorkspace } from "@/features/ai/components/renova-chat-workspace";
+import { Button } from "@/components/ui/button";
+import { Bot, PanelsTopLeft } from "lucide-react";
 
 /**
  * The three real agents this app has today (see app/ai/registry.py's
@@ -78,6 +81,10 @@ type Status = "loading" | "success" | "error";
  * own two panels already do.
  */
 export default function AiAssistantPage() {
+  // Keep the previously shipped CRM agents as the initial surface while
+  // this first Renova-chat beta is validated. The new conversation view is
+  // one click away and can become the default after real usage confirms it.
+  const [workspace, setWorkspace] = useState<"renova" | "crm">("crm");
   const [status, setStatus] = useState<Status>("loading");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -110,6 +117,35 @@ export default function AiAssistantPage() {
 
   return (
     <>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">State AI</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Intelligence workspace</h1>
+        </div>
+        <div className="flex rounded-xl border border-border/70 bg-muted/30 p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={workspace === "renova" ? "secondary" : "ghost"}
+            onClick={() => setWorkspace("renova")}
+            className="gap-2"
+          >
+            <Bot className="size-4" /> Chat Renova
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={workspace === "crm" ? "secondary" : "ghost"}
+            onClick={() => setWorkspace("crm")}
+            className="gap-2"
+          >
+            <PanelsTopLeft className="size-4" /> Agentes CRM
+          </Button>
+        </div>
+      </div>
+
+      {workspace === "renova" ? <RenovaChatWorkspace /> : (
+      <>
       <PageHeader
         title="AI Assistant"
         description="Run the real Lead Intelligence, Follow-up, and Pipeline agents against one of your contacts."
@@ -204,6 +240,8 @@ export default function AiAssistantPage() {
             <PipelinePanel contactId={selectedContact.id} />
           </div>
         </>
+      )}
+      </>
       )}
     </>
   );
