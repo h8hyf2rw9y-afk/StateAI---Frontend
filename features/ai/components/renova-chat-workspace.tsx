@@ -23,6 +23,13 @@ const SUGGESTIONS = [
 
 type LoadState = "loading" | "ready" | "error";
 
+function getRenovaChatLoadErrorMessage(status?: number): string {
+  if (status === 404) {
+    return "Chat Renova no está disponible en el backend configurado. Actualiza main, reinicia FastAPI y verifica NEXT_PUBLIC_API_URL.";
+  }
+  return "";
+}
+
 export function RenovaChatWorkspace() {
   const [conversations, setConversations] = useState<RenovaChatConversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -39,7 +46,9 @@ export function RenovaChatWorkspace() {
     getRenovaChatConversations().then((response) => {
       if (cancelled) return;
       if (!response.ok) {
-        setError(getApiErrorMessage(response.error));
+        setError(
+          getRenovaChatLoadErrorMessage(response.error.status) || getApiErrorMessage(response.error)
+        );
         setLoadState("error");
         return;
       }
