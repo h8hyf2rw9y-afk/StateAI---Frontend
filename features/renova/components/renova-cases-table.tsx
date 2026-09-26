@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen, ListFilter, Loader2, Pencil, Search, Share2 } from "lucide-react";
+import { Archive, ArchiveRestore, FolderOpen, ListFilter, Loader2, Pencil, Search, Share2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
-import { getRenovaCases } from "@/lib/api/renova";
+import { getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
 import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import {
@@ -59,6 +59,11 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [advisorFilter, setAdvisorFilter] = useState<"all" | "mine">("all");
+  // "Activos" (default) hides rejected/cancelled cases that were archived;
+  // "Archivados" shows only those — same data, never deleted, see toggleArchived.
+  const [view, setView] = useState<"active" | "archived">("active");
+  const [localRefresh, setLocalRefresh] = useState(0);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -67,7 +72,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   }, [query]);
 
   const advisorId = advisorFilter === "mine" ? user?.id : undefined;
-  const requestKey = JSON.stringify([debouncedQuery, statusFilter, advisorId ?? null, refreshKey]);
+  const requestKey = JSON.stringify([debouncedQuery, statusFilter, advisorId ?? null, view, refreshKey, localRefresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +80,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       q: debouncedQuery,
       status: statusFilter === "all" ? undefined : statusFilter,
       assigned_user_id: advisorId,
+      archived: view === "archived" ? true : undefined,
     }).then((response) => {
       if (cancelled) return;
       setLoaded(
@@ -101,8 +107,41 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
     setAdvisorFilter("all");
   }
 
+  async function toggleArchived(caseId: string, archived: boolean) {
+    setArchiveError(null);
+    const response = await updateRenovaCase(caseId, { archived });
+    if (!response.ok) {
+      setArchiveError(getRenovaErrorMessage(response.error));
+      return;
+    }
+    setLocalRefresh((n) => n + 1);
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex w-fit gap-1 rounded-xl border border-border/70 bg-background/45 p-1" role="radiogroup" aria-label="Vista de expedientes">
+        {(["active", "archived"] as const).map((v) => (
+          <Button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={view === v}
+            variant="ghost"
+            size="sm"
+            className={cn("rounded-lg", view === v && "bg-primary/15 text-foreground hover:bg-primary/20")}
+            onClick={() => setView(v)}
+          >
+            {v === "active" ? "Activos" : "Archivados"}
+          </Button>
+        ))}
+      </div>
+
+      {archiveError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2">
+          <FormError message={archiveError} />
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -186,12 +225,20 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       {!isLoading && loaded?.cases && loaded.cases.length === 0 && (
         <div className="rounded-xl border">
           <EmptyState
-            icon={FolderOpen}
-            title={hasActiveFilters ? "Ningún expediente coincide con los filtros" : "Aún no hay expedientes Renova"}
+            icon={view === "archived" ? Archive : FolderOpen}
+            title={
+              hasActiveFilters
+                ? "Ningún expediente coincide con los filtros"
+                : view === "archived"
+                  ? "No hay expedientes archivados"
+                  : "Aún no hay expedientes Renova"
+            }
             description={
               hasActiveFilters
                 ? "Prueba con otra búsqueda o limpia los filtros."
-                : "Registra el primero con “Nuevo prospecto Renova”."
+                : view === "archived"
+                  ? "Los expedientes rechazados o cancelados que archives aparecerán aquí."
+                  : "Registra el primero con “Nuevo prospecto Renova”."
             }
           />
         </div>
@@ -262,6 +309,31 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                         <Pencil />
                         Editar
                       </Button>
+                      {renovaCase.archived ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Desarchivar expediente de ${renovaCase.owner_name}`}
+                          onClick={() => toggleArchived(renovaCase.id, false)}
+                        >
+                          <ArchiveRestore />
+                          Desarchivar
+                        </Button>
+                      ) : (
+                        (renovaCase.status === "rejected" || renovaCase.status === "cancelled") && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-label={`Archivar expediente de ${renovaCase.owner_name}`}
+                            onClick={() => toggleArchived(renovaCase.id, true)}
+                          >
+                            <Archive />
+                            Archivar
+                          </Button>
+                        )
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

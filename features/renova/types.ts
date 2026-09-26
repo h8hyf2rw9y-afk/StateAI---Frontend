@@ -28,6 +28,8 @@ export interface RenovaCaseListItem {
   entry_date: string; // YYYY-MM-DD
   source: string;
   status: string;
+  /** Hides this case from the default listing without deleting it. Only ever true for a "rejected"/"cancelled" case — see the "Archivar" action. */
+  archived: boolean;
   owner_name: string;
   owner_phone: string;
   /** Mutually-exclusive BASE type only ("house"/"apartment"); never "duplex" — see `is_duplex`. */
@@ -94,6 +96,7 @@ export interface RenovaCaseInput {
   entry_date?: string;
   source?: string;
   status?: string;
+  archived?: boolean;
   owner_name?: string;
   owner_phone?: string;
   marital_status?: string | null;

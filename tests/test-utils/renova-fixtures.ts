@@ -10,6 +10,7 @@ export function makeRenovaCase(overrides: Partial<RenovaCase> = {}): RenovaCase 
     entry_date: "2026-09-20",
     source: "whatsapp",
     status: "reviewing",
+    archived: false,
     owner_name: "María López",
     owner_phone: "+52 81 5555 0101",
     marital_status: "married_conjugal_partnership",

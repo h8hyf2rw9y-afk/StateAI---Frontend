@@ -26,6 +26,8 @@ export interface RenovaCaseFilters {
   q?: string;
   status?: string;
   assigned_user_id?: string;
+  /** Omitted -> only non-archived cases (the default "Activos" view). true -> only archived ("Archivados"). */
+  archived?: boolean;
 }
 
 export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResult<RenovaCaseListItem[]>> {
@@ -35,6 +37,7 @@ export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResu
       q: filters.q?.trim() || undefined,
       status: filters.status || undefined,
       assigned_user_id: filters.assigned_user_id || undefined,
+      archived: filters.archived,
     },
   });
 }

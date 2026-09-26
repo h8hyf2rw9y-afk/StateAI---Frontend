@@ -4,6 +4,7 @@ import { RenovaCasesTable } from "@/features/renova/components/renova-cases-tabl
 import type { RenovaCaseListItem } from "@/features/renova/types";
 
 const getRenovaCasesMock = vi.fn();
+const updateRenovaCaseMock = vi.fn();
 const getContactsMock = vi.fn();
 const pushMock = vi.fn();
 
@@ -11,7 +12,7 @@ vi.mock("@/lib/api/renova", () => ({
   getRenovaCases: (...args: unknown[]) => getRenovaCasesMock(...args),
   getRenovaCase: vi.fn(),
   createRenovaCase: vi.fn(),
-  updateRenovaCase: vi.fn(),
+  updateRenovaCase: (...args: unknown[]) => updateRenovaCaseMock(...args),
 }));
 vi.mock("@/lib/api/contacts", () => ({
   getContacts: (...args: unknown[]) => getContactsMock(...args),
@@ -32,6 +33,7 @@ function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListIt
     entry_date: "2026-09-20",
     source: "whatsapp",
     status: "reviewing",
+    archived: false,
     owner_name: "María López",
     owner_phone: "+52 81 5555 0101",
     dwelling_type: "apartment",
@@ -60,9 +62,11 @@ function openFilters() {
 describe("RenovaCasesTable", () => {
   beforeEach(() => {
     getRenovaCasesMock.mockReset();
+    updateRenovaCaseMock.mockReset();
     getContactsMock.mockReset();
     pushMock.mockReset();
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase()] });
+    updateRenovaCaseMock.mockResolvedValue({ ok: true, data: {} });
   });
 
   it("shows a loading state before the cases arrive", () => {
@@ -305,5 +309,97 @@ describe("RenovaCasesTable", () => {
     await waitFor(() => expect(getRenovaCasesMock.mock.calls.length).toBeGreaterThan(1));
 
     expect(getContactsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("RenovaCasesTable — archiving", () => {
+  beforeEach(() => {
+    getRenovaCasesMock.mockReset();
+    updateRenovaCaseMock.mockReset();
+    getContactsMock.mockReset();
+    pushMock.mockReset();
+    updateRenovaCaseMock.mockResolvedValue({ ok: true, data: {} });
+  });
+
+  it("defaults to 'Activos' and only requests archived=true after switching", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase()] });
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+    expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ archived: undefined }));
+
+    fireEvent.click(screen.getByRole("radio", { name: "Archivados" }));
+
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ archived: true })));
+  });
+
+  it("offers 'Archivar' only on a rejected/cancelled row, never on an active one", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "case-active", owner_name: "Activo", status: "negotiating" }),
+        makeCase({ id: "case-rejected", owner_name: "Rechazado Uno", status: "rejected" }),
+      ],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Activo");
+
+    expect(screen.queryByRole("button", { name: "Archivar expediente de Activo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" })).toBeInTheDocument();
+  });
+
+  it("archiving a case PATCHes archived=true and refreshes the list", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [makeCase({ id: "case-1", owner_name: "Rechazado Uno", status: "rejected" })],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Rechazado Uno");
+    const callsBefore = getRenovaCasesMock.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" }));
+
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledWith("case-1", { archived: true }));
+    await waitFor(() => expect(getRenovaCasesMock.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it("in 'Archivados', a row shows 'Desarchivar' instead of 'Archivar', and it PATCHes archived=false", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [makeCase({ id: "case-1", owner_name: "Rechazado Uno", status: "rejected", archived: true })],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Rechazado Uno");
+    fireEvent.click(screen.getByRole("radio", { name: "Archivados" }));
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ archived: true })));
+    await screen.findByText("Rechazado Uno");
+
+    expect(screen.queryByRole("button", { name: "Archivar expediente de Rechazado Uno" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Desarchivar expediente de Rechazado Uno" }));
+
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledWith("case-1", { archived: false }));
+  });
+
+  it("shows a dedicated empty state for 'Archivados'", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [] });
+    render(<RenovaCasesTable />);
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: "Archivados" }));
+
+    expect(await screen.findByText("No hay expedientes archivados")).toBeInTheDocument();
+  });
+
+  it("shows an error and does not crash when archiving fails", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [makeCase({ id: "case-1", owner_name: "Rechazado Uno", status: "rejected" })],
+    });
+    updateRenovaCaseMock.mockResolvedValue({ ok: false, error: { status: 500 } });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Rechazado Uno");
+
+    fireEvent.click(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" }));
+
+    expect(await screen.findByText(/algo salió mal|no se pudo conectar/i)).toBeInTheDocument();
+    expect(screen.getByText("Rechazado Uno")).toBeInTheDocument();
   });
 });
