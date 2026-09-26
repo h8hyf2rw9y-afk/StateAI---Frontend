@@ -7,7 +7,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 // Imported after the mock above so apiRequest picks up the mocked module.
-const { apiRequest } = await import("@/lib/api/client");
+const { apiRequest, buildApiUrl } = await import("@/lib/api/client");
 
 function jsonResponse(status: number, body: unknown) {
   return {
@@ -114,5 +114,20 @@ describe("apiRequest", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toBe("Failed to fetch");
+  });
+});
+
+
+describe("buildApiUrl", () => {
+  it("builds a versioned path from an origin-only API base URL", () => {
+    expect(
+      buildApiUrl("/api/v1/renova/chat/conversations", undefined, "http://localhost:8000")
+    ).toBe("http://localhost:8000/api/v1/renova/chat/conversations");
+  });
+
+  it("does not duplicate /api/v1 when NEXT_PUBLIC_API_URL already includes it", () => {
+    expect(
+      buildApiUrl("/api/v1/renova/chat/conversations", undefined, "http://localhost:8000/api/v1/")
+    ).toBe("http://localhost:8000/api/v1/renova/chat/conversations");
   });
 });
