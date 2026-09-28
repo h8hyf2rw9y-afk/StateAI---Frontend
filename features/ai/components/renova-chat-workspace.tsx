@@ -39,7 +39,7 @@ export function RenovaChatWorkspace() {
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +80,13 @@ export function RenovaChatWorkspace() {
   }, [selectedId, loadedConversationId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView?.({ behavior: "smooth" });
+    const viewport = messagesViewportRef.current;
+    if (!viewport) return;
+
+    // Keep the page itself stationary. scrollIntoView() also scrolls outer
+    // ancestors and used to push the entire chat component down whenever a
+    // message was added. Only the conversation viewport should move.
+    viewport.scrollTop = viewport.scrollHeight;
   }, [messages, sending]);
 
   function startNewConversation() {
@@ -159,15 +165,18 @@ export function RenovaChatWorkspace() {
   const isEmpty = !messagesLoading && messages.length === 0;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/75 shadow-[0_24px_80px_-48px_rgba(124,58,237,0.45)] backdrop-blur-xl">
-      <div className="grid min-h-[690px] md:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="border-b border-border/70 bg-muted/20 p-3 md:border-r md:border-b-0">
+    <div
+      data-testid="renova-chat-shell"
+      className="h-[calc(100dvh-9rem)] min-h-[620px] max-h-[780px] overflow-hidden rounded-3xl border border-border/70 bg-card/75 shadow-[0_24px_80px_-48px_rgba(124,58,237,0.45)] backdrop-blur-xl"
+    >
+      <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[260px_minmax(0,1fr)] md:grid-rows-1">
+        <aside className="flex min-h-0 flex-col border-b border-border/70 bg-muted/20 p-3 md:border-r md:border-b-0">
           <Button className="w-full justify-start gap-2" onClick={startNewConversation}>
             <MessageSquarePlus className="size-4" />
             Nueva conversación
           </Button>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 md:max-h-[610px] md:flex-col md:overflow-y-auto">
+          <div className="mt-4 flex min-h-0 gap-2 overflow-x-auto pb-1 md:flex-1 md:flex-col md:overflow-y-auto">
             {loadState === "loading" && (
               <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Cargando…
@@ -199,7 +208,7 @@ export function RenovaChatWorkspace() {
           </div>
         </aside>
 
-        <section className="flex min-h-[620px] min-w-0 flex-col">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           <header className="flex items-center justify-between border-b border-border/60 px-5 py-4">
             <div>
               <div className="flex items-center gap-2">
@@ -217,7 +226,13 @@ export function RenovaChatWorkspace() {
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+          <div
+            ref={messagesViewportRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Mensajes de Renova Assistant"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8"
+          >
             {messagesLoading && (
               <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> Cargando conversación…
@@ -274,7 +289,6 @@ export function RenovaChatWorkspace() {
                     </div>
                   </div>
                 )}
-                <div ref={bottomRef} />
               </div>
             )}
           </div>
