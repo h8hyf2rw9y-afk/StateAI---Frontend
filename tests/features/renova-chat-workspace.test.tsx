@@ -38,6 +38,15 @@ describe("RenovaChatWorkspace", () => {
     expect(await screen.findByText("Pregunta sobre tus leads de Renova")).toBeInTheDocument();
     expect(screen.getByText("Solo lectura")).toBeInTheDocument();
     expect(screen.getByText("¿Cuántos leads activos tengo?")).toBeInTheDocument();
+    expect(screen.getByTestId("renova-chat-shell")).toHaveClass(
+      "h-[calc(100dvh-9rem)]",
+      "overflow-hidden"
+    );
+    expect(screen.getByRole("log", { name: "Mensajes de Renova Assistant" })).toHaveClass(
+      "min-h-0",
+      "overflow-y-auto",
+      "overscroll-contain"
+    );
   });
 
   it("explains how to recover when the configured backend does not expose Chat Renova", async () => {
