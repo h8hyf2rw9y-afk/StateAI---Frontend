@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Handshake, Loader2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,13 +16,15 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getOpportunities } from "@/lib/api/pipeline";
+import { getOpportunities, updateOpportunityStage } from "@/lib/api/pipeline";
 import { getContacts } from "@/lib/api/contacts";
 import { getProperties } from "@/lib/api/properties";
 import { PipelineColumn } from "@/features/pipeline/components/pipeline-column";
 import {
+  OPPORTUNITY_LOST_REASONS,
   OPPORTUNITY_STAGE_VALUES,
   OPPORTUNITY_TYPE_LABELS,
+  formatOpportunityLostReason,
   formatOpportunityType,
   type Opportunity,
 } from "@/features/pipeline/types";
@@ -41,13 +46,8 @@ type Status = "loading" | "success" | "error";
  * real Contacts/Properties lists (joined by id) since OpportunityRead only
  * carries `contact_id`/`property_id`, never a duplicated name.
  *
- * Drag-and-drop is deliberately not implemented — moving an opportunity
- * between stages is done from its detail page via a stage selector (see
- * app/(dashboard)/pipeline/[id]/page.tsx), which is also the only place
- * `lost_reason` (required by the backend whenever a stage PATCH ends in
- * "lost") can be collected. A per-card drag target here would either skip
- * that requirement or need its own duplicate reason-picker UI, for no real
- * benefit over one click into the detail page — see this task's own brief.
+ * Every card includes a compact stage control. Regular moves apply directly
+ * from the board; moving to Lost opens the required reason dialog first.
  */
 export function PipelineBoard() {
   const [status, setStatus] = useState<Status>("loading");
@@ -57,6 +57,10 @@ export function PipelineBoard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [movingIds, setMovingIds] = useState<Set<string>>(new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [lostRequest, setLostRequest] = useState<Opportunity | null>(null);
+  const [lostReason, setLostReason] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +119,52 @@ export function PipelineBoard() {
     [filtered]
   );
 
+  async function applyStageChange(opportunity: Opportunity, stage: string, reason?: string) {
+    if (movingIds.has(opportunity.id) || opportunity.stage === stage) return;
+    setActionError(null);
+    setMovingIds((current) => new Set(current).add(opportunity.id));
+    setOpportunities((current) =>
+      current.map((item) =>
+        item.id === opportunity.id
+          ? { ...item, stage, lost_reason: stage === "lost" ? (reason ?? null) : null }
+          : item
+      )
+    );
+
+    const response = await updateOpportunityStage(opportunity.id, {
+      stage,
+      lost_reason: stage === "lost" ? reason : null,
+    });
+    setMovingIds((current) => {
+      const next = new Set(current);
+      next.delete(opportunity.id);
+      return next;
+    });
+
+    if (!response.ok) {
+      setOpportunities((current) => current.map((item) => (item.id === opportunity.id ? opportunity : item)));
+      setActionError(getApiErrorMessage(response.error));
+      return;
+    }
+    setOpportunities((current) => current.map((item) => (item.id === opportunity.id ? response.data : item)));
+  }
+
+  function requestStageChange(opportunity: Opportunity, stage: string) {
+    if (stage === "lost") {
+      setLostReason(opportunity.stage === "lost" ? (opportunity.lost_reason ?? "") : "");
+      setLostRequest(opportunity);
+      return;
+    }
+    void applyStageChange(opportunity, stage);
+  }
+
+  function confirmLost() {
+    if (!lostRequest || !lostReason) return;
+    void applyStageChange(lostRequest, "lost", lostReason);
+    setLostRequest(null);
+    setLostReason("");
+  }
+
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border py-16 text-center">
@@ -146,18 +196,24 @@ export function PipelineBoard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {actionError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <FormError message={actionError} />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by title or contact…"
-            className="pl-8"
+            className="rounded-md bg-background pl-8 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value ?? "all")}>
-          <SelectTrigger className="sm:w-48">
+          <SelectTrigger className="rounded-md bg-background shadow-none sm:w-48">
             <SelectValue placeholder="All types">
               {(value: string | null) =>
                 !value || value === "all" ? "All types" : formatOpportunityType(value)
@@ -176,7 +232,7 @@ export function PipelineBoard() {
       </div>
 
       {filtered.length > 0 ? (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex gap-3 overflow-x-auto pb-2">
           {stagesPresent.map((stage) => (
             <PipelineColumn
               key={stage}
@@ -184,6 +240,8 @@ export function PipelineBoard() {
               opportunities={filtered.filter((o) => o.stage === stage)}
               contactNames={contactNames}
               propertyNames={propertyNames}
+              movingIds={movingIds}
+              onStageChange={requestStageChange}
             />
           ))}
         </div>
@@ -194,6 +252,32 @@ export function PipelineBoard() {
           description="Try a different search term or clear the type filter."
         />
       )}
+
+      <Dialog open={lostRequest !== null} onOpenChange={(open) => !open && setLostRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark opportunity as lost</DialogTitle>
+            <DialogDescription>Select a reason before moving {lostRequest?.title} out of the active pipeline.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="pipeline-lost-reason">Lost reason</Label>
+            <Select value={lostReason} onValueChange={(value) => setLostReason(value ?? "")}>
+              <SelectTrigger id="pipeline-lost-reason">
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {OPPORTUNITY_LOST_REASONS.map((reason) => (
+                  <SelectItem key={reason} value={reason}>{formatOpportunityLostReason(reason)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLostRequest(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={!lostReason} onClick={confirmLost}>Mark as lost</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

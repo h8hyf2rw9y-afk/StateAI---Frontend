@@ -267,13 +267,13 @@ describe("LeadsWorkspace", () => {
     expect(await screen.findByText("Borrador guardado.")).toBeInTheDocument();
   });
 
-  it("a table row's Editar opens the SAME popup in edit mode with the real case", async () => {
+  it("clicking a table row opens the same editable popup with the real case", async () => {
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [{ ...makeRenovaCase({ id: "case-9" }) }] });
     getRenovaCaseMock.mockResolvedValue({ ok: true, data: makeRenovaCase({ id: "case-9" }) });
     renderAt("view=renova");
     await screen.findByText("María López");
 
-    fireEvent.click(screen.getByRole("button", { name: /editar expediente de maría lópez/i }));
+    fireEvent.click(screen.getByText("María López"));
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Editar prospecto Renova")).toBeInTheDocument();

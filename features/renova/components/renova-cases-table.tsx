@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, FolderOpen, ListFilter, Loader2, Pencil, Search, Share2 } from "lucide-react";
+import { Archive, ArchiveRestore, FolderOpen, ListFilter, Loader2, Search, Share2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -45,15 +45,13 @@ const SEARCH_DEBOUNCE_MS = 300;
  * the backend has no endpoint listing an organization's users, and the
  * `users` table has no names, so no other advisor can be named honestly.
  *
- * Opening a case: a row click goes to the detail page
- * /leads/renova/[id]; "Editar" asks the parent to open the popup in edit mode
- * (`onEdit`) — the table owns no dialog itself.
+ * Clicking a row asks the parent to open the editable case popup. Sharing
+ * and archiving stay as explicit row actions and never navigate away.
  *
  * Only mounted while the Renova tab is active (see LeadsWorkspace), so
  * merely opening Leads → Todos / Clientes activos makes no Renova request.
  */
 export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshKey?: number; onEdit?: (caseId: string) => void; onShare?: (caseId: string) => void }) {
-  const router = useRouter();
   const { user } = useUser();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -64,6 +62,8 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const [view, setView] = useState<"active" | "archived">("active");
   const [localRefresh, setLocalRefresh] = useState(0);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [archiveRequest, setArchiveRequest] = useState<RenovaCaseListItem | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -114,6 +114,25 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       setArchiveError(getRenovaErrorMessage(response.error));
       return;
     }
+    setLocalRefresh((n) => n + 1);
+  }
+
+  async function confirmArchive() {
+    if (!archiveRequest) return;
+    setArchiveError(null);
+    setIsArchiving(true);
+    const terminal = archiveRequest.status === "rejected" || archiveRequest.status === "cancelled";
+    const response = await updateRenovaCase(
+      archiveRequest.id,
+      terminal ? { archived: true } : { status: "cancelled", archived: true }
+    );
+    setIsArchiving(false);
+    if (!response.ok) {
+      setArchiveError(getRenovaErrorMessage(response.error));
+      setArchiveRequest(null);
+      return;
+    }
+    setArchiveRequest(null);
     setLocalRefresh((n) => n + 1);
   }
 
@@ -245,10 +264,10 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       )}
 
       {!isLoading && loaded?.cases && loaded.cases.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-border/70 bg-background/20">
+        <div className="overflow-x-auto rounded-md border bg-background">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/25 text-[11px] uppercase tracking-[0.08em]">
+              <TableRow className="bg-muted/20 text-[11px] uppercase tracking-[0.08em]">
                 <TableHead className="min-w-32">Propietario</TableHead>
                 <TableHead>Celular</TableHead>
                 <TableHead>Vivienda</TableHead>
@@ -259,7 +278,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                 <TableHead className="max-w-24 text-right whitespace-normal">Adeudos totales</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
-                {/* Sticky: on narrower screens the table scrolls sideways, but Editar/Compartir must stay reachable. */}
+                  {/* Sticky: on narrower screens the table scrolls sideways, but actions stay reachable. */}
                 <TableHead className="sticky right-0 bg-muted text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -267,8 +286,16 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
               {loaded.cases.map((renovaCase) => (
                 <TableRow
                   key={renovaCase.id}
-                  className="group cursor-pointer transition-colors hover:bg-primary/[0.045]"
-                  onClick={() => router.push(`/leads/renova/${renovaCase.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  className="group cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => onEdit?.(renovaCase.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onEdit?.(renovaCase.id);
+                    }
+                  }}
                 >
                   <TableCell className="font-medium transition-colors group-hover:text-primary">{renovaCase.owner_name}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{renovaCase.owner_phone}</TableCell>
@@ -300,15 +327,6 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                       >
                         <Share2 />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Editar expediente de ${renovaCase.owner_name}`}
-                        onClick={() => onEdit?.(renovaCase.id)}
-                      >
-                        <Pencil />
-                        Editar
-                      </Button>
                       {renovaCase.archived ? (
                         <Button
                           type="button"
@@ -321,18 +339,16 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                           Desarchivar
                         </Button>
                       ) : (
-                        (renovaCase.status === "rejected" || renovaCase.status === "cancelled") && (
                           <Button
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon-sm"
                             aria-label={`Archivar expediente de ${renovaCase.owner_name}`}
-                            onClick={() => toggleArchived(renovaCase.id, true)}
+                            title={`Archivar expediente de ${renovaCase.owner_name}`}
+                            onClick={() => setArchiveRequest(renovaCase)}
                           >
                             <Archive />
-                            Archivar
                           </Button>
-                        )
                       )}
                     </div>
                   </TableCell>
@@ -342,6 +358,25 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
           </Table>
         </div>
       )}
+
+      <Dialog open={archiveRequest !== null} onOpenChange={(open) => !open && !isArchiving && setArchiveRequest(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archivar expediente</DialogTitle>
+            <DialogDescription>
+              {archiveRequest && archiveRequest.status !== "rejected" && archiveRequest.status !== "cancelled"
+                ? `El expediente de ${archiveRequest.owner_name} se marcará como Cancelado, saldrá del pipeline y quedará archivado.`
+                : `El expediente de ${archiveRequest?.owner_name ?? "este cliente"} quedará fuera de la vista de activos. Su historial no se eliminará.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" disabled={isArchiving} onClick={() => setArchiveRequest(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={isArchiving} onClick={confirmArchive}>
+              {isArchiving ? "Archivando…" : "Archivar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

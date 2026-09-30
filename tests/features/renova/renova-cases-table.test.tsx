@@ -171,28 +171,32 @@ describe("RenovaCasesTable", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/tu sesión expiró/i);
   });
 
-  it("offers Editar and share actions for each row, with no separate Abrir action", async () => {
+  it("offers share and archive actions with no separate Editar or Abrir action", async () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
     expect(screen.queryByRole("link", { name: /abrir expediente de maría lópez/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ver ficha y compartir de maría lópez/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar expediente de maría lópez/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /editar expediente de maría lópez/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /archivar expediente de maría lópez/i })).toBeInTheDocument();
   });
 
-  it("opens the detail page when a row is clicked", async () => {
-    render(<RenovaCasesTable />);
+  it("opens the editable popup through the parent when a row is clicked", async () => {
+    const onEdit = vi.fn();
+    render(<RenovaCasesTable onEdit={onEdit} />);
     await screen.findByText("María López");
 
     fireEvent.click(screen.getByText("María López"));
 
-    expect(pushMock).toHaveBeenCalledWith("/leads/renova/case-1");
+    expect(onEdit).toHaveBeenCalledWith("case-1");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("opens and shares the selected client's case, even when it is not the first row", async () => {
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase(), makeCase({ id: "case-2", owner_name: "Luis García" })] });
     const onShare = vi.fn();
-    render(<RenovaCasesTable onShare={onShare} />);
+    const onEdit = vi.fn();
+    render(<RenovaCasesTable onShare={onShare} onEdit={onEdit} />);
     await screen.findByText("Luis García");
 
     fireEvent.click(screen.getByRole("button", { name: /ver ficha y compartir de luis garcía/i }));
@@ -200,15 +204,16 @@ describe("RenovaCasesTable", () => {
     expect(pushMock).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText("Luis García"));
-    expect(pushMock).toHaveBeenCalledWith("/leads/renova/case-2");
+    expect(onEdit).toHaveBeenCalledWith("case-2");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("Editar asks the parent to open the popup in edit mode and does not navigate", async () => {
+  it("supports opening the editable popup from the row with the keyboard", async () => {
     const onEdit = vi.fn();
     render(<RenovaCasesTable onEdit={onEdit} />);
     await screen.findByText("María López");
 
-    fireEvent.click(screen.getByRole("button", { name: /editar expediente de maría lópez/i }));
+    fireEvent.keyDown(screen.getByText("María López").closest("tr")!, { key: "Enter" });
 
     expect(onEdit).toHaveBeenCalledWith("case-1");
     expect(pushMock).not.toHaveBeenCalled();
@@ -332,7 +337,7 @@ describe("RenovaCasesTable — archiving", () => {
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ archived: true })));
   });
 
-  it("offers 'Archivar' only on a rejected/cancelled row, never on an active one", async () => {
+  it("offers 'Archivar' on active and terminal rows", async () => {
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
       data: [
@@ -343,7 +348,7 @@ describe("RenovaCasesTable — archiving", () => {
     render(<RenovaCasesTable />);
     await screen.findByText("Activo");
 
-    expect(screen.queryByRole("button", { name: "Archivar expediente de Activo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archivar expediente de Activo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" })).toBeInTheDocument();
   });
 
@@ -357,6 +362,7 @@ describe("RenovaCasesTable — archiving", () => {
     const callsBefore = getRenovaCasesMock.mock.calls.length;
 
     fireEvent.click(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^archivar$/i }));
 
     await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledWith("case-1", { archived: true }));
     await waitFor(() => expect(getRenovaCasesMock.mock.calls.length).toBeGreaterThan(callsBefore));
@@ -398,8 +404,21 @@ describe("RenovaCasesTable — archiving", () => {
     await screen.findByText("Rechazado Uno");
 
     fireEvent.click(screen.getByRole("button", { name: "Archivar expediente de Rechazado Uno" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^archivar$/i }));
 
     expect(await screen.findByText(/algo salió mal|no se pudo conectar/i)).toBeInTheDocument();
     expect(screen.getByText("Rechazado Uno")).toBeInTheDocument();
+  });
+
+  it("cancels and archives an active case in one confirmed request", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase({ status: "negotiating" })] });
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: "Archivar expediente de María López" }));
+    expect(await screen.findByText(/se marcará como Cancelado/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^archivar$/i }));
+
+    await waitFor(() => expect(updateRenovaCaseMock).toHaveBeenCalledWith("case-1", { status: "cancelled", archived: true }));
   });
 });

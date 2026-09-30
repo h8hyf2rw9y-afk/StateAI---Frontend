@@ -243,7 +243,7 @@ export function RenovaPipelineBoard() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3" data-testid="pipeline-metrics">
+      <div className="grid grid-cols-2 divide-x divide-y overflow-hidden rounded-md border sm:grid-cols-3 lg:grid-cols-5" data-testid="pipeline-metrics">
         <MetricCard label="En proceso" value={String(metrics.inProgressCount)} />
         <MetricCard label="Aceptados" value={String(metrics.acceptedCount)} />
         <MetricCard label="Comprados" value={String(metrics.purchasedCount)} />
@@ -251,13 +251,13 @@ export function RenovaPipelineBoard() {
         <MetricCard label="Valor total comprado" value={metrics.purchasedValue === null ? "—" : formatMoney(metrics.purchasedValue)} />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por propietario o celular…"
             aria-label="Buscar en el pipeline Renova"
-            className="pl-9"
+            className="rounded-md bg-background pl-9 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -265,7 +265,7 @@ export function RenovaPipelineBoard() {
         <Popover>
           <PopoverTrigger
             render={
-              <Button variant="outline" className="sm:ml-auto" aria-label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} activos)` : "Filtros"}>
+              <Button variant="outline" className="rounded-md bg-background shadow-none sm:ml-auto" aria-label={activeFilterCount > 0 ? `Filtros (${activeFilterCount} activos)` : "Filtros"}>
                 <ListFilter />
                 Filtros
                 {activeFilterCount > 0 && (
@@ -346,7 +346,7 @@ export function RenovaPipelineBoard() {
         </div>
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto pb-2">
             {RENOVA_PIPELINE_STAGES.map((stage) => (
               <RenovaPipelineColumn
                 key={stage}
@@ -390,9 +390,9 @@ export function RenovaPipelineBoard() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-36 flex-1 flex-col gap-0.5 rounded-xl border border-border/70 bg-background/30 px-3 py-2">
+    <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
       <span className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</span>
-      <span className="text-lg font-semibold text-foreground">{value}</span>
+      <span className="text-base font-semibold text-foreground">{value}</span>
     </div>
   );
 }

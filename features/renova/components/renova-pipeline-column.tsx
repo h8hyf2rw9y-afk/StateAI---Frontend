@@ -33,10 +33,10 @@ export function RenovaPipelineColumn({
   const filtered = cards.length !== totalCount;
 
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3 rounded-2xl border border-border/70 bg-background/30 p-3">
+    <section className="flex w-72 shrink-0 flex-col gap-2 border-r pr-3 last:border-r-0">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-sm font-semibold text-foreground">{formatRenovaStatus(status)}</h3>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <span className="text-xs tabular-nums text-muted-foreground">
           {filtered ? `${cards.length}/${totalCount}` : totalCount}
         </span>
       </div>
@@ -45,7 +45,7 @@ export function RenovaPipelineColumn({
         ref={setNodeRef}
         data-testid={`pipeline-column-${status}`}
         className={cn(
-          "flex min-h-24 flex-1 flex-col gap-2 rounded-xl p-1 transition-colors",
+          "flex min-h-24 flex-1 flex-col gap-2 rounded-md p-1 transition-colors",
           isOver && "bg-primary/5 outline-2 outline-dashed outline-primary/40"
         )}
       >
@@ -68,6 +68,6 @@ export function RenovaPipelineColumn({
           ))
         )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PipelineBoard } from "@/features/pipeline/components/pipeline-board";
 import type { Opportunity } from "@/features/pipeline/types";
 import type { Contact } from "@/features/leads/types";
@@ -8,9 +8,11 @@ import type { Property } from "@/features/properties/types";
 const getOpportunitiesMock = vi.fn();
 const getContactsMock = vi.fn();
 const getPropertiesMock = vi.fn();
+const updateOpportunityStageMock = vi.fn();
 
 vi.mock("@/lib/api/pipeline", () => ({
   getOpportunities: (...args: unknown[]) => getOpportunitiesMock(...args),
+  updateOpportunityStage: (...args: unknown[]) => updateOpportunityStageMock(...args),
 }));
 vi.mock("@/lib/api/contacts", () => ({
   getContacts: () => getContactsMock(),
@@ -68,6 +70,7 @@ function makeOpportunity(overrides: Partial<Opportunity> = {}): Opportunity {
 function mockDefaults() {
   getContactsMock.mockResolvedValue({ ok: true, data: [makeContact()] });
   getPropertiesMock.mockResolvedValue({ ok: true, data: [] as Property[] });
+  updateOpportunityStageMock.mockResolvedValue({ ok: true, data: makeOpportunity() });
 }
 
 describe("PipelineBoard", () => {
@@ -104,9 +107,9 @@ describe("PipelineBoard", () => {
     expect(await screen.findByText("Casa San Jerónimo")).toBeInTheDocument();
     expect(screen.getByText("Depto Del Valle")).toBeInTheDocument();
     // One column header per stage actually present — not a fixed 13-column board.
-    expect(screen.getByText("Negotiation")).toBeInTheDocument();
-    expect(screen.getByText("Showing")).toBeInTheDocument();
-    expect(screen.queryByText("Closing")).not.toBeInTheDocument();
+    expect(screen.getByText("Negotiation", { selector: "[data-slot='badge']" })).toBeInTheDocument();
+    expect(screen.getByText("Showing", { selector: "[data-slot='badge']" })).toBeInTheDocument();
+    expect(screen.queryByText("Closing", { selector: "[data-slot='badge']" })).not.toBeInTheDocument();
   });
 
   it("groups two opportunities in the same stage into the same column", async () => {
@@ -124,7 +127,7 @@ describe("PipelineBoard", () => {
     await screen.findByText("Offer A");
     expect(screen.getByText("Offer B")).toBeInTheDocument();
     // Column header shows one "Offer" badge, and a count of 2 for that column.
-    expect(screen.getAllByText("Offer")).toHaveLength(1);
+    expect(screen.getAllByText("Offer", { selector: "[data-slot='badge']" })).toHaveLength(1);
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
@@ -147,6 +150,18 @@ describe("PipelineBoard", () => {
     const link = card.closest("a");
 
     expect(link).toHaveAttribute("href", `/pipeline/${OPPORTUNITY_ID}`);
+  });
+
+  it("changes an opportunity stage directly from its card", async () => {
+    mockDefaults();
+    const opportunity = makeOpportunity();
+    updateOpportunityStageMock.mockResolvedValue({ ok: true, data: { ...opportunity, stage: "showing" } });
+    getOpportunitiesMock.mockResolvedValue({ ok: true, data: [opportunity] });
+
+    render(<PipelineBoard />);
+    fireEvent.change(await screen.findByLabelText(/change stage for casa san jerónimo/i), { target: { value: "showing" } });
+
+    await waitFor(() => expect(updateOpportunityStageMock).toHaveBeenCalledWith(OPPORTUNITY_ID, { stage: "showing", lost_reason: null }));
   });
 
   it("shows a friendly error message on a generic API failure", async () => {

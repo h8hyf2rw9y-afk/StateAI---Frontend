@@ -1,7 +1,7 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { AlertTriangle, FolderOpen, GripVertical, Share2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, FolderOpen, GripVertical, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,7 +70,7 @@ export function RenovaPipelineCard({
       style={style}
       data-testid={`pipeline-card-${card.id}`}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-3 text-sm shadow-sm transition-opacity",
+        "flex flex-col gap-2 rounded-md border bg-background p-3 text-sm transition-colors hover:bg-muted/20",
         isDragging && "opacity-40",
         isMoving && "opacity-60"
       )}
@@ -113,7 +113,7 @@ export function RenovaPipelineCard({
         </Badge>
       )}
 
-      <div className="flex items-center gap-1 border-t border-border/60 pt-2">
+      <div className="flex items-center gap-1 border-t pt-2">
         <Button type="button" variant="ghost" size="icon-sm" aria-label={`Abrir expediente de ${card.owner_name}`} onClick={() => onOpen(card.id)}>
           <FolderOpen />
         </Button>
@@ -124,8 +124,9 @@ export function RenovaPipelineCard({
           <DropdownMenuTrigger
             disabled={isMoving}
             render={
-              <Button type="button" variant="outline" size="sm" className="ml-auto" aria-label={`Mover expediente de ${card.owner_name} a…`}>
-                Mover a…
+              <Button type="button" variant="ghost" size="sm" className="ml-auto h-7 rounded-sm text-xs font-normal text-muted-foreground" aria-label={`Mover expediente de ${card.owner_name} a…`}>
+                {formatRenovaStatus(card.status)}
+                <ChevronDown className="size-3" />
               </Button>
             }
           />
