@@ -32,6 +32,11 @@ export interface QuickNotesExtraction {
   fields: QuickNotesField[];
 }
 
+/** Non-sensitive structured fields returned by the backend's LLM extractor. */
+export type SmartQuickNotesExtraction = Partial<
+  Record<Exclude<QuickNotesField, "owner_phone" | "nss" | "credit_number">, string | number | boolean | null>
+>;
+
 const LABELS: Partial<Record<QuickNotesField, string>> = {
   owner_name: "nombre",
   owner_phone: "celular",
@@ -59,6 +64,29 @@ const LABELS: Partial<Record<QuickNotesField, string>> = {
 
 export function quickNotesFieldLabel(field: QuickNotesField): string {
   return LABELS[field] ?? field;
+}
+
+/**
+ * Removes protected numbers before the note leaves the browser. Labels stay
+ * in place so the model understands the sentence, but it never receives the
+ * actual NSS, credit number or phone. A final generic pass catches any other
+ * long number that was not clearly labelled.
+ */
+export function redactQuickNotesForAI(note: string): string {
+  return note
+    .replace(
+      /((?:nss|n[uú]mero\s+de\s+seguro\s+social)(?:\s+es|\s*:)?\s*)(?:\d[\d -]{9,20}\d)/gi,
+      "$1[NSS_PROTEGIDO]"
+    )
+    .replace(
+      /((?:n[uú]mero\s+de\s+cr[eé]dito|cr[eé]dito)(?:\s+es|\s*:)?\s*)(?:\d[\d -]{4,28}\d)/gi,
+      "$1[CREDITO_PROTEGIDO]"
+    )
+    .replace(
+      /((?:n[uú]mero\s+(?:de\s+)?(?:tel[eé]fono|telefon)|tel[eé]fono|celular|whatsapp|tel\.?)\s*(?:es|:)?\s*)(?:\+?\d[\d ()-]{6,20}\d)/gi,
+      "$1[TELEFONO_PROTEGIDO]"
+    )
+    .replace(/(?<!\d)(?:\d[\s()-]?){6,20}(?!\d)/g, "[NUMERO_PROTEGIDO]");
 }
 
 function captured(text: string, pattern: RegExp): string | null {
@@ -106,7 +134,15 @@ export function extractQuickNotes(note: string): QuickNotesExtraction {
       )
     )
   );
-  assign("owner_phone", digits(captured(text, /(?:tel[eé]fono|celular|whatsapp|tel\.?)(?:\s+es|\s*:)?\s*(\+?\d[\d ()-]{7,20})/i)));
+  assign(
+    "owner_phone",
+    digits(
+      captured(
+        text,
+        /(?:n[uú]mero\s+(?:de\s+)?(?:tel[eé]fono|telefon)|tel[eé]fono|celular|whatsapp|tel\.?)(?:\s+es|\s*:)?\s*(\+?\d[\d ()-]{7,20})/i
+      )
+    )
+  );
   assign("nss", digits(captured(text, /(?:nss|n[uú]mero\s+de\s+seguro\s+social)(?:\s+es|\s*:)?\s*([\d -]{11,20})/i)));
   assign("credit_number", digits(captured(text, /(?:n[uú]mero\s+de\s+cr[eé]dito|cr[eé]dito)(?:\s+es|\s*:)?\s*([\d -]{6,30})/i)));
 
@@ -117,7 +153,7 @@ export function extractQuickNotes(note: string): QuickNotesExtraction {
   assign("postal_code", digits(captured(text, /(?:c[oó]digo\s+postal|c\.?p\.?)(?:\s*:)?\s*(\d{5})/i)));
 
   const address = cleanPhrase(
-    captured(text, /(?:direcci[oó]n|domicilio|propiedad\s+(?:est[aá]|queda)?\s*en|casa\s+(?:est[aá]|queda)?\s*en)(?:\s*:)?\s*([^;.\n]+)/i)
+    captured(text, /(?:direcci[oó]n|domicilio|propiedad\s+(?:est[aá]|queda)?\s*en|casa\s+(?:est[aá]|queda)?\s*en)(?:\s*:)?\s*([^,;.\n]+)/i)
   );
   if (address) {
     const withoutLabels = address.split(/,?\s+(?=colonia|col\.?|municipio|alcald[ií]a|c[oó]digo\s+postal|c\.?p\.?)/i)[0];
@@ -152,21 +188,39 @@ export function extractQuickNotes(note: string): QuickNotesExtraction {
 }
 
 /** Applies detected values without replacing structured data already typed. */
-export function applyQuickNotes(current: RenovaFormValues, note: string): { values: RenovaFormValues; applied: QuickNotesField[] } {
-  const extraction = extractQuickNotes(note);
+export function applyQuickNotes(
+  current: RenovaFormValues,
+  note: string,
+  smartValues: SmartQuickNotesExtraction = {}
+): { values: RenovaFormValues; applied: QuickNotesField[] } {
+  const local = extractQuickNotes(note);
+  const smart = Object.fromEntries(
+    Object.entries(smartValues)
+      .filter(([, value]) => value !== null && value !== undefined && value !== "")
+      .map(([field, value]) => [field, typeof value === "string" || typeof value === "boolean" ? value : String(value)])
+  ) as QuickNotesExtraction["values"];
+  // Explicit/local labels win. The model fills context that deterministic
+  // parsing cannot, such as an unlabelled name or Mexican location sequence.
+  const extraction: QuickNotesExtraction = {
+    values: { ...smart, ...local.values },
+    fields: [...new Set([...Object.keys(smart), ...local.fields])] as QuickNotesField[],
+  };
   const next = { ...current };
   const applied: QuickNotesField[] = [];
 
   for (const field of extraction.fields) {
     const existing = current[field];
-    if ((typeof existing === "string" && existing.trim() !== "") || (typeof existing === "boolean" && existing)) continue;
+    const replacingDefaultPredialUnit =
+      field === "property_tax_debt_unit" && existing === "mxn" && extraction.values[field] === "years";
+    if (!replacingDefaultPredialUnit && ((typeof existing === "string" && existing.trim() !== "") || (typeof existing === "boolean" && existing))) continue;
     Object.assign(next, { [field]: extraction.values[field] });
     applied.push(field);
   }
 
   const trimmed = note.trim();
-  if (trimmed && !current.notes.includes(trimmed)) {
-    next.notes = current.notes.trim() ? `${current.notes.trim()}\n\nQuick Notes:\n${trimmed}` : trimmed;
+  const protectedNote = redactQuickNotesForAI(trimmed);
+  if (trimmed && !current.notes.includes(protectedNote)) {
+    next.notes = current.notes.trim() ? `${current.notes.trim()}\n\nQuick Notes:\n${protectedNote}` : protectedNote;
   }
   return { values: next, applied };
 }

@@ -8,6 +8,7 @@ import type {
   RenovaPipelineResponse,
   RenovaSensitiveData,
 } from "@/features/renova/types";
+import type { SmartQuickNotesExtraction } from "@/features/renova/lib/quick-notes";
 
 /**
  * Typed surface for the backend's Renova API (app/api/routes/renova.py) — the
@@ -52,6 +53,15 @@ export function createRenovaCase(input: RenovaCaseInput): Promise<ApiResult<Reno
 
 export function updateRenovaCase(caseId: string, input: RenovaCaseInput): Promise<ApiResult<RenovaCase>> {
   return apiRequest<RenovaCase>(`/api/v1/renova/cases/${caseId}`, { method: "PATCH", body: input });
+}
+
+/** Sends only the browser-redacted note; protected numeric values must never be passed here. */
+export function extractRenovaQuickNotes(content: string): Promise<ApiResult<SmartQuickNotesExtraction>> {
+  return apiRequest<SmartQuickNotesExtraction>("/api/v1/renova/quick-notes/extract", {
+    method: "POST",
+    body: { content },
+    cache: "no-store",
+  });
 }
 
 /** The Renova Kanban board: every active-flow case, already grouped by stage — see GET /renova/pipeline. */

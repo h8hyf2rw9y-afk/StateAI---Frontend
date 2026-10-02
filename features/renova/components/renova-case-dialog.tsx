@@ -17,10 +17,10 @@ import {
   type RenovaFormValues,
 } from "@/features/renova/lib/form-values";
 import { validateRenovaForm, type RenovaFormErrors } from "@/features/renova/lib/validation";
-import { applyQuickNotes, quickNotesFieldLabel } from "@/features/renova/lib/quick-notes";
+import { applyQuickNotes, quickNotesFieldLabel, redactQuickNotesForAI } from "@/features/renova/lib/quick-notes";
 import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import type { RenovaCase } from "@/features/renova/types";
-import { createRenovaCase, getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
+import { createRenovaCase, extractRenovaQuickNotes, getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +83,7 @@ export function RenovaCaseDialog({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [quickNotes, setQuickNotes] = useState("");
   const [quickNotesResult, setQuickNotesResult] = useState<string | null>(null);
+  const [isExtractingNotes, setIsExtractingNotes] = useState(false);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -123,13 +124,16 @@ export function RenovaCaseDialog({
     else onClose();
   }
 
-  function handleQuickNotes() {
+  async function handleQuickNotes() {
     const note = quickNotes.trim();
     if (!note) {
       setQuickNotesResult("Escribe primero lo que obtuviste durante la llamada.");
       return;
     }
-    const result = applyQuickNotes(effective, note);
+    setIsExtractingNotes(true);
+    const smartResponse = await extractRenovaQuickNotes(redactQuickNotesForAI(note));
+    const result = applyQuickNotes(effective, note, smartResponse.ok ? smartResponse.data : {});
+    setIsExtractingNotes(false);
     if (result.values.notes.length > 5000) {
       setQuickNotesResult("La nota supera el límite disponible de 5,000 caracteres.");
       return;
@@ -142,7 +146,7 @@ export function RenovaCaseDialog({
     });
     setQuickNotesResult(
       result.applied.length
-        ? `Datos detectados: ${result.applied.map(quickNotesFieldLabel).join(", ")}. Revisa el expediente antes de guardarlo.`
+        ? `${smartResponse.ok ? "IA y validación local" : "Validación local de respaldo"}: ${result.applied.map(quickNotesFieldLabel).join(", ")}. Revisa el expediente antes de guardarlo.`
         : "Guardé el texto en Notas. No reemplacé campos ya capturados; revisa y completa lo que falte."
     );
   }
@@ -254,7 +258,7 @@ export function RenovaCaseDialog({
                     <div>
                       <h2 id="quick-notes-title" className="text-sm font-medium">Quick Notes</h2>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Escribe libremente durante la llamada. Detectaremos datos claros y conservaremos el texto original en Notas.
+                        Escribe libremente durante la llamada. Detectaremos los datos y guardaremos una copia protegida en Notas.
                       </p>
                     </div>
                   </div>
@@ -271,8 +275,8 @@ export function RenovaCaseDialog({
                   />
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p role="status" className="text-xs text-muted-foreground">{quickNotesResult ?? "Los datos sensibles se procesan sólo en este navegador."}</p>
-                    <Button type="button" variant="outline" size="sm" onClick={handleQuickNotes}>
-                      <Sparkles /> Aplicar al expediente
+                    <Button type="button" variant="outline" size="sm" disabled={isExtractingNotes} onClick={() => void handleQuickNotes()}>
+                      {isExtractingNotes ? <Loader2 className="animate-spin" /> : <Sparkles />} {isExtractingNotes ? "Analizando…" : "Aplicar al expediente"}
                     </Button>
                   </div>
                 </section>

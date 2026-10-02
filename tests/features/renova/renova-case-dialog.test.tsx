@@ -9,12 +9,14 @@ const getRenovaCaseMock = vi.fn();
 const getContactsMock = vi.fn();
 const createContactMock = vi.fn();
 const getRenovaSensitiveDataMock = vi.fn();
+const extractRenovaQuickNotesMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   createRenovaCase: (...args: unknown[]) => createRenovaCaseMock(...args),
   updateRenovaCase: (...args: unknown[]) => updateRenovaCaseMock(...args),
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
   getRenovaSensitiveData: (...args: unknown[]) => getRenovaSensitiveDataMock(...args),
+  extractRenovaQuickNotes: (...args: unknown[]) => extractRenovaQuickNotesMock(...args),
   getRenovaCases: vi.fn(),
 }));
 vi.mock("@/lib/api/contacts", () => ({
@@ -57,9 +59,10 @@ function fillRequired() {
 }
 
 beforeEach(() => {
-  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock, getRenovaSensitiveDataMock]) mock.mockReset();
+  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock, getRenovaSensitiveDataMock, extractRenovaQuickNotesMock]) mock.mockReset();
   createRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
   updateRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
+  extractRenovaQuickNotesMock.mockResolvedValue({ ok: true, data: {} });
 });
 
 describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", () => {
@@ -168,16 +171,48 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
     type("Quick Notes de la llamada", "Cliente Ana López, celular 8112345678. Casa dúplex, 2 plantas y 3 recámaras.");
     fireEvent.click(screen.getByRole("button", { name: "Aplicar al expediente" }));
 
-    expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("Ana López");
+    await waitFor(() => expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("Ana López"));
     expect(screen.getByLabelText(/celular del titular/i)).toHaveValue("8112345678");
     expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Plantas")).toHaveValue(2);
     expect(screen.getByLabelText("Recámaras")).toHaveValue(3);
     expect(screen.getByLabelText("Notas adicionales o contexto de la conversación")).toHaveValue(
-      "Cliente Ana López, celular 8112345678. Casa dúplex, 2 plantas y 3 recámaras."
+      "Cliente Ana López, celular [TELEFONO_PROTEGIDO]. Casa dúplex, 2 plantas y 3 recámaras."
     );
 
+  });
+
+  it("uses the model for natural context while sending only redacted protected values", async () => {
+    extractRenovaQuickNotesMock.mockResolvedValue({
+      ok: true,
+      data: {
+        owner_name: "Pedro",
+        street_address: "Cardo 2010",
+        municipality: "Salinas Victoria",
+        neighborhood: "Privadas Reales",
+      },
+    });
+    renderCreate();
+    await screen.findByRole("dialog");
+    type(
+      "Quick Notes de la llamada",
+      "Pedro, direccion Cardo 2010, numero de seguro social 12345678910, Salinas Victoria, Privadas Reales, numero telefono 8125455785"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar al expediente" }));
+
+    await waitFor(() => expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("Pedro"));
+    expect(screen.getByLabelText("Calle y número")).toHaveValue("Cardo 2010");
+    expect(screen.getByLabelText("Municipio")).toHaveValue("Salinas Victoria");
+    expect(screen.getByLabelText("Colonia")).toHaveValue("Privadas Reales");
+    expect(screen.getByLabelText("NSS")).toHaveValue("12345678910");
+    expect(screen.getByLabelText(/celular del titular/i)).toHaveValue("8125455785");
+    const sent = extractRenovaQuickNotesMock.mock.calls[0][0];
+    expect(sent).toContain("[NSS_PROTEGIDO]");
+    expect(sent).toContain("[TELEFONO_PROTEGIDO]");
+    expect(sent).not.toContain("12345678910");
+    expect(sent).not.toContain("8125455785");
   });
 
   it("does not show Quick Notes while editing an existing case", async () => {
