@@ -49,7 +49,7 @@ describe("RenovaChatWorkspace", () => {
     );
   });
 
-  it("explains how to recover when the configured backend does not expose Chat Renova", async () => {
+  it("shows a Spanish, user-facing message (not the generic English fallback) when the backend does not expose Chat Renova", async () => {
     listConversationsMock.mockResolvedValue({
       ok: false,
       error: { message: "Not Found", status: 404 },
@@ -58,7 +58,7 @@ describe("RenovaChatWorkspace", () => {
     render(<RenovaChatWorkspace />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /actualiza main, reinicia FastAPI y verifica NEXT_PUBLIC_API_URL/i
+      "El asistente de Renova no está disponible en este momento. Inténtalo más tarde."
     );
     expect(screen.queryByText("This couldn't be found.")).not.toBeInTheDocument();
   });

@@ -25,7 +25,7 @@ type LoadState = "loading" | "ready" | "error";
 
 function getRenovaChatLoadErrorMessage(status?: number): string {
   if (status === 404) {
-    return "Chat Renova no está disponible en el backend configurado. Actualiza main, reinicia FastAPI y verifica NEXT_PUBLIC_API_URL.";
+    return "El asistente de Renova no está disponible en este momento. Inténtalo más tarde.";
   }
   return "";
 }
