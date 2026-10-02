@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { AuthShell } from "@/components/layout/auth-shell";
 import { RegisterForm } from "@/features/auth/components/register-form";
 
+/** RegisterForm reads `?invite=` via useSearchParams, which Next.js wants inside a Suspense boundary. */
 export default function RegisterPage() {
   return (
     <AuthShell
@@ -16,7 +18,9 @@ export default function RegisterPage() {
         </p>
       }
     >
-      <RegisterForm />
+      <Suspense>
+        <RegisterForm />
+      </Suspense>
     </AuthShell>
   );
 }

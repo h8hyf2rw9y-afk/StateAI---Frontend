@@ -13,6 +13,11 @@ export interface CurrentUser {
   provider: string | null;
 }
 
+/** `GET /me` — whoami: the authenticated caller's own id/role/organization_id. */
+export function getMe(): Promise<ApiResult<CurrentUser>> {
+  return apiRequest<CurrentUser>("/api/v1/me", { cache: "no-store" });
+}
+
 /**
  * `POST /me/organization` — self-service onboarding (see
  * app/api/routes/me.py / app/services/onboarding_service.py). Turns a real,

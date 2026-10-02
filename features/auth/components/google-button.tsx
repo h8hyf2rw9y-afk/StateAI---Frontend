@@ -34,18 +34,28 @@ function GoogleIcon() {
  * only surfaces its own network/setup errors — provider-side auth errors
  * come back through app/auth/callback/route.ts as a redirect, not here.
  */
-export function GoogleButton({ onError }: { onError?: (message: string) => void }) {
+export function GoogleButton({
+  onError,
+  inviteToken,
+}: {
+  onError?: (message: string) => void;
+  /** Only ever set from RegisterForm, and only once the invite link has been confirmed still valid — carried through so app/auth/callback/route.ts can join that organization instead of creating a new one. */
+  inviteToken?: string;
+}) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
     setLoading(true);
     onError?.("");
 
+    const redirectUrl = new URL("/auth/callback", window.location.origin);
+    if (inviteToken) redirectUrl.searchParams.set("invite", inviteToken);
+
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl.toString(),
       },
     });
 

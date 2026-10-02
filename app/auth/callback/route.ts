@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const inviteToken = searchParams.get("invite");
   let next = searchParams.get("next") ?? "/dashboard";
   if (!next.startsWith("/")) {
     next = "/dashboard";
@@ -42,14 +43,36 @@ export async function GET(request: Request) {
       } = await supabase.auth.getSession();
       if (session) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-        await fetch(`${apiBaseUrl}/api/v1/me/organization`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: "{}",
-        }).catch(() => {});
+        // An invite token (set by RegisterForm/GoogleButton, only ever
+        // after confirming the link was still valid) joins the inviter's
+        // EXISTING organization; everyone else gets the normal
+        // self-service "create my own" path. If joining fails here (the
+        // link died in the meantime — someone else just used it, it
+        // expired mid-flow), fall back to provisioning a new organization
+        // rather than stranding a real, already-created account with none
+        // at all.
+        const joined = inviteToken
+          ? await fetch(`${apiBaseUrl}/api/v1/me/organization/join`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ token: inviteToken }),
+            })
+              .then((res) => res.ok)
+              .catch(() => false)
+          : false;
+        if (!joined) {
+          await fetch(`${apiBaseUrl}/api/v1/me/organization`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: "{}",
+          }).catch(() => {});
+        }
       }
 
       // Behind a load balancer/proxy (e.g. in production), prefer the

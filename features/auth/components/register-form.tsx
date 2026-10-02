@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2, Loader2, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,13 @@ import { createClient } from "@/lib/supabase/client";
 import { getAuthErrorMessage } from "@/features/auth/lib";
 import { validateRegisterForm, type RegisterFormErrors } from "@/features/auth/validation";
 import { provisionMyOrganization } from "@/lib/api/me";
+import { joinOrganization, previewOrganizationInvitation } from "@/lib/api/organization";
 
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,6 +30,40 @@ export function RegisterForm() {
   const [formError, setFormError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+
+  // null = still checking (or no ?invite= at all); otherwise whether the
+  // link actually still works and, if so, which organization it joins.
+  const [invitePreview, setInvitePreview] = useState<{ valid: boolean; organizationName: string | null } | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    previewOrganizationInvitation(inviteToken).then((response) => {
+      if (cancelled) return;
+      setInvitePreview(
+        response.ok
+          ? { valid: response.data.valid, organizationName: response.data.organization_name }
+          : { valid: false, organizationName: null }
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
+
+  /** Joins the inviter's organization when the link is still valid; otherwise falls back to the normal self-service "create my own workspace" path (same call every other sign-up already makes). */
+  async function provisionAfterSignIn() {
+    if (inviteToken && invitePreview?.valid) {
+      const response = await joinOrganization(inviteToken);
+      if (response.ok) return;
+      // The link died between preview and submit (e.g. someone else just
+      // used it) — degrade gracefully rather than stranding a real,
+      // already-created account with no organization at all.
+    }
+    await provisionMyOrganization();
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,6 +82,9 @@ export function RegisterForm() {
 
     setIsSubmitting(true);
     const supabase = createClient();
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    if (inviteToken && invitePreview?.valid) callbackUrl.searchParams.set("invite", inviteToken);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -52,7 +93,7 @@ export function RegisterForm() {
         // not a separate public table — see the project's "no CRM tables
         // yet" rule. A public profile row is a FastAPI/backend concern.
         data: { first_name: firstName.trim(), last_name: lastName.trim() },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl.toString(),
       },
     });
 
@@ -64,6 +105,9 @@ export function RegisterForm() {
 
     // Email confirmation is on (the default): no session yet, show a
     // "check your email" state rather than pretending sign-up finished.
+    // The invite token travels along in emailRedirectTo above, so
+    // app/auth/callback/route.ts can join the right organization once the
+    // link is clicked — this component is done for now.
     if (!data.session) {
       setIsSubmitting(false);
       setSubmittedEmail(email);
@@ -71,11 +115,11 @@ export function RegisterForm() {
     }
 
     // Email confirmation is off in this project's Supabase settings —
-    // the user is already signed in. Provision their organization now,
-    // same idempotent call LoginForm makes on every real login (see
-    // lib/api/me.ts) — this is the one path where a session goes active
-    // without ever touching LoginForm or the /auth/callback route.
-    await provisionMyOrganization();
+    // the user is already signed in. Same idempotent provisioning every
+    // real sign-in makes (see LoginForm) — this is the one path where a
+    // session goes active without ever touching LoginForm or the
+    // /auth/callback route.
+    await provisionAfterSignIn();
 
     router.push("/dashboard");
     router.refresh();
@@ -99,6 +143,26 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <FormError message={formError} />
+
+      {inviteToken && invitePreview && (
+        <div
+          role="status"
+          className={
+            invitePreview.valid
+              ? "flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-foreground"
+              : "flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground"
+          }
+        >
+          <Users className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {invitePreview.valid ? (
+            <span>
+              You&apos;ve been invited to join <span className="font-medium">{invitePreview.organizationName}</span>.
+            </span>
+          ) : (
+            <span>This invitation link is no longer valid. You can still create your own workspace below.</span>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
@@ -178,12 +242,12 @@ export function RegisterForm() {
 
       <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
         {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-        Create account
+        {inviteToken && invitePreview?.valid ? "Join workspace" : "Create account"}
       </Button>
 
       <AuthDivider />
 
-      <GoogleButton onError={setFormError} />
+      <GoogleButton onError={setFormError} inviteToken={inviteToken && invitePreview?.valid ? inviteToken : undefined} />
     </form>
   );
 }
