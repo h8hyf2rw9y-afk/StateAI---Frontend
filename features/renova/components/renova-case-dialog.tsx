@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Maximize2, Minimize2, X } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Share2, Sparkles, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaCaseForm } from "@/features/renova/components/renova-case-form";
 import { fieldId } from "@/features/renova/components/renova-form-fields";
@@ -16,6 +17,7 @@ import {
   type RenovaFormValues,
 } from "@/features/renova/lib/form-values";
 import { validateRenovaForm, type RenovaFormErrors } from "@/features/renova/lib/validation";
+import { applyQuickNotes, quickNotesFieldLabel } from "@/features/renova/lib/quick-notes";
 import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import type { RenovaCase } from "@/features/renova/types";
 import { createRenovaCase, getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
@@ -58,10 +60,12 @@ export function RenovaCaseDialog({
   caseId,
   onClose,
   onSaved,
+  onShare,
 }: {
   caseId?: string;
   onClose: () => void;
   onSaved: (renovaCase: RenovaCase, intent: RenovaSaveIntent) => void;
+  onShare?: (caseId: string) => void;
 }) {
   const isEdit = Boolean(caseId);
   const { user } = useUser();
@@ -77,6 +81,8 @@ export function RenovaCaseDialog({
   const [expanded, setExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [quickNotes, setQuickNotes] = useState("");
+  const [quickNotesResult, setQuickNotesResult] = useState<string | null>(null);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -115,6 +121,30 @@ export function RenovaCaseDialog({
     if (isSubmitting) return;
     if (isDirty) setConfirmDiscard(true);
     else onClose();
+  }
+
+  function handleQuickNotes() {
+    const note = quickNotes.trim();
+    if (!note) {
+      setQuickNotesResult("Escribe primero lo que obtuviste durante la llamada.");
+      return;
+    }
+    const result = applyQuickNotes(effective, note);
+    if (result.values.notes.length > 5000) {
+      setQuickNotesResult("La nota supera el límite disponible de 5,000 caracteres.");
+      return;
+    }
+    setValues(result.values);
+    setErrors((previous) => {
+      const next = { ...previous };
+      for (const field of result.applied) delete next[field];
+      return next;
+    });
+    setQuickNotesResult(
+      result.applied.length
+        ? `Datos detectados: ${result.applied.map(quickNotesFieldLabel).join(", ")}. Revisa el expediente antes de guardarlo.`
+        : "Guardé el texto en Notas. No reemplacé campos ya capturados; revisa y completa lo que falte."
+    );
   }
 
   async function submit(intent: RenovaSaveIntent) {
@@ -179,6 +209,12 @@ export function RenovaCaseDialog({
             <DialogDescription>Captura el expediente de compra potencial en un solo formulario.</DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {caseId && onShare && (
+              <Button type="button" variant="outline" size="sm" aria-label="Compartir ficha" onClick={() => onShare(caseId)}>
+                <Share2 />
+                <span className="hidden sm:inline">Compartir ficha</span>
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -211,6 +247,36 @@ export function RenovaCaseDialog({
                 void submit("prospect");
               }}
             >
+              {!isEdit && (
+                <section aria-labelledby="quick-notes-title" className="mb-8 rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+                  <div className="mb-3 flex items-start gap-2">
+                    <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                    <div>
+                      <h2 id="quick-notes-title" className="text-sm font-medium">Quick Notes</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Escribe libremente durante la llamada. Detectaremos datos claros y conservaremos el texto original en Notas.
+                      </p>
+                    </div>
+                  </div>
+                  <Textarea
+                    aria-label="Quick Notes de la llamada"
+                    rows={4}
+                    maxLength={5000}
+                    value={quickNotes}
+                    placeholder="Ej. Cliente Ana López, celular 8112345678. Propiedad en Río Pánuco 120, colonia Del Valle, municipio San Pedro. Casa dúplex, 2 plantas, 3 recámaras, NSS…"
+                    onChange={(event) => {
+                      setQuickNotes(event.target.value);
+                      setQuickNotesResult(null);
+                    }}
+                  />
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p role="status" className="text-xs text-muted-foreground">{quickNotesResult ?? "Los datos sensibles se procesan sólo en este navegador."}</p>
+                    <Button type="button" variant="outline" size="sm" onClick={handleQuickNotes}>
+                      <Sparkles /> Aplicar al expediente
+                    </Button>
+                  </div>
+                </section>
+              )}
               <RenovaCaseForm
                 values={effective}
                 errors={errors}

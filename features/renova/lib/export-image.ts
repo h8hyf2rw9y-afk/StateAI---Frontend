@@ -1,13 +1,13 @@
-import { toBlob } from "html-to-image";
+import { toJpeg } from "html-to-image";
 
-/** Base width of the share card in CSS pixels. The PNG always has this composition, whatever the browser width. */
+/** Base width of the share card in CSS pixels. The JPG always has this composition, whatever the browser width. */
 export const SHARE_CARD_WIDTH = 1080;
 
-/** Device-pixel multiplier for the exported PNG: 2 gives a 2160px-wide image, sharp on phones and when zoomed in WhatsApp. */
+/** Device-pixel multiplier for the exported JPG: 2 gives a 2160px-wide image, sharp on phones and when zoomed in WhatsApp. */
 export const EXPORT_PIXEL_RATIO = 2;
 
 /**
- * Renders ONLY the given node (the share card) to a PNG on a real white
+ * Renders ONLY the given node (the share card) to a JPG on a real white
  * background, client-side — nothing is uploaded anywhere. The node must be
  * the unscaled card itself (not the scaled preview wrapper): html-to-image
  * clones it and measures its own layout box, so the preview's CSS transform
@@ -15,24 +15,29 @@ export const EXPORT_PIXEL_RATIO = 2;
  *
  * Waits for web fonts first so text is not measured with a fallback font.
  */
-export async function renderNodeToPng(node: HTMLElement): Promise<Blob> {
+export async function renderNodeToJpeg(node: HTMLElement): Promise<Blob> {
   if (typeof document !== "undefined" && document.fonts?.ready) {
     await document.fonts.ready;
   }
   // A freshly loaded INE image must finish decoding before html-to-image clones the card.
   await Promise.all(Array.from(node.querySelectorAll("img")).map((img) => img.decode()));
-  const blob = await toBlob(node, {
+  const dataUrl = await toJpeg(node, {
     pixelRatio: EXPORT_PIXEL_RATIO,
     backgroundColor: "#ffffff",
+    quality: 0.94,
     width: node.offsetWidth,
     height: node.offsetHeight,
   });
-  if (!blob) throw new Error("PNG generation returned no image");
-  return blob;
+  const base64 = dataUrl.split(",")[1];
+  if (!base64) throw new Error("JPG generation returned no image");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: "image/jpeg" });
 }
 
-export function pngFileFromBlob(blob: Blob, filename: string): File {
-  return new File([blob], filename, { type: "image/png" });
+export function jpegFileFromBlob(blob: Blob, filename: string): File {
+  return new File([blob], filename, { type: "image/jpeg" });
 }
 
 /** Saves the file through a temporary link — the universal fallback when the browser cannot share files. */

@@ -160,6 +160,40 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
 
     expect(screen.getByLabelText("Asesor responsable")).toHaveValue("user-me");
   });
+
+  it("offers Quick Notes while creating and applies detected data to the same form", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+
+    type("Quick Notes de la llamada", "Cliente Ana López, celular 8112345678. Casa dúplex, 2 plantas y 3 recámaras.");
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar al expediente" }));
+
+    expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("Ana López");
+    expect(screen.getByLabelText(/celular del titular/i)).toHaveValue("8112345678");
+    expect(screen.getByRole("radio", { name: "Casa" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Plantas")).toHaveValue(2);
+    expect(screen.getByLabelText("Recámaras")).toHaveValue(3);
+    expect(screen.getByLabelText("Notas adicionales o contexto de la conversación")).toHaveValue(
+      "Cliente Ana López, celular 8112345678. Casa dúplex, 2 plantas y 3 recámaras."
+    );
+
+  });
+
+  it("does not show Quick Notes while editing an existing case", async () => {
+    await renderEdit();
+    expect(screen.queryByLabelText("Quick Notes de la llamada")).not.toBeInTheDocument();
+  });
+
+  it("shows Compartir ficha in an existing case and sends the open case id", async () => {
+    getRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
+    const onShare = vi.fn();
+    render(<RenovaCaseDialog caseId="case-1" onClose={vi.fn()} onSaved={vi.fn()} onShare={onShare} />);
+    await screen.findByLabelText(/nombre completo del titular/i);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compartir ficha" }));
+    expect(onShare).toHaveBeenCalledWith("case-1");
+  });
 });
 
 describe("RenovaCaseDialog — expand / collapse", () => {

@@ -1,0 +1,172 @@
+import type { RenovaFormValues } from "@/features/renova/lib/form-values";
+
+export type QuickNotesField = keyof Pick<
+  RenovaFormValues,
+  | "owner_name"
+  | "owner_phone"
+  | "street_address"
+  | "neighborhood"
+  | "municipality"
+  | "postal_code"
+  | "dwelling_type"
+  | "is_duplex"
+  | "floors"
+  | "bathrooms"
+  | "bedrooms"
+  | "property_tax_debt"
+  | "property_tax_debt_unit"
+  | "other_debt"
+  | "water_debt"
+  | "electricity_debt"
+  | "gas_debt"
+  | "owner_expected_amount"
+  | "market_value"
+  | "final_offer"
+  | "nss"
+  | "credit_number"
+  | "sale_reason"
+>;
+
+export interface QuickNotesExtraction {
+  values: Partial<Pick<RenovaFormValues, QuickNotesField>>;
+  fields: QuickNotesField[];
+}
+
+const LABELS: Partial<Record<QuickNotesField, string>> = {
+  owner_name: "nombre",
+  owner_phone: "celular",
+  street_address: "dirección",
+  neighborhood: "colonia",
+  municipality: "municipio",
+  postal_code: "código postal",
+  dwelling_type: "tipo de vivienda",
+  is_duplex: "dúplex",
+  floors: "plantas",
+  bathrooms: "baños",
+  bedrooms: "recámaras",
+  property_tax_debt: "predial",
+  other_debt: "adeudo",
+  water_debt: "agua",
+  electricity_debt: "luz",
+  gas_debt: "gas",
+  owner_expected_amount: "monto esperado",
+  market_value: "valor de mercado",
+  final_offer: "propuesta",
+  nss: "NSS",
+  credit_number: "crédito",
+  sale_reason: "motivo de venta",
+};
+
+export function quickNotesFieldLabel(field: QuickNotesField): string {
+  return LABELS[field] ?? field;
+}
+
+function captured(text: string, pattern: RegExp): string | null {
+  return text.match(pattern)?.[1]?.trim() || null;
+}
+
+function digits(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/\D/g, "");
+  return normalized || null;
+}
+
+function money(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.toLowerCase().replace(/[$,\s]/g, "");
+  const match = normalized.match(/^(\d+(?:\.\d{1,2})?)(mil|k)?$/);
+  if (!match) return null;
+  const amount = Number(match[1]) * (match[2] ? 1000 : 1);
+  return Number.isFinite(amount) ? String(amount) : null;
+}
+
+function cleanPhrase(value: string | null): string | null {
+  return value?.replace(/\s+/g, " ").replace(/[,:;.-]+$/, "").trim() || null;
+}
+
+/**
+ * Extracts only values that are explicitly labelled or unambiguous in the
+ * note. It intentionally runs in the browser and never sends NSS, credit
+ * number or the rest of the call notes to an LLM/service.
+ */
+export function extractQuickNotes(note: string): QuickNotesExtraction {
+  const text = note.normalize("NFC");
+  const values: QuickNotesExtraction["values"] = {};
+
+  const assign = <K extends QuickNotesField>(field: K, value: RenovaFormValues[K] | null) => {
+    if (value !== null && value !== "") values[field] = value;
+  };
+
+  assign(
+    "owner_name",
+    cleanPhrase(
+      captured(
+        text,
+        /(?:cliente|titular|propietari[oa])(?:\s+se\s+llama|\s+es|\s*:)?\s+([a-záéíóúüñ][a-záéíóúüñ' -]{1,80}?)(?=\s+(?:tiene|vive|cuenta|propiedad|casa|tel[eé]fono|celular|nss|n[uú]mero)|[,;.\n]|$)/i
+      )
+    )
+  );
+  assign("owner_phone", digits(captured(text, /(?:tel[eé]fono|celular|whatsapp|tel\.?)(?:\s+es|\s*:)?\s*(\+?\d[\d ()-]{7,20})/i)));
+  assign("nss", digits(captured(text, /(?:nss|n[uú]mero\s+de\s+seguro\s+social)(?:\s+es|\s*:)?\s*([\d -]{11,20})/i)));
+  assign("credit_number", digits(captured(text, /(?:n[uú]mero\s+de\s+cr[eé]dito|cr[eé]dito)(?:\s+es|\s*:)?\s*([\d -]{6,30})/i)));
+
+  const neighborhood = cleanPhrase(captured(text, /(?:colonia|col\.?)(?:\s*:)?\s*([^,;.\n]+)/i));
+  const municipality = cleanPhrase(captured(text, /(?:municipio|alcald[ií]a)(?:\s*:)?\s*([^,;.\n]+)/i));
+  assign("neighborhood", neighborhood);
+  assign("municipality", municipality);
+  assign("postal_code", digits(captured(text, /(?:c[oó]digo\s+postal|c\.?p\.?)(?:\s*:)?\s*(\d{5})/i)));
+
+  const address = cleanPhrase(
+    captured(text, /(?:direcci[oó]n|domicilio|propiedad\s+(?:est[aá]|queda)?\s*en|casa\s+(?:est[aá]|queda)?\s*en)(?:\s*:)?\s*([^;.\n]+)/i)
+  );
+  if (address) {
+    const withoutLabels = address.split(/,?\s+(?=colonia|col\.?|municipio|alcald[ií]a|c[oó]digo\s+postal|c\.?p\.?)/i)[0];
+    assign("street_address", cleanPhrase(withoutLabels));
+  }
+
+  if (/\b(?:casa|vivienda)\b/i.test(text)) assign("dwelling_type", "house");
+  else if (/\b(?:departamento|depa)\b/i.test(text)) assign("dwelling_type", "apartment");
+  if (/\bd[uú]plex\b/i.test(text)) assign("is_duplex", true);
+
+  assign("floors", captured(text, /(\d{1,2})\s*(?:plantas?|pisos?|niveles?)\b/i));
+  assign("bathrooms", captured(text, /(\d+(?:\.5)?)\s*ba[ñn]os?\b/i));
+  assign("bedrooms", captured(text, /(\d{1,2})\s*(?:rec[aá]maras?|habitaciones?|cuartos?)\b/i));
+
+  const predialYears = captured(text, /(?:predial)(?:\s+de|\s*:)?\s*(\d{1,2})\s*a[ñn]os?/i);
+  if (predialYears) {
+    assign("property_tax_debt", predialYears);
+    assign("property_tax_debt_unit", "years");
+  } else {
+    assign("property_tax_debt", money(captured(text, /(?:adeudo|deuda)?\s*(?:de\s+)?predial(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  }
+  assign("water_debt", money(captured(text, /(?:adeudo|deuda)\s+(?:de\s+)?agua(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("electricity_debt", money(captured(text, /(?:adeudo|deuda)\s+(?:de\s+)?luz(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("gas_debt", money(captured(text, /(?:adeudo|deuda)\s+(?:de\s+)?gas(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("other_debt", money(captured(text, /(?:adeudo|deuda)(?!\s+(?:de\s+)?(?:predial|agua|luz|gas))(?:\s+total)?(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("owner_expected_amount", money(captured(text, /(?:espera\s+recibir|quiere\s+recibir|pide)(?:\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("market_value", money(captured(text, /(?:valor\s+de\s+mercado|vale)(?:\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("final_offer", money(captured(text, /(?:propuesta|oferta)(?:\s+final)?(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+  assign("sale_reason", cleanPhrase(captured(text, /(?:quiere|necesita)\s+vender\s+porque\s+([^;.\n]+)/i)));
+
+  return { values, fields: Object.keys(values) as QuickNotesField[] };
+}
+
+/** Applies detected values without replacing structured data already typed. */
+export function applyQuickNotes(current: RenovaFormValues, note: string): { values: RenovaFormValues; applied: QuickNotesField[] } {
+  const extraction = extractQuickNotes(note);
+  const next = { ...current };
+  const applied: QuickNotesField[] = [];
+
+  for (const field of extraction.fields) {
+    const existing = current[field];
+    if ((typeof existing === "string" && existing.trim() !== "") || (typeof existing === "boolean" && existing)) continue;
+    Object.assign(next, { [field]: extraction.values[field] });
+    applied.push(field);
+  }
+
+  const trimmed = note.trim();
+  if (trimmed && !current.notes.includes(trimmed)) {
+    next.notes = current.notes.trim() ? `${current.notes.trim()}\n\nQuick Notes:\n${trimmed}` : trimmed;
+  }
+  return { values: next, applied };
+}

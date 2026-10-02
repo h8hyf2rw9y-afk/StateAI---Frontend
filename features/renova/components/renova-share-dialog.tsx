@@ -13,8 +13,8 @@ import {
   SHARE_CARD_WIDTH,
   canShareFile,
   downloadFile,
-  pngFileFromBlob,
-  renderNodeToPng,
+  jpegFileFromBlob,
+  renderNodeToJpeg,
   shareOrDownload,
 } from "@/features/renova/lib/export-image";
 import { renovaShortId } from "@/features/renova/lib/short-id";
@@ -27,7 +27,7 @@ const DOWNLOAD_FALLBACK_MESSAGE = "La imagen se descargó. Ahora puedes adjuntar
 /**
  * The card gets the case WITHOUT any protected-data field — not the full
  * values (which this dialog never loads) and not even the masks or flags — so
- * there is nothing sensitive for it to render, in the DOM or in the PNG.
+ * there is nothing sensitive for it to render, in the DOM or in the JPG.
  */
 function toShareCase(renovaCase: RenovaCase): RenovaShareCase {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -40,7 +40,7 @@ type LoadState = { status: "loading" } | { status: "error"; message: string } | 
 /**
  * Shows the card at whatever width fits by scaling it with CSS. Only the
  * VISUAL size changes: the card itself keeps its fixed 1080px layout, which is
- * exactly what gets exported (the PNG is rendered from the card node, not from
+ * exactly what gets exported (the JPG is rendered from the card node, not from
  * this scaled wrapper).
  */
 function ScaledPreview({ children }: { children: ReactNode }) {
@@ -75,10 +75,10 @@ function ScaledPreview({ children }: { children: ReactNode }) {
  * "Ver ficha para compartir": loads the REAL saved case from the backend and
  * shows its white card next to the "Preparar para compartir" options.
  *
- * Export: the card node is rendered to a PNG client-side (lib/export-image.ts);
+ * Export: the card node is rendered to a JPG client-side (lib/export-image.ts);
  * "Compartir imagen" then uses the native share sheet when the browser can
  * share files (on phones this includes WhatsApp) and otherwise downloads the
- * PNG with a message telling the person to attach it in WhatsApp. Nothing is
+ * JPG with a message telling the person to attach it in WhatsApp. Nothing is
  * ever sent automatically.
  */
 export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose: () => void }) {
@@ -89,7 +89,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
   const [identifiers, setIdentifiers] = useState<{ nss: string | null; credit_number: string | null } | null>(null);
   const [ineImages, setIneImages] = useState<{ front: string | null; back: string | null } | null>(null);
   const [loadingProtected, setLoadingProtected] = useState(false);
-  const [canShareFiles] = useState(() => canShareFile(new File([], "probe.png", { type: "image/png" })));
+  const [canShareFiles] = useState(() => canShareFile(new File([], "probe.jpg", { type: "image/jpeg" })));
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
     const node = cardRef.current;
     if (!node || !renovaCase) throw new Error("card not ready");
     if ((options.includeIdentifiers && !identifiers) || (options.includeIne && !ineImages)) throw new Error("protected data not ready");
-    return pngFileFromBlob(await renderNodeToPng(node), `renova-${renovaShortId(renovaCase.id)}.png`);
+    return jpegFileFromBlob(await renderNodeToJpeg(node), `renova-${renovaShortId(renovaCase.id)}.jpg`);
   }
 
   async function handleDownload() {

@@ -56,7 +56,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
  * person's share options through props, and fetches nothing itself.
  *
  * Fixed 1080px base width (see SHARE_CARD_WIDTH) so it is composed the same
- * way whatever the browser width; a preview may scale it with CSS, but the PNG
+ * way whatever the browser width; a preview may scale it with CSS, but the JPG
  * is always rendered from this unscaled node. Colors are explicit (white
  * paper, dark text), never theme tokens, so it stays legible inside the dark
  * app. There are no controls in here — everything inside is part of the image.

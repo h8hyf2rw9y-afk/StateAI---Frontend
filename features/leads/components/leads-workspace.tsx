@@ -127,7 +127,12 @@ export function LeadsWorkspace() {
       </div>
 
       {renovaDialog && (
-        <RenovaCaseDialog caseId={renovaDialog.caseId} onClose={() => setRenovaDialog(null)} onSaved={handleRenovaSaved} />
+        <RenovaCaseDialog
+          caseId={renovaDialog.caseId}
+          onClose={() => setRenovaDialog(null)}
+          onSaved={handleRenovaSaved}
+          onShare={(caseId) => setShareCaseId(caseId)}
+        />
       )}
       {shareCaseId && <RenovaShareDialog key={shareCaseId} caseId={shareCaseId} onClose={() => setShareCaseId(null)} />}
     </>

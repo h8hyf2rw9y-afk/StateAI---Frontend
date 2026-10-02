@@ -6,14 +6,14 @@ import { makeRenovaCase } from "@/tests/test-utils/renova-fixtures";
 const getRenovaCaseMock = vi.fn();
 const getSensitiveMock = vi.fn();
 const getIneMock = vi.fn();
-const toBlobMock = vi.fn();
+const toJpegMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
   getRenovaSensitiveData: (...args: unknown[]) => getSensitiveMock(...args),
   getRenovaIne: (...args: unknown[]) => getIneMock(...args),
 }));
-vi.mock("html-to-image", () => ({ toBlob: (...args: unknown[]) => toBlobMock(...args) }));
+vi.mock("html-to-image", () => ({ toJpeg: (...args: unknown[]) => toJpegMock(...args) }));
 vi.mock("@/hooks/useUser", () => ({
   useUser: () => ({
     user: { id: "user-1", email: "ana@example.com", user_metadata: { full_name: "Ana Ruiz" } },
@@ -23,7 +23,7 @@ vi.mock("@/hooks/useUser", () => ({
 }));
 
 const DOWNLOAD_MESSAGE = "La imagen se descargó. Ahora puedes adjuntarla en tu grupo de WhatsApp.";
-const PNG = () => new Blob(["png"], { type: "image/png" });
+const JPG = () => "data:image/jpeg;base64,anBn";
 
 let anchorClicks: { download: string; href: string }[] = [];
 
@@ -52,8 +52,8 @@ beforeEach(() => {
   getIneMock.mockReset();
   getSensitiveMock.mockResolvedValue({ ok: true, data: { nss: "12345678901", credit_number: "9876543210" } });
   getIneMock.mockResolvedValue({ ok: false, error: { status: 404, message: "Missing" } });
-  toBlobMock.mockReset();
-  toBlobMock.mockResolvedValue(PNG());
+  toJpegMock.mockReset();
+  toJpegMock.mockResolvedValue(JPG());
   anchorClicks = [];
   URL.createObjectURL = vi.fn(() => "blob:mock");
   URL.revokeObjectURL = vi.fn();
@@ -116,7 +116,7 @@ describe("RenovaShareDialog — the card and its options", () => {
     expect(within(panel).getByLabelText("Incluir NSS y número de crédito")).not.toBeChecked();
     expect(within(panel).getByLabelText("Incluir imágenes del INE")).not.toBeChecked();
     expect(within(panel).getByRole("button", { name: "Compartir imagen" })).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Descargar PNG" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Descargar JPG" })).toBeInTheDocument();
     expect(card.querySelector("input, button")).toBeNull();
   });
 
@@ -171,14 +171,14 @@ describe("RenovaShareDialog — the card and its options", () => {
   });
 });
 
-describe("RenovaShareDialog — PNG export", () => {
+describe("RenovaShareDialog — JPG export", () => {
   it("renders ONLY the card node — on a white background, at 2x, waiting for fonts", async () => {
     await openDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
 
-    await waitFor(() => expect(toBlobMock).toHaveBeenCalledTimes(1));
-    const [node, options] = toBlobMock.mock.calls[0];
+    await waitFor(() => expect(toJpegMock).toHaveBeenCalledTimes(1));
+    const [node, options] = toJpegMock.mock.calls[0];
     expect(node).toBe(screen.getByTestId("renova-share-card"));
     expect(node.closest("[role='dialog']")).not.toBe(node);
     expect(options).toMatchObject({ backgroundColor: "#ffffff", pixelRatio: 2 });
@@ -187,60 +187,60 @@ describe("RenovaShareDialog — PNG export", () => {
     expect(node.style.width).toBe("1080px");
   });
 
-  it("Descargar PNG downloads a file named after the short id — never the owner or the UUID", async () => {
+  it("Descargar JPG downloads a file named after the short id — never the owner or the UUID", async () => {
     await openDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
 
     expect(await screen.findByText("Imagen descargada.")).toBeInTheDocument();
     expect(anchorClicks).toHaveLength(1);
-    expect(anchorClicks[0].download).toBe("renova-RN-9F3A2C.png");
+    expect(anchorClicks[0].download).toBe("renova-RN-9F3A2C.jpg");
     expect(anchorClicks[0].download).not.toMatch(/mar[ií]a|l[oó]pez|9f3a2c41-7b1d/i);
   });
 
   it("shows 'Generando imagen…' and disables both actions while it works", async () => {
-    let resolve!: (blob: Blob) => void;
-    toBlobMock.mockReturnValue(new Promise<Blob>((r) => (resolve = r)));
+    let resolve!: (dataUrl: string) => void;
+    toJpegMock.mockReturnValue(new Promise<string>((r) => (resolve = r)));
     await openDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
 
     expect(await screen.findByText("Generando imagen…")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Descargar PNG" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Descargar JPG" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Compartir imagen" })).toBeDisabled();
 
-    resolve(PNG());
+    resolve(JPG());
     expect(await screen.findByText("Imagen descargada.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Descargar PNG" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Descargar JPG" })).toBeEnabled();
   });
 
   it("reports a generation error readably and lets the person retry", async () => {
-    toBlobMock.mockRejectedValueOnce(new Error("canvas exploded"));
+    toJpegMock.mockRejectedValueOnce(new Error("canvas exploded"));
     await openDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("No se pudo generar la imagen. Inténtalo de nuevo.");
     expect(document.body.textContent).not.toContain("canvas exploded");
     expect(anchorClicks).toHaveLength(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
     expect(await screen.findByText("Imagen descargada.")).toBeInTheDocument();
   });
 
   it("treats an empty result from the renderer as an error", async () => {
-    toBlobMock.mockResolvedValueOnce(null);
+    toJpegMock.mockResolvedValueOnce(null);
     await openDialog();
 
-    fireEvent.click(screen.getByRole("button", { name: "Descargar PNG" }));
+    fireEvent.click(screen.getByRole("button", { name: "Descargar JPG" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no se pudo generar la imagen/i);
   });
 });
 
 describe("RenovaShareDialog — sharing", () => {
-  it("uses the native share sheet with the PNG file when the browser can share files", async () => {
+  it("uses the native share sheet with the JPG file when the browser can share files", async () => {
     setShare("files");
     await openDialog();
     expect(screen.getByText(/se abrirá el menú de compartir/i)).toBeInTheDocument();
@@ -253,12 +253,12 @@ describe("RenovaShareDialog — sharing", () => {
     const shared = share.mock.calls[0][0];
     expect(shared.files).toHaveLength(1);
     expect(shared.files[0]).toBeInstanceOf(File);
-    expect(shared.files[0].name).toBe("renova-RN-9F3A2C.png");
-    expect(shared.files[0].type).toBe("image/png");
+    expect(shared.files[0].name).toBe("renova-RN-9F3A2C.jpg");
+    expect(shared.files[0].type).toBe("image/jpeg");
     expect(anchorClicks).toHaveLength(0);
   });
 
-  it("falls back to downloading the PNG and tells the person to attach it in WhatsApp", async () => {
+  it("falls back to downloading the JPG and tells the person to attach it in WhatsApp", async () => {
     setShare("none");
     await openDialog();
     expect(screen.getByText(/no puede compartir imágenes directamente/i)).toBeInTheDocument();
@@ -267,7 +267,7 @@ describe("RenovaShareDialog — sharing", () => {
 
     expect(await screen.findByText(DOWNLOAD_MESSAGE)).toBeInTheDocument();
     expect(anchorClicks).toHaveLength(1);
-    expect(anchorClicks[0].download).toBe("renova-RN-9F3A2C.png");
+    expect(anchorClicks[0].download).toBe("renova-RN-9F3A2C.jpg");
   });
 
   it("falls back to download when canShare exists but refuses files", async () => {

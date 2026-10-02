@@ -21,7 +21,7 @@ const TOGGLES: { key: keyof RenovaShareOptions; label: string }[] = [
 /**
  * The "Preparar para compartir" panel. It lives OUTSIDE the exportable card
  * (its own column in the dialog), so none of these controls can end up in the
- * PNG. Purely presentational: the dialog owns the options and the export.
+ * JPG. Purely presentational: the dialog owns the options and the export.
  */
 export function RenovaShareOptionsPanel({
   options,
@@ -90,12 +90,12 @@ export function RenovaShareOptionsPanel({
         </Button>
         <Button type="button" variant="outline" onClick={onDownload} disabled={generating || loadingProtected}>
           <Download />
-          Descargar PNG
+          Descargar JPG
         </Button>
         <p className="text-xs text-muted-foreground">
           {canShareFiles
             ? "Se abrirá el menú de compartir de tu dispositivo."
-            : "Este navegador no puede compartir imágenes directamente: se descargará el PNG para que lo adjuntes en WhatsApp."}
+            : "Este navegador no puede compartir imágenes directamente: se descargará el JPG para que lo adjuntes en WhatsApp."}
         </p>
       </div>
 
