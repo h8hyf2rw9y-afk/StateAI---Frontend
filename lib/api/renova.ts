@@ -2,6 +2,8 @@ import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
 import type {
   RenovaCase,
+  RenovaCaseBucket,
+  RenovaCaseBucketCounts,
   RenovaCaseInput,
   RenovaCaseListItem,
   RenovaHistoryEntry,
@@ -27,8 +29,10 @@ export interface RenovaCaseFilters {
   q?: string;
   status?: string;
   assigned_user_id?: string;
-  /** Omitted -> only non-archived cases (the default "Activos" view). true -> only archived ("Archivados"). */
+  /** Omitted -> only non-archived cases (the default "Activos" view). true -> only archived ("Archivados"). Superseded by `bucket` when both are given. */
   archived?: boolean;
+  /** Additive Leads → Renova tab filter — see RenovaCaseBucket. Takes precedence over `archived` when both are given. */
+  bucket?: RenovaCaseBucket;
 }
 
 export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResult<RenovaCaseListItem[]>> {
@@ -39,8 +43,14 @@ export function getRenovaCases(filters: RenovaCaseFilters = {}): Promise<ApiResu
       status: filters.status || undefined,
       assigned_user_id: filters.assigned_user_id || undefined,
       archived: filters.archived,
+      bucket: filters.bucket,
     },
   });
+}
+
+/** Counters for the three Leads → Renova tabs, from one grouped backend query — never the case rows themselves. */
+export function getRenovaCaseCounts(): Promise<ApiResult<RenovaCaseBucketCounts>> {
+  return apiRequest<RenovaCaseBucketCounts>("/api/v1/renova/cases/counts");
 }
 
 export function getRenovaCase(caseId: string): Promise<ApiResult<RenovaCase>> {

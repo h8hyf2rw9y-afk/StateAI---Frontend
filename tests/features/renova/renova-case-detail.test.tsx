@@ -169,7 +169,10 @@ describe("RenovaCaseDetail — actions", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByText("Cambios guardados.")).toBeInTheDocument();
     expect(document.body).toHaveTextContent("Obispado");
-    expect(getRenovaHistoryMock).toHaveBeenCalledTimes(2);
+    // Once for the page itself, once for the edit popup's own Historial
+    // section (also shown there now — see RenovaCaseHistory), once more
+    // when the page refetches after the save.
+    expect(getRenovaHistoryMock).toHaveBeenCalledTimes(3);
   });
 
   it("Ver ficha para compartir opens the share card for this case", async () => {

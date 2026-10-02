@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createRenovaCase, getRenovaCase, getRenovaCases, getRenovaHistory, getRenovaSensitiveData, updateRenovaCase } from "@/lib/api/renova";
+import {
+  createRenovaCase,
+  getRenovaCase,
+  getRenovaCaseCounts,
+  getRenovaCases,
+  getRenovaHistory,
+  getRenovaSensitiveData,
+  updateRenovaCase,
+} from "@/lib/api/renova";
 import { getContacts } from "@/lib/api/contacts";
 
 const apiRequestMock = vi.fn();
@@ -41,6 +49,28 @@ describe("Renova API client", () => {
       status: undefined,
       assigned_user_id: undefined,
     });
+  });
+
+  it("sends bucket as an additive filter, composed with the others", async () => {
+    await getRenovaCases({ bucket: "closed", status: "rejected" });
+
+    expect(apiRequestMock.mock.calls[0][1].params).toEqual({
+      limit: 200,
+      status: "rejected",
+      bucket: "closed",
+    });
+  });
+
+  it("reads the three tabs' counters from the dedicated counts endpoint", async () => {
+    apiRequestMock.mockResolvedValue({
+      ok: true,
+      data: { active: 3, closed: 2, rejected: 1, cancelled: 1, archived: 1 },
+    });
+
+    const result = await getRenovaCaseCounts();
+
+    expect(apiRequestMock).toHaveBeenCalledWith("/api/v1/renova/cases/counts");
+    expect(result).toEqual({ ok: true, data: { active: 3, closed: 2, rejected: 1, cancelled: 1, archived: 1 } });
   });
 
   it("gets, creates and updates a case with the right verbs and paths, no organization_id", async () => {

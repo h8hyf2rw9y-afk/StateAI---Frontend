@@ -10,6 +10,7 @@ const getContactsMock = vi.fn();
 const createContactMock = vi.fn();
 const getRenovaSensitiveDataMock = vi.fn();
 const extractRenovaQuickNotesMock = vi.fn();
+const getRenovaHistoryMock = vi.fn();
 
 vi.mock("@/lib/api/renova", () => ({
   createRenovaCase: (...args: unknown[]) => createRenovaCaseMock(...args),
@@ -17,6 +18,7 @@ vi.mock("@/lib/api/renova", () => ({
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
   getRenovaSensitiveData: (...args: unknown[]) => getRenovaSensitiveDataMock(...args),
   extractRenovaQuickNotes: (...args: unknown[]) => extractRenovaQuickNotesMock(...args),
+  getRenovaHistory: (...args: unknown[]) => getRenovaHistoryMock(...args),
   getRenovaCases: vi.fn(),
 }));
 vi.mock("@/lib/api/contacts", () => ({
@@ -59,10 +61,11 @@ function fillRequired() {
 }
 
 beforeEach(() => {
-  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock, getRenovaSensitiveDataMock, extractRenovaQuickNotesMock]) mock.mockReset();
+  for (const mock of [createRenovaCaseMock, updateRenovaCaseMock, getRenovaCaseMock, getContactsMock, createContactMock, getRenovaSensitiveDataMock, extractRenovaQuickNotesMock, getRenovaHistoryMock]) mock.mockReset();
   createRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
   updateRenovaCaseMock.mockResolvedValue({ ok: true, data: savedCase() });
   extractRenovaQuickNotesMock.mockResolvedValue({ ok: true, data: {} });
+  getRenovaHistoryMock.mockResolvedValue({ ok: true, data: [] });
 });
 
 describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", () => {
@@ -215,9 +218,22 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
     expect(sent).not.toContain("8125455785");
   });
 
-  it("does not show Quick Notes while editing an existing case", async () => {
+  it("also offers Quick Notes while editing an existing case", async () => {
     await renderEdit();
-    expect(screen.queryByLabelText("Quick Notes de la llamada")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Quick Notes de la llamada")).toBeInTheDocument();
+  });
+
+  it("shows no Historial section while creating a case that has not been saved yet", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    expect(screen.queryByText("Historial")).not.toBeInTheDocument();
+    expect(getRenovaHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it("shows Historial for a real saved case being edited", async () => {
+    await renderEdit();
+    expect(await screen.findByText("Historial")).toBeInTheDocument();
+    expect(getRenovaHistoryMock).toHaveBeenCalledWith("case-1");
   });
 
   it("shows Compartir ficha in an existing case and sends the open case id", async () => {

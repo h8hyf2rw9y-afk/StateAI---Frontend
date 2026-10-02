@@ -2,15 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, FolderOpen, Loader2, Pencil, Share2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
-import { EmptyState } from "@/components/shared/empty-state";
 import { SectionCard } from "@/components/shared/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
+import { RenovaCaseHistory } from "@/features/renova/components/renova-case-history";
 import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
 import { RenovaShareDialog } from "@/features/renova/components/renova-share-dialog";
 import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
@@ -19,10 +19,8 @@ import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import {
   RENOVA_STATUSES,
   formatRenovaDate,
-  formatRenovaDateTime,
   formatRenovaDeeds,
   formatRenovaDwellingWithDuplex,
-  formatRenovaHistoryAction,
   formatRenovaMaritalStatus,
   formatRenovaMoney,
   formatRenovaOccupancy,
@@ -30,9 +28,8 @@ import {
   formatRenovaStatus,
   getRenovaStatusClassName,
   type RenovaCase,
-  type RenovaHistoryEntry,
 } from "@/features/renova/types";
-import { getRenovaCase, getRenovaHistory, updateRenovaCase } from "@/lib/api/renova";
+import { getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +65,6 @@ function Grid({ children }: { children: ReactNode }) {
 export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const { user } = useUser();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
-  const [history, setHistory] = useState<RenovaHistoryEntry[]>([]);
   const [historyKey, setHistoryKey] = useState(0);
   const [editing, setEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -87,16 +83,6 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
       cancelled = true;
     };
   }, [caseId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getRenovaHistory(caseId).then((response) => {
-      if (!cancelled && response.ok) setHistory(response.data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [caseId, historyKey]);
 
   function applySaved(saved: RenovaCase) {
     setLoad({ status: "ready", renovaCase: saved });
@@ -270,20 +256,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
               </Grid>
             </SectionCard>
 
-            <SectionCard title="Historial" className="xl:col-span-2">
-              {history.length === 0 ? (
-                <EmptyState icon={FolderOpen} title="Sin movimientos registrados" description="Los cambios importantes del expediente aparecerán aquí." />
-              ) : (
-                <ol className="flex flex-col gap-2">
-                  {history.map((entry) => (
-                    <li key={entry.id} className="flex items-center justify-between gap-4 text-sm">
-                      <span>{formatRenovaHistoryAction(entry.action)}</span>
-                      <span className="text-muted-foreground">{formatRenovaDateTime(entry.created_at)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </SectionCard>
+            <RenovaCaseHistory caseId={caseId} refreshKey={historyKey} className="xl:col-span-2" />
           </div>
         </>
       )}

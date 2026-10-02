@@ -16,7 +16,9 @@ vi.mock("@/lib/api/contacts", () => ({
 }));
 vi.mock("@/lib/api/renova", () => ({
   getRenovaCases: (...args: unknown[]) => getRenovaCasesMock(...args),
+  getRenovaCaseCounts: vi.fn().mockResolvedValue({ ok: true, data: { active: 0, closed: 0, rejected: 0, cancelled: 0, archived: 0 } }),
   getRenovaCase: (...args: unknown[]) => getRenovaCaseMock(...args),
+  getRenovaHistory: vi.fn().mockResolvedValue({ ok: true, data: [] }),
   createRenovaCase: (...args: unknown[]) => createRenovaCaseMock(...args),
   updateRenovaCase: vi.fn(),
 }));
@@ -31,6 +33,12 @@ vi.mock("@/hooks/useUser", () => ({
   useUser: () => ({ user: { id: "user-me" }, isLoading: false, isAuthenticated: true }),
 }));
 vi.mock("@/components/ui/select", () => import("@/tests/test-utils/select-stub"));
+
+// The Renova popup's form has ~35 fields and re-renders on every keystroke
+// (see renova-case-dialog.test.tsx's identical note); under the full suite
+// running every test file in parallel, the default 5s budget is occasionally
+// too tight for the save-and-reload flow below.
+vi.setConfig({ testTimeout: 15_000 });
 
 function makeContact(overrides: Partial<Contact> = {}): Contact {
   return {

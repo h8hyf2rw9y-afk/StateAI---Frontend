@@ -32,6 +32,11 @@ export interface RenovaCaseListItem {
   archived: boolean;
   owner_name: string;
   owner_phone: string;
+  /** Moved here from RenovaCase-only so the Leads → Renova table can show a "Dirección" column without a second request. */
+  street_address: string | null;
+  neighborhood: string | null;
+  municipality: string | null;
+  postal_code: string | null;
   /** Mutually-exclusive BASE type only ("house"/"apartment"); never "duplex" — see `is_duplex`. */
   dwelling_type: string | null;
   /** Independent configuration: can be true with either base type, or with dwelling_type still null ("tipo base por confirmar"). */
@@ -58,10 +63,6 @@ export interface RenovaCase extends RenovaCaseListItem {
   marital_status: string | null;
   spouse_name: string | null;
   spouse_phone: string | null;
-  street_address: string | null;
-  neighborhood: string | null;
-  municipality: string | null;
-  postal_code: string | null;
   occupancy_status: string | null;
   floors: number | null;
   bathrooms: string | null;
@@ -180,6 +181,41 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function getRenovaStatusClassName(status: string): string {
   return STATUS_STYLES[status] ?? STATUS_STYLES.cancelled;
+}
+
+// --- Leads → Renova table buckets (GET /renova/cases?bucket=...) -----------
+//
+// Mirrors the backend's RENOVA_CLOSED_STATUSES / RENOVA_CASE_BUCKETS exactly:
+// "active" = not archived, not rejected/cancelled ("purchased" stays active —
+// a closed, successful deal, not an exit). "closed" = not archived AND
+// rejected/cancelled. "archived" = archived=true, regardless of status.
+
+/** The two ways an operation can end without being archived — distinct from RENOVA_PIPELINE_EXIT_STATUSES, which is about leaving the Kanban board specifically. */
+export const RENOVA_CLOSED_STATUSES = ["rejected", "cancelled"] as const;
+
+export function isRenovaClosedStatus(status: string): boolean {
+  return (RENOVA_CLOSED_STATUSES as readonly string[]).includes(status);
+}
+
+export const RENOVA_CASE_BUCKETS = ["active", "closed", "archived"] as const;
+export type RenovaCaseBucket = (typeof RENOVA_CASE_BUCKETS)[number];
+
+const BUCKET_LABELS: Record<RenovaCaseBucket, string> = {
+  active: "Activos",
+  closed: "Rechazados y cancelados",
+  archived: "Archivados",
+};
+export function formatRenovaCaseBucket(bucket: RenovaCaseBucket): string {
+  return BUCKET_LABELS[bucket];
+}
+
+/** GET /renova/cases/counts — one cheap grouped query, never the case rows themselves. */
+export interface RenovaCaseBucketCounts {
+  active: number;
+  closed: number;
+  rejected: number;
+  cancelled: number;
+  archived: number;
 }
 
 export const RENOVA_SOURCES = ["whatsapp", "phone", "referral", "website", "other"] as const;

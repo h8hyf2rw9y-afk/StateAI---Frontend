@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaCaseForm } from "@/features/renova/components/renova-case-form";
+import { RenovaCaseHistory } from "@/features/renova/components/renova-case-history";
 import { fieldId } from "@/features/renova/components/renova-form-fields";
 import { ENCRYPTION_NOT_CONFIGURED_MESSAGE, advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import {
@@ -251,36 +252,34 @@ export function RenovaCaseDialog({
                 void submit("prospect");
               }}
             >
-              {!isEdit && (
-                <section aria-labelledby="quick-notes-title" className="mb-8 rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
-                  <div className="mb-3 flex items-start gap-2">
-                    <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                    <div>
-                      <h2 id="quick-notes-title" className="text-sm font-medium">Quick Notes</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Escribe libremente durante la llamada. Detectaremos los datos y guardaremos una copia protegida en Notas.
-                      </p>
-                    </div>
+              <section aria-labelledby="quick-notes-title" className="mb-8 rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+                <div className="mb-3 flex items-start gap-2">
+                  <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <div>
+                    <h2 id="quick-notes-title" className="text-sm font-medium">Quick Notes</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Escribe libremente durante la llamada. Detectaremos los datos y guardaremos una copia protegida en Notas.
+                    </p>
                   </div>
-                  <Textarea
-                    aria-label="Quick Notes de la llamada"
-                    rows={4}
-                    maxLength={5000}
-                    value={quickNotes}
-                    placeholder="Ej. Cliente Ana López, celular 8112345678. Propiedad en Río Pánuco 120, colonia Del Valle, municipio San Pedro. Casa dúplex, 2 plantas, 3 recámaras, NSS…"
-                    onChange={(event) => {
-                      setQuickNotes(event.target.value);
-                      setQuickNotesResult(null);
-                    }}
-                  />
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p role="status" className="text-xs text-muted-foreground">{quickNotesResult ?? "Los datos sensibles se procesan sólo en este navegador."}</p>
-                    <Button type="button" variant="outline" size="sm" disabled={isExtractingNotes} onClick={() => void handleQuickNotes()}>
-                      {isExtractingNotes ? <Loader2 className="animate-spin" /> : <Sparkles />} {isExtractingNotes ? "Analizando…" : "Aplicar al expediente"}
-                    </Button>
-                  </div>
-                </section>
-              )}
+                </div>
+                <Textarea
+                  aria-label="Quick Notes de la llamada"
+                  rows={4}
+                  maxLength={5000}
+                  value={quickNotes}
+                  placeholder="Ej. Cliente Ana López, celular 8112345678. Propiedad en Río Pánuco 120, colonia Del Valle, municipio San Pedro. Casa dúplex, 2 plantas, 3 recámaras, NSS…"
+                  onChange={(event) => {
+                    setQuickNotes(event.target.value);
+                    setQuickNotesResult(null);
+                  }}
+                />
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p role="status" className="text-xs text-muted-foreground">{quickNotesResult ?? "Los datos sensibles se procesan sólo en este navegador."}</p>
+                  <Button type="button" variant="outline" size="sm" disabled={isExtractingNotes} onClick={() => void handleQuickNotes()}>
+                    {isExtractingNotes ? <Loader2 className="animate-spin" /> : <Sparkles />} {isExtractingNotes ? "Analizando…" : "Aplicar al expediente"}
+                  </Button>
+                </div>
+              </section>
               <RenovaCaseForm
                 values={effective}
                 errors={errors}
@@ -292,6 +291,11 @@ export function RenovaCaseDialog({
                 protectedData={isEdit ? protectedData : null}
                 protectedError={protectedError}
               />
+              {caseId && (
+                <div className="mt-8">
+                  <RenovaCaseHistory caseId={caseId} />
+                </div>
+              )}
             </form>
           )}
         </div>
