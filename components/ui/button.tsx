@@ -50,6 +50,15 @@ function Button({
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      // Password-manager browser extensions (LastPass and friends) stamp a
+      // `fdprocessedid` attribute onto every <button>/<input> on the page
+      // the moment it appears in the DOM — before React hydrates — which
+      // React then reports as a hydration mismatch even though nothing in
+      // this app's own render output ever differs between server and
+      // client. React can't "fix" a DOM an extension mutated out from
+      // under it, so this is the documented way to tell it not to warn
+      // about this one element: https://react.dev/link/hydration-mismatch
+      suppressHydrationWarning
       {...props}
     />
   )
