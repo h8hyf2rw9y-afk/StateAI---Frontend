@@ -297,6 +297,7 @@ export function RenovaCaseDialog({
                 maskedCreditNumber={original?.credit_number_masked ?? null}
                 protectedData={isEdit ? protectedData : null}
                 protectedError={protectedError}
+                legacyFinalOffer={original && !original.proposal_type ? original.final_offer : null}
               />
               {caseId && (
                 <div className="mt-8">

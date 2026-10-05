@@ -9,6 +9,8 @@ import {
   formatRenovaDwellingWithDuplex,
   formatRenovaOccupancy,
   formatRenovaPropertyTaxDebt,
+  formatRenovaProposalType,
+  getRenovaProposal,
   type RenovaShareCase,
 } from "@/features/renova/types";
 
@@ -83,6 +85,7 @@ export function RenovaShareCard({
 }) {
   const c = renovaCase;
   const money = (value: string | number | null) => (value === null ? null : formatMoney(value, c.currency));
+  const proposal = getRenovaProposal(c);
   const servicesDebt = sumDebts({ water_debt: c.water_debt ?? "", electricity_debt: c.electricity_debt ?? "", gas_debt: c.gas_debt ?? "" });
   const otherDebt = c.other_debt !== null && Number(c.other_debt) > 0 ? formatMoney(c.other_debt, c.currency) : null;
   // One combined phrase ("Casa dúplex", "Dúplex — tipo base por confirmar", …)
@@ -111,12 +114,7 @@ export function RenovaShareCard({
         <dl className="grid grid-cols-2 gap-x-10 gap-y-6 border-t border-slate-200 pt-6">
           <Item label="Asesor" value={present(advisorName)} />
           <Item label="Fecha" value={formatRenovaDate(c.entry_date)} />
-          {options.includeAmounts && (
-            <>
-              <Item label="Propuesta final" value={money(c.final_offer)} large />
-              <Item label="Valor de mercado" value={money(c.market_value)} large />
-            </>
-          )}
+          {options.includeAmounts && <Item label="Valor de mercado" value={money(c.market_value)} large />}
         </dl>
 
         {options.includeAmounts && (
@@ -124,10 +122,27 @@ export function RenovaShareCard({
             <dl className="grid grid-cols-3 gap-x-10">
               <Item label="Deuda predial" value={formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency)} />
               <Item label="Deudas de servicios" value={servicesDebt === null ? null : formatMoney(servicesDebt, c.currency)} />
-              <Item label="Total de adeudos" value={money(c.total_debt)} />
+              <Item label="Total de adeudos conocidos" value={money(c.total_debt)} />
             </dl>
             {otherDebt && <p className="mt-2 text-sm text-slate-500">El total incluye otros adeudos por {otherDebt}.</p>}
           </div>
+        )}
+
+        {options.includeAmounts && (
+          <Block title="Propuesta">
+            {proposal.state === "classified" ? (
+              <dl className="grid grid-cols-2 gap-x-10 gap-y-6">
+                <Item label="Modalidad" value={formatRenovaProposalType(proposal.proposalType)} className="col-span-2" />
+                <Item label="Deuda que cubre Renova" value={money(proposal.debtCoverageAmount)} large />
+                <Item label="Efectivo para el propietario" value={money(proposal.ownerCashOffer)} large />
+                <Item label="Valor total de la propuesta" value={money(proposal.totalProposalValue)} large className="col-span-2" />
+              </dl>
+            ) : proposal.state === "legacy" ? (
+              <Item label="Propuesta (pendiente de clasificar)" value={money(proposal.legacyFinalOffer)} large />
+            ) : (
+              <Item label="Propuesta" value={null} large />
+            )}
+          </Block>
         )}
 
         <Block title="Ubicación">

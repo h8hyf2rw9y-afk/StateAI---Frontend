@@ -18,7 +18,12 @@ export interface RenovaFormValues {
   assigned_user_id: string;
   entry_date: string;
   status: string;
-  final_offer: string;
+  // Renova's structured proposal (RENOVA_PROPOSAL_TYPES). "" = unclassified
+  // — the legacy `final_offer` figure (if any) is shown separately, read
+  // directly from the loaded case, never folded into these three fields.
+  proposal_type: string;
+  debt_coverage_amount: string;
+  owner_cash_offer: string;
   market_value: string;
   owner_expected_amount: string;
   // Ubicación e inmueble
@@ -65,7 +70,9 @@ export const RENOVA_FIELD_ORDER: (keyof RenovaFormValues)[] = [
   "assigned_user_id",
   "entry_date",
   "status",
-  "final_offer",
+  "proposal_type",
+  "debt_coverage_amount",
+  "owner_cash_offer",
   "market_value",
   "owner_expected_amount",
   "street_address",
@@ -111,7 +118,9 @@ export function emptyRenovaFormValues(assignedUserId = ""): RenovaFormValues {
     assigned_user_id: assignedUserId,
     entry_date: todayLocalISO(),
     status: "new",
-    final_offer: "",
+    proposal_type: "",
+    debt_coverage_amount: "",
+    owner_cash_offer: "",
     market_value: "",
     owner_expected_amount: "",
     street_address: "",
@@ -157,7 +166,9 @@ export function valuesFromRenovaCase(renovaCase: RenovaCase): RenovaFormValues {
     assigned_user_id: renovaCase.assigned_user_id ?? "",
     entry_date: renovaCase.entry_date,
     status: renovaCase.status,
-    final_offer: money(renovaCase.final_offer),
+    proposal_type: s(renovaCase.proposal_type),
+    debt_coverage_amount: money(renovaCase.debt_coverage_amount),
+    owner_cash_offer: money(renovaCase.owner_cash_offer),
     market_value: money(renovaCase.market_value),
     owner_expected_amount: money(renovaCase.owner_expected_amount),
     street_address: s(renovaCase.street_address),
@@ -211,6 +222,7 @@ const OPTIONAL_TEXT_FIELDS = [
   "municipality",
   "postal_code",
   "dwelling_type",
+  "proposal_type",
   "occupancy_status",
   "marital_status",
   "spouse_name",

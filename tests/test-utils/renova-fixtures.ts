@@ -30,7 +30,14 @@ export function makeRenovaCase(overrides: Partial<RenovaCase> = {}): RenovaCase 
     has_deeds: "yes",
     deeds_holder_name: "María López",
     currency: "MXN",
+    // Legacy/unclassified by default (matches a case that predates the
+    // structured proposal model) -- tests that need a classified proposal
+    // override proposal_type/debt_coverage_amount/owner_cash_offer explicitly.
     final_offer: "950000.00",
+    proposal_type: null,
+    debt_coverage_amount: null,
+    owner_cash_offer: null,
+    total_proposal_value: null,
     market_value: "1400000.00",
     property_tax_debt: "12000.00",
     property_tax_debt_unit: "mxn",

@@ -5,7 +5,8 @@
  */
 
 export const MONEY_FIELDS = [
-  "final_offer",
+  "debt_coverage_amount",
+  "owner_cash_offer",
   "market_value",
   "property_tax_debt",
   "other_debt",

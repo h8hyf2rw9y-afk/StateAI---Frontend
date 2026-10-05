@@ -38,7 +38,9 @@ import {
   formatRenovaMoney,
   formatRenovaOccupancy,
   formatRenovaPropertyTaxDebt,
+  formatRenovaProposalType,
   formatRenovaStatus,
+  getRenovaProposal,
   getRenovaStatusClassName,
   type RenovaCase,
 } from "@/features/renova/types";
@@ -165,6 +167,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
 
   const c = load.status === "ready" ? load.renovaCase : null;
   const money = (value: string | null) => (c ? formatRenovaMoney(value, c.currency) : "—");
+  const proposal = c ? getRenovaProposal(c) : null;
 
   return (
     <>
@@ -220,7 +223,10 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
           <dl className="mb-5 grid overflow-hidden rounded-2xl border border-border/60 bg-card/40 sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-border/50">
             <Metric label="Adeudos estimados" value={money(c.total_debt)} emphasis />
             <Metric label="Valor de mercado" value={money(c.market_value)} />
-            <Metric label="Propuesta final" value={money(c.final_offer)} />
+            <Metric
+              label="Valor de la propuesta"
+              value={proposal!.state === "legacy" ? `${money(proposal!.legacyFinalOffer)} (sin clasificar)` : money(proposal!.totalProposalValue)}
+            />
             <Metric label="Espera recibir" value={money(c.owner_expected_amount)} />
           </dl>
 
@@ -250,7 +256,20 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                     <DataItem label="Deuda de gas">{money(c.gas_debt)}</DataItem>
                     <DataItem label="A quién se debe">{c.debt_owed_to}</DataItem>
                     <DataItem label="Total estimado de adeudos">{money(c.total_debt)}</DataItem>
-                    <DataItem label="Propuesta final">{money(c.final_offer)}</DataItem>
+                    {proposal!.state === "classified" ? (
+                      <>
+                        <DataItem label="Modalidad de la propuesta">{formatRenovaProposalType(proposal!.proposalType)}</DataItem>
+                        <DataItem label="Deuda que cubre Renova">{money(proposal!.debtCoverageAmount)}</DataItem>
+                        <DataItem label="Efectivo para el propietario">{money(proposal!.ownerCashOffer)}</DataItem>
+                        <DataItem label="Valor total de la propuesta">{money(proposal!.totalProposalValue)}</DataItem>
+                      </>
+                    ) : proposal!.state === "legacy" ? (
+                      <DataItem label="Propuesta histórica (sin clasificar)" wide>
+                        {money(proposal!.legacyFinalOffer)} — edita el expediente para clasificarla.
+                      </DataItem>
+                    ) : (
+                      <DataItem label="Propuesta">Sin propuesta registrada.</DataItem>
+                    )}
                   </DataGrid>
                 </DossierSection>
 

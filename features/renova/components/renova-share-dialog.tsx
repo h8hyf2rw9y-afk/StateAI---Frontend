@@ -167,7 +167,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
   // Only the signed-in user's name is knowable (the backend has no user directory); anyone else reads "Pendiente" on the card.
   const advisorName = renovaCase && user && renovaCase.assigned_user_id === user.id ? getDisplayName(user) : null;
   const hasPendingData = renovaCase
-    ? !renovaCase.street_address || !renovaCase.final_offer || !renovaCase.market_value || !renovaCase.sale_reason || !renovaCase.conditions
+    ? !renovaCase.street_address || !renovaCase.proposal_type || !renovaCase.market_value || !renovaCase.sale_reason || !renovaCase.conditions
     : false;
 
   async function buildFile(): Promise<File> {

@@ -43,12 +43,12 @@ describe("validateRenovaForm", () => {
 
   it("leaves address, occupancy, proposal, debts, spouse, NSS and credit number optional", () => {
     const { errors } = validateRenovaForm(validValues());
-    for (const field of ["street_address", "postal_code", "occupancy_status", "final_offer", "market_value", "spouse_name", "nss", "credit_number"] as const) {
+    for (const field of ["street_address", "postal_code", "occupancy_status", "debt_coverage_amount", "owner_cash_offer", "market_value", "spouse_name", "nss", "credit_number"] as const) {
       expect(errors[field]).toBeUndefined();
     }
   });
 
-  it.each(["final_offer", "market_value", "property_tax_debt", "other_debt", "water_debt", "electricity_debt", "gas_debt", "owner_expected_amount"] as const)(
+  it.each(["debt_coverage_amount", "owner_cash_offer", "market_value", "property_tax_debt", "other_debt", "water_debt", "electricity_debt", "gas_debt", "owner_expected_amount"] as const)(
     "rejects a negative %s",
     (field) => {
       expect(validateRenovaForm({ ...validValues(), [field]: "-1" }).errors[field]).toBe("El monto no puede ser negativo.");
@@ -208,10 +208,10 @@ describe("toRenovaPayload", () => {
   });
 
   it("edit: clearing an optional field sends null so it really is cleared — but never touches key_questions", () => {
-    const values = { ...valuesFromRenovaCase(makeRenovaCase()), final_offer: "", spouse_name: "", floors: "" };
+    const values = { ...valuesFromRenovaCase(makeRenovaCase()), debt_coverage_amount: "", spouse_name: "", floors: "" };
     const payload = toRenovaPayload(values, "edit", "reviewing");
 
-    expect(payload.final_offer).toBeNull();
+    expect(payload.debt_coverage_amount).toBeNull();
     expect(payload.spouse_name).toBeNull();
     expect(payload.floors).toBeNull();
     expect(payload.market_value).toBe("1400000");
@@ -242,10 +242,10 @@ describe("toRenovaPayload", () => {
 
 describe("form values", () => {
   it("shows saved money the way a person types it", () => {
-    const values = valuesFromRenovaCase(makeRenovaCase({ market_value: "1400000.00", water_debt: "800.50", final_offer: null }));
+    const values = valuesFromRenovaCase(makeRenovaCase({ market_value: "1400000.00", water_debt: "800.50", debt_coverage_amount: null }));
     expect(values.market_value).toBe("1400000");
     expect(values.water_debt).toBe("800.5");
-    expect(values.final_offer).toBe("");
+    expect(values.debt_coverage_amount).toBe("");
   });
 
   it("detects unsaved changes", () => {

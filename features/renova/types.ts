@@ -42,7 +42,16 @@ export interface RenovaCaseListItem {
   /** Independent configuration: can be true with either base type, or with dwelling_type still null ("tipo base por confirmar"). */
   is_duplex: boolean;
   currency: string;
+  /** Legacy total — see formatRenovaProposal's own note. Kept in sync with total_proposal_value by the backend once proposal_type is set; never recomputed here. */
   final_offer: string | null;
+  /** Renova's structured proposal (RENOVA_PROPOSAL_TYPES): null means unclassified (a case that predates this model, or simply has no proposal yet) — never inferred from final_offer. */
+  proposal_type: string | null;
+  /** How much of the owner's known debt (total_debt) Renova proposes to cover — may legitimately differ from total_debt; see RenovaShareCard's mismatch note. */
+  debt_coverage_amount: string | null;
+  /** Cash paid directly to the owner. Zero is a fully valid, meaningful value for a debt_only proposal — never treated as "no proposal". */
+  owner_cash_offer: string | null;
+  /** Derived server-side: debt_coverage_amount + owner_cash_offer. Null only when NEITHER has been captured — the one total every view should show, never recomputed client-side. */
+  total_proposal_value: string | null;
   market_value: string | null;
   property_tax_debt: string | null;
   /** "mxn" (default, a real peso figure) or "years" — a WhatsApp conversation sometimes only reveals how many years of property tax are owed, never the peso amount. See formatRenovaPropertyTaxDebt. */
@@ -119,6 +128,9 @@ export interface RenovaCaseInput {
   has_deeds?: string;
   deeds_holder_name?: string | null;
   final_offer?: string | null;
+  proposal_type?: string | null;
+  debt_coverage_amount?: string | null;
+  owner_cash_offer?: string | null;
   market_value?: string | null;
   property_tax_debt?: string | null;
   property_tax_debt_unit?: string;
@@ -326,6 +338,69 @@ export const RENOVA_DEEDS_STATUSES = ["yes", "no", "unknown"] as const;
 const DEEDS_LABELS: Record<string, string> = { yes: "Sí", no: "No", unknown: "Desconocido" };
 export function formatRenovaDeeds(value: string): string {
   return DEEDS_LABELS[value] ?? value;
+}
+
+// Renova's structured proposal model — mirrors the backend's
+// RENOVA_PROPOSAL_TYPES exactly. null means "unclassified": either a case
+// that predates this model (it may still carry a legacy `final_offer`) or
+// one with no proposal yet. Never inferred from `final_offer` on the
+// frontend either — see getRenovaProposal below, the ONE place that
+// decides which of these three states a case is in.
+export const RENOVA_PROPOSAL_TYPES = ["debt_only", "debt_plus_cash", "cash_only"] as const;
+const PROPOSAL_TYPE_LABELS: Record<string, string> = {
+  debt_only: "Solo liquidación de deuda",
+  debt_plus_cash: "Deuda más efectivo",
+  cash_only: "Solo efectivo",
+};
+export function formatRenovaProposalType(value: string | null): string {
+  if (!value) return "Sin clasificar";
+  return PROPOSAL_TYPE_LABELS[value] ?? value;
+}
+
+export interface RenovaProposalSummary {
+  /**
+   * "classified": proposal_type is set, debt_coverage_amount/owner_cash_offer/total_proposal_value are authoritative.
+   * "legacy": no proposal_type, but an ambiguous historical final_offer exists — needs manual classification.
+   * "none": nothing captured at all.
+   */
+  state: "classified" | "legacy" | "none";
+  proposalType: string | null;
+  debtCoverageAmount: string | null;
+  ownerCashOffer: string | null;
+  totalProposalValue: string | null;
+  /** Only meaningful when state === "legacy" — the pre-classification figure, never auto-split into the two amounts above. */
+  legacyFinalOffer: string | null;
+}
+
+/** The ONE place that reads proposal_type/final_offer together to decide what to show — every view (form, dossier, share card) calls this instead of re-deriving the state itself. */
+export function getRenovaProposal(c: {
+  proposal_type: string | null;
+  debt_coverage_amount: string | null;
+  owner_cash_offer: string | null;
+  total_proposal_value: string | null;
+  final_offer: string | null;
+}): RenovaProposalSummary {
+  if (c.proposal_type) {
+    return {
+      state: "classified",
+      proposalType: c.proposal_type,
+      debtCoverageAmount: c.debt_coverage_amount,
+      ownerCashOffer: c.owner_cash_offer,
+      totalProposalValue: c.total_proposal_value,
+      legacyFinalOffer: null,
+    };
+  }
+  if (c.final_offer !== null) {
+    return {
+      state: "legacy",
+      proposalType: null,
+      debtCoverageAmount: null,
+      ownerCashOffer: null,
+      totalProposalValue: null,
+      legacyFinalOffer: c.final_offer,
+    };
+  }
+  return { state: "none", proposalType: null, debtCoverageAmount: null, ownerCashOffer: null, totalProposalValue: null, legacyFinalOffer: null };
 }
 
 // --- formatting ----------------------------------------------------------------

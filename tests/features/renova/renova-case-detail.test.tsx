@@ -152,6 +152,41 @@ describe("RenovaCaseDetail", () => {
   });
 });
 
+describe("RenovaCaseDetail — structured proposal", () => {
+  it("shows the full breakdown for a debt_plus_cash proposal, including a $0-safe cash figure", async () => {
+    await renderDetail({
+      proposal_type: "debt_plus_cash",
+      debt_coverage_amount: "320000.00",
+      owner_cash_offer: "140000.00",
+      total_proposal_value: "460000.00",
+    });
+
+    expect(document.body).toHaveTextContent("Deuda más efectivo");
+    expect(document.body).toHaveTextContent("$320,000");
+    expect(document.body).toHaveTextContent("$140,000");
+    expect(document.body).toHaveTextContent("$460,000");
+  });
+
+  it("shows an explicit $0 cash offer for a debt_only proposal instead of hiding the row", async () => {
+    await renderDetail({
+      proposal_type: "debt_only",
+      debt_coverage_amount: "320000.00",
+      owner_cash_offer: "0.00",
+      total_proposal_value: "320000.00",
+    });
+
+    expect(document.body).toHaveTextContent("Solo liquidación de deuda");
+    expect(document.body.textContent).toContain("$0");
+  });
+
+  it("flags a legacy unclassified case for manual classification instead of showing the new breakdown", async () => {
+    await renderDetail({ proposal_type: null, debt_coverage_amount: null, owner_cash_offer: null, total_proposal_value: null, final_offer: "275000.00" });
+
+    expect(document.body).toHaveTextContent(/sin clasificar/i);
+    expect(document.body).toHaveTextContent("$275,000");
+  });
+});
+
 describe("RenovaCaseDetail — actions", () => {
   beforeEach(() => {
     for (const mock of [getRenovaCaseMock, getRenovaHistoryMock, updateRenovaCaseMock]) mock.mockReset();

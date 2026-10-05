@@ -21,7 +21,9 @@ export type QuickNotesField = keyof Pick<
   | "gas_debt"
   | "owner_expected_amount"
   | "market_value"
-  | "final_offer"
+  | "proposal_type"
+  | "debt_coverage_amount"
+  | "owner_cash_offer"
   | "nss"
   | "credit_number"
   | "sale_reason"
@@ -56,7 +58,9 @@ const LABELS: Partial<Record<QuickNotesField, string>> = {
   gas_debt: "gas",
   owner_expected_amount: "monto esperado",
   market_value: "valor de mercado",
-  final_offer: "propuesta",
+  proposal_type: "modalidad de propuesta",
+  debt_coverage_amount: "cobertura de deuda",
+  owner_cash_offer: "efectivo para el propietario",
   nss: "NSS",
   credit_number: "crédito",
   sale_reason: "motivo de venta",
@@ -181,7 +185,30 @@ export function extractQuickNotes(note: string): QuickNotesExtraction {
   assign("other_debt", money(captured(text, /(?:adeudo|deuda)(?!\s+(?:de\s+)?(?:predial|agua|luz|gas))(?:\s+total)?(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
   assign("owner_expected_amount", money(captured(text, /(?:espera\s+recibir|quiere\s+recibir|pide)(?:\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
   assign("market_value", money(captured(text, /(?:valor\s+de\s+mercado|vale)(?:\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
-  assign("final_offer", money(captured(text, /(?:propuesta|oferta)(?:\s+final)?(?:\s+de|\s*:)?\s*\$?([\d,.]+(?:\s*(?:mil|k))?)/i)));
+
+  // Renova's structured proposal — a flat "propuesta: $X" is deliberately NOT
+  // extracted here; "solo cubrimos la deuda" must never collapse into a
+  // peso figure. Only clearly-labelled debt-coverage / cash-to-owner
+  // phrasing is captured; anything less explicit is left for the backend's
+  // LLM extraction (which sees the whole sentence) or for manual entry —
+  // never guessed into the wrong bucket.
+  const debtCoverage = money(
+    captured(text, /(?:cubrimos|cubre(?:remos)?|liquidar(?:emos)?|cubrir)\s+(?:los\s+|las\s+)?\$?([\d,.]+(?:\s*(?:mil|k))?)/i)
+  );
+  const cashOffer = money(
+    captured(text, /(?:le\s+damos|le\s+ofrecemos|entregamos|entregarle)\s+\$?([\d,.]+(?:\s*(?:mil|k))?)/i)
+  );
+  // (?:^|\s) instead of a leading \b: JS's plain \w doesn't include accented
+  // letters, so \b fails to anchor right before "único/única" -- it would
+  // silently never match "únicamente" otherwise.
+  const saysDebtOnly = /(?:^|\s)(?:solo|únicamente|unicamente)\b[^.]*(?:deuda|cr[eé]dito)|no\s+se\s+(?:le\s+)?entrega\s+efectivo/i.test(text);
+  const saysCashOnly = /\bsolo\b[^.]*efectivo|efectivo\s+(?:únicamente|unicamente)/i.test(text);
+  assign("debt_coverage_amount", debtCoverage);
+  assign("owner_cash_offer", cashOffer);
+  if (debtCoverage && cashOffer) assign("proposal_type", "debt_plus_cash");
+  else if (saysDebtOnly) assign("proposal_type", "debt_only");
+  else if (saysCashOnly && cashOffer) assign("proposal_type", "cash_only");
+
   assign("sale_reason", cleanPhrase(captured(text, /(?:quiere|necesita)\s+vender\s+porque\s+([^;.\n]+)/i)));
 
   return { values, fields: Object.keys(values) as QuickNotesField[] };

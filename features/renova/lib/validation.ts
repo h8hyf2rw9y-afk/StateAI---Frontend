@@ -72,6 +72,26 @@ export function validateRenovaForm(values: RenovaFormValues): RenovaValidation {
     else if (Number(value) > MAX_MONEY) errors[field] = "El monto es demasiado grande.";
     else if (!/^\d+(\.\d{1,2})?$/.test(value)) errors[field] = "Usa máximo dos decimales.";
   }
+  // Mirrors the backend's _ProposalModalityMixin exactly (same three rules,
+  // same "only when proposal_type is set" scope) so a bad combination is
+  // caught before the round trip — the backend still re-checks this, this
+  // is purely a faster error message.
+  if (values.proposal_type && !errors.debt_coverage_amount && !errors.owner_cash_offer) {
+    const coverage = values.debt_coverage_amount.trim();
+    const cash = values.owner_cash_offer.trim();
+    const coverageAmount = coverage ? Number(coverage) : null;
+    const cashAmount = cash ? Number(cash) : null;
+    if (values.proposal_type === "debt_only") {
+      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica cuánta deuda cubrirá Renova.";
+      else if (cashAmount && cashAmount > 0) errors.owner_cash_offer = "Una propuesta de solo deuda no incluye efectivo.";
+    } else if (values.proposal_type === "debt_plus_cash") {
+      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica cuánta deuda cubrirá Renova.";
+      if (!cashAmount || cashAmount <= 0) errors.owner_cash_offer = "Indica el efectivo para el propietario.";
+    } else if (values.proposal_type === "cash_only") {
+      if (!cashAmount || cashAmount <= 0) errors.owner_cash_offer = "Indica el efectivo para el propietario.";
+      else if (coverageAmount && coverageAmount > 0) errors.debt_coverage_amount = "Una propuesta de solo efectivo no cubre deuda.";
+    }
+  }
   if (propertyTaxDebtInYears) {
     const years = values.property_tax_debt.trim();
     if (years) {

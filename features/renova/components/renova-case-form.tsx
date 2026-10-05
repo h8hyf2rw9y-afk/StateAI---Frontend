@@ -24,6 +24,7 @@ import {
   RENOVA_MARITAL_STATUSES,
   RENOVA_OCCUPANCY_STATUSES,
   RENOVA_PROPERTY_TAX_DEBT_UNITS,
+  RENOVA_PROPOSAL_TYPES,
   RENOVA_STATUSES,
   formatRenovaDeeds,
   formatRenovaDwelling,
@@ -31,6 +32,7 @@ import {
   formatRenovaMoney,
   formatRenovaOccupancy,
   formatRenovaPropertyTaxDebtUnit,
+  formatRenovaProposalType,
   formatRenovaStatus,
 } from "@/features/renova/types";
 
@@ -46,6 +48,8 @@ export interface RenovaCaseFormProps extends RenovaFormState {
   protectedData: ProtectedData | null;
   /** Shown inside the protected-data section, e.g. when the server has no encryption key configured. */
   protectedError: string | null;
+  /** Set only when the loaded case predates the structured proposal model (proposal_type is null) AND still carries an ambiguous historical total — shown as a "needs classification" note, never auto-split into the new fields. */
+  legacyFinalOffer: string | null;
 }
 
 /**
@@ -65,11 +69,24 @@ export function RenovaCaseForm({
   maskedCreditNumber,
   protectedData,
   protectedError,
+  legacyFinalOffer,
   ...state
 }: RenovaCaseFormProps) {
   const propertyTaxDebtInYears = state.values.property_tax_debt_unit === "years";
   // Years and pesos can't be summed — a years-unit value never enters the live total (the server excludes it from total_debt the same way).
   const debtTotal = sumDebts(propertyTaxDebtInYears ? { ...state.values, property_tax_debt: "" } : state.values);
+
+  // The three proposal amount fields are shown unconditionally (the form
+  // never hides $0 — see the task's own note); the total below is computed
+  // the SAME way the backend computes total_proposal_value, purely for live
+  // display — the server's figure, returned on save, is the authoritative one.
+  const proposalType = state.values.proposal_type;
+  const coverageAmount = state.values.debt_coverage_amount.trim() ? Number(state.values.debt_coverage_amount) : null;
+  const cashAmount = state.values.owner_cash_offer.trim() ? Number(state.values.owner_cash_offer) : null;
+  const proposalTotal =
+    coverageAmount === null && cashAmount === null ? null : (coverageAmount ?? 0) + (cashAmount ?? 0);
+  const coverageMismatchesKnownDebt =
+    proposalType && coverageAmount !== null && debtTotal !== null && coverageAmount !== debtTotal;
   // "Borrador" is a system state (it is what "Guardar borrador" sets), so it is only offered while the case still is one.
   const statusOptions = toOptions(
     RENOVA_STATUSES.filter((status) => status !== "draft" || state.values.status === "draft"),
@@ -152,8 +169,45 @@ export function RenovaCaseForm({
               {debtTotal === null ? "—" : `${formatRenovaMoney(debtTotal)} MXN`}
             </span>
           </div>
+
+          {legacyFinalOffer !== null && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              Propuesta histórica registrada: <strong>{formatRenovaMoney(legacyFinalOffer)}</strong>. Selecciona una modalidad
+              abajo para clasificarla como cobertura de deuda y/o efectivo.
+            </p>
+          )}
+
+          <SubHeading>Propuesta</SubHeading>
           <FieldGrid>
-            <MoneyField name="final_offer" label="Propuesta final" />
+            <SegmentedField
+              name="proposal_type"
+              label="Modalidad de la propuesta"
+              size="half"
+              allowClear
+              options={toOptions(RENOVA_PROPOSAL_TYPES, formatRenovaProposalType)}
+            />
+            <MoneyField name="debt_coverage_amount" label="Deuda que cubrirá Renova" size="half" />
+            <MoneyField name="owner_cash_offer" label="Efectivo para el propietario" size="half" />
+          </FieldGrid>
+          <div
+            aria-live="polite"
+            data-testid="proposal-total"
+            className="flex flex-col gap-1 rounded-xl border border-border/70 bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <span className="text-xs text-muted-foreground">Valor total de la propuesta (solo lectura)</span>
+            <span className="text-lg font-semibold tracking-[-0.025em] text-foreground">
+              {proposalTotal === null ? "—" : `${formatRenovaMoney(proposalTotal)} MXN`}
+            </span>
+          </div>
+          {coverageMismatchesKnownDebt && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              La cobertura propuesta ({formatRenovaMoney(coverageAmount)}) no coincide con la deuda total conocida (
+              {formatRenovaMoney(debtTotal)}). Esto no bloquea la propuesta, solo revísalo antes de confirmar.
+            </p>
+          )}
+
+          <SubHeading>Otros montos</SubHeading>
+          <FieldGrid>
             <MoneyField name="market_value" label="Valor de mercado" />
             <MoneyField name="owner_expected_amount" label="Cuánto espera recibir" />
             <SegmentedField

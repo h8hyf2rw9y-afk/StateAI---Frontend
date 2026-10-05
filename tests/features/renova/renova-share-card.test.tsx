@@ -28,7 +28,7 @@ describe("RenovaShareCard — content from a real case", () => {
     for (const label of [
       "Asesor",
       "Fecha",
-      "Propuesta final",
+      "Propuesta",
       "Valor de mercado",
       "Deuda predial",
       "Deudas de servicios",
@@ -160,6 +160,61 @@ describe("RenovaShareCard — incomplete cases", () => {
   });
 });
 
+describe("RenovaShareCard — structured proposal breakdown", () => {
+  it("shows the debt coverage, the cash offer (even when it is exactly $0) and the total for a debt_only proposal", () => {
+    const c = card({
+      final_offer: "320000.00",
+      proposal_type: "debt_only",
+      debt_coverage_amount: "320000.00",
+      owner_cash_offer: "0.00",
+      total_proposal_value: "320000.00",
+    });
+
+    expect(c).toHaveTextContent("Solo liquidación de deuda");
+    expect(c).toHaveTextContent("Deuda que cubre Renova");
+    expect(c).toHaveTextContent("$320,000");
+    expect(c).toHaveTextContent("Efectivo para el propietario");
+    expect(c.textContent).toContain("$0"); // the zero is shown explicitly, never hidden
+    expect(c).toHaveTextContent("Valor total de la propuesta");
+  });
+
+  it("shows both amounts and the combined total for a debt_plus_cash proposal", () => {
+    const c = card({
+      final_offer: "460000.00",
+      proposal_type: "debt_plus_cash",
+      debt_coverage_amount: "320000.00",
+      owner_cash_offer: "140000.00",
+      total_proposal_value: "460000.00",
+    });
+
+    expect(c).toHaveTextContent("Deuda más efectivo");
+    expect(c).toHaveTextContent("$320,000");
+    expect(c).toHaveTextContent("$140,000");
+    expect(c).toHaveTextContent("$460,000");
+  });
+
+  it("shows a cash_only proposal without implying any debt coverage", () => {
+    const c = card({
+      final_offer: "150000.00",
+      proposal_type: "cash_only",
+      debt_coverage_amount: null,
+      owner_cash_offer: "150000.00",
+      total_proposal_value: "150000.00",
+    });
+
+    expect(c).toHaveTextContent("Solo efectivo");
+    expect(c).toHaveTextContent("$150,000");
+  });
+
+  it("flags a legacy unclassified total as pending classification instead of the new breakdown", () => {
+    const c = card({ final_offer: "275000.00", proposal_type: null, debt_coverage_amount: null, owner_cash_offer: null, total_proposal_value: null });
+
+    expect(c).toHaveTextContent("pendiente de clasificar");
+    expect(c).toHaveTextContent("$275,000");
+    expect(c.textContent).not.toContain("Deuda que cubre Renova");
+  });
+});
+
 describe("RenovaShareCard — dwelling type vs. duplex configuration", () => {
   it('shows "Casa" plainly when it is not a duplex', () => {
     const c = card({ dwelling_type: "house", is_duplex: false });
@@ -244,7 +299,7 @@ describe("RenovaShareCard — options", () => {
     const c = card({}, { includeAmounts: false });
 
     expect(c.textContent).not.toMatch(/\$/);
-    for (const label of ["Propuesta final", "Valor de mercado", "Deuda predial", "Deudas de servicios", "Total de adeudos", "A quién se debe", "¿Cuánto espera recibir?"]) {
+    for (const label of ["Propuesta", "Valor de mercado", "Deuda predial", "Deudas de servicios", "Total de adeudos", "A quién se debe", "¿Cuánto espera recibir?"]) {
       expect(c).not.toHaveTextContent(label);
     }
     expect(c.textContent).not.toContain("Infonavit");

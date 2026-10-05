@@ -80,3 +80,49 @@ describe("Renova Quick Notes", () => {
     expect(result.values.notes).not.toMatch(/12345678910|8125455785/);
   });
 });
+
+describe("Renova Quick Notes — structured proposal (debt coverage vs. cash offer)", () => {
+  it("extracts a debt_plus_cash proposal: 'Le cubrimos 320 mil de deuda y le damos 140 mil.'", () => {
+    const result = extractQuickNotes("Le cubrimos 320 mil de deuda y le damos 140 mil.");
+
+    expect(result.values).toMatchObject({
+      proposal_type: "debt_plus_cash",
+      debt_coverage_amount: "320000",
+      owner_cash_offer: "140000",
+    });
+  });
+
+  it("extracts a debt_only proposal without inventing a zero-peso cash offer: 'La propuesta es únicamente liquidar los 320 mil de deuda.'", () => {
+    const result = extractQuickNotes("La propuesta es únicamente liquidar los 320 mil de deuda.");
+
+    expect(result.values).toMatchObject({ proposal_type: "debt_only", debt_coverage_amount: "320000" });
+    expect(result.values.owner_cash_offer).toBeUndefined();
+  });
+
+  it("recognizes a debt_only statement even with no amount attached: 'No se le entrega efectivo, solo se cubre el crédito.'", () => {
+    const result = extractQuickNotes("No se le entrega efectivo, solo se cubre el crédito.");
+
+    expect(result.values.proposal_type).toBe("debt_only");
+  });
+
+  it("captures the cash offer from 'Le ofrecemos 140 mil libres además de cubrir la deuda.'", () => {
+    const result = extractQuickNotes("Le ofrecemos 140 mil libres además de cubrir la deuda.");
+
+    expect(result.values.owner_cash_offer).toBe("140000");
+  });
+
+  it("never collapses 'solo cubrimos la deuda' into a zero-peso final offer", () => {
+    const result = extractQuickNotes("Hablé con el cliente. Solo cubrimos la deuda, nada más.");
+
+    expect(result.values.proposal_type).toBe("debt_only");
+    expect(JSON.stringify(result.values)).not.toMatch(/"debt_coverage_amount":"0"|"owner_cash_offer":"0"/);
+  });
+
+  it("existing structured proposal fields are never overwritten by a later note", () => {
+    const current = { ...emptyRenovaFormValues("user-1"), proposal_type: "cash_only", owner_cash_offer: "150000" };
+    const result = applyQuickNotes(current, "Le cubrimos 320 mil de deuda y le damos 140 mil.");
+
+    expect(result.values.proposal_type).toBe("cash_only");
+    expect(result.values.owner_cash_offer).toBe("150000");
+  });
+});

@@ -137,9 +137,21 @@ describe("RenovaShareDialog — the card and its options", () => {
   });
 
   it("warns that an incomplete case will show Pendiente", async () => {
-    await openDialog({ street_address: null, final_offer: null });
+    await openDialog({ street_address: null, proposal_type: null });
 
     expect(screen.getByText(/datos incompletos/i)).toBeInTheDocument();
+  });
+
+  it("an unclassified legacy proposal still counts as incomplete, even with a final_offer figure on file", async () => {
+    await openDialog({ proposal_type: null, final_offer: "275000.00" });
+
+    expect(screen.getByText(/datos incompletos/i)).toBeInTheDocument();
+  });
+
+  it("a classified debt_only proposal does not count as a missing proposal on its own", async () => {
+    await openDialog({ proposal_type: "debt_only", debt_coverage_amount: "320000.00", owner_cash_offer: "0.00" });
+
+    expect(screen.queryByText(/datos incompletos/i)).not.toBeInTheDocument();
   });
 
   it("never renders NSS, número de crédito or the full UUID anywhere in the dialog", async () => {
