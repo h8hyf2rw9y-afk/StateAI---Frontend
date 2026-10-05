@@ -65,9 +65,11 @@ export interface RenovaCaseListItem {
   total_debt: string | null;
   created_at: string;
   updated_at: string;
+  /** Internal operational metadata for the compact table follow-up control. It is deliberately absent from the share-card type. */
+  follow_up: RenovaFollowUpSummary;
 }
 
-export interface RenovaCase extends RenovaCaseListItem {
+export interface RenovaCase extends Omit<RenovaCaseListItem, "follow_up"> {
   created_by_user_id: string | null;
   marital_status: string | null;
   spouse_name: string | null;
@@ -90,6 +92,50 @@ export interface RenovaCase extends RenovaCaseListItem {
   has_nss: boolean;
   has_credit_number: boolean;
 }
+
+export type RenovaCallResult = "no_answer" | "interested" | "callback_requested" | "not_interested" | "other";
+export type RenovaFollowUpActivityType = "call" | "follow_up";
+
+export interface RenovaFollowUpSummary {
+  last_call_activity_id: string | null;
+  last_call_at: string | null;
+  last_result: RenovaCallResult | null;
+  contact_attempt_count: number;
+  next_follow_up_at: string | null;
+  is_follow_up_overdue: boolean;
+  contact_state: "never_contacted" | "attempted_no_answer" | "contacted_interested" | "callback_requested" | "not_interested" | "contacted";
+  note_preview: string | null;
+}
+
+export interface RenovaFollowUpActivity {
+  id: string;
+  renova_case_id: string;
+  actor_user_id: string | null;
+  activity_type: RenovaFollowUpActivityType;
+  result: RenovaCallResult | null;
+  occurred_at: string;
+  next_follow_up_at: string | null;
+  attempt_number: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RenovaFollowUpDetail {
+  summary: RenovaFollowUpSummary;
+  activities: RenovaFollowUpActivity[];
+}
+
+export interface RenovaFollowUpActivityInput {
+  activity_type: RenovaFollowUpActivityType;
+  result?: RenovaCallResult | null;
+  occurred_at: string;
+  next_follow_up_at?: string | null;
+  attempt_number?: number | null;
+  notes?: string | null;
+}
+
+export type RenovaFollowUpActivityUpdate = Partial<Omit<RenovaFollowUpActivityInput, "activity_type">>;
 
 /** What the share card may know about a case: the saved data WITHOUT any protected-data field, not even the masks. */
 export type RenovaShareCase = Omit<RenovaCase, "nss_masked" | "credit_number_masked" | "has_nss" | "has_credit_number">;

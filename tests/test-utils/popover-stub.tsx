@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -32,8 +33,12 @@ export function Popover({ children }: { children: ReactNode }) {
 export function PopoverTrigger({ render }: { render: ReactElement }) {
   const ctx = useContext(Ctx);
   if (!ctx || !isValidElement(render)) return null;
-  return cloneElement(render as ReactElement<{ onClick?: () => void; "aria-expanded"?: boolean }>, {
-    onClick: () => ctx.setOpen(!ctx.open),
+  const element = render as ReactElement<{ onClick?: (event: MouseEvent) => void; "aria-expanded"?: boolean }>;
+  return cloneElement(element, {
+    onClick: (event: MouseEvent) => {
+      element.props.onClick?.(event);
+      ctx.setOpen(!ctx.open);
+    },
     "aria-expanded": ctx.open,
   });
 }

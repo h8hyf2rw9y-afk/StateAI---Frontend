@@ -30,6 +30,8 @@ import {
   type RenovaCaseListItem,
 } from "@/features/renova/types";
 import { cn } from "@/lib/utils";
+import { RenovaFollowUpPopover } from "@/features/renova/components/renova-follow-up-popover";
+import type { RenovaFollowUpSummary } from "@/features/renova/types";
 
 interface Loaded {
   key: string;
@@ -158,6 +160,14 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
 
   function refresh() {
     setLocalRefresh((n) => n + 1);
+  }
+
+  function updateFollowUpSummary(caseId: string, followUp: RenovaFollowUpSummary) {
+    setLoaded((current) =>
+      current?.cases
+        ? { ...current, cases: current.cases.map((item) => (item.id === caseId ? { ...item, follow_up: followUp } : item)) }
+        : current
+    );
   }
 
   async function confirmArchive() {
@@ -351,6 +361,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                 <TableHead className="max-w-24 text-right whitespace-normal">Propuesta final</TableHead>
                 <TableHead className="max-w-24 text-right whitespace-normal">Adeudos totales</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead className="min-w-44">Seguimiento</TableHead>
                 <TableHead>Fecha de ingreso</TableHead>
                 <TableHead>Última actualización</TableHead>
                   {/* Sticky: on narrower screens the table scrolls sideways, but actions stay reachable. */}
@@ -389,6 +400,12 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                     <Badge variant="outline" className={cn("border-transparent", getRenovaStatusClassName(renovaCase.status))}>
                       {formatRenovaStatus(renovaCase.status)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <RenovaFollowUpPopover
+                      renovaCase={renovaCase}
+                      onSaved={(followUp) => updateFollowUpSummary(renovaCase.id, followUp)}
+                    />
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatRenovaDate(renovaCase.entry_date)}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatRenovaDateTime(renovaCase.updated_at)}</TableCell>

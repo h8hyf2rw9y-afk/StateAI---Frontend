@@ -7,6 +7,9 @@ import type {
   RenovaCaseInput,
   RenovaCaseListItem,
   RenovaHistoryEntry,
+  RenovaFollowUpActivityInput,
+  RenovaFollowUpActivityUpdate,
+  RenovaFollowUpDetail,
   RenovaPipelineResponse,
   RenovaSensitiveData,
 } from "@/features/renova/types";
@@ -63,6 +66,33 @@ export function createRenovaCase(input: RenovaCaseInput): Promise<ApiResult<Reno
 
 export function updateRenovaCase(caseId: string, input: RenovaCaseInput): Promise<ApiResult<RenovaCase>> {
   return apiRequest<RenovaCase>(`/api/v1/renova/cases/${caseId}`, { method: "PATCH", body: input });
+}
+
+export function getRenovaFollowUp(caseId: string): Promise<ApiResult<RenovaFollowUpDetail>> {
+  return apiRequest<RenovaFollowUpDetail>(`/api/v1/renova/cases/${caseId}/follow-up`, { cache: "no-store" });
+}
+
+export function createRenovaFollowUpActivity(
+  caseId: string,
+  input: RenovaFollowUpActivityInput
+): Promise<ApiResult<RenovaFollowUpDetail>> {
+  return apiRequest<RenovaFollowUpDetail>(`/api/v1/renova/cases/${caseId}/follow-up`, {
+    method: "POST",
+    body: input,
+    cache: "no-store",
+  });
+}
+
+export function updateRenovaFollowUpActivity(
+  caseId: string,
+  activityId: string,
+  input: RenovaFollowUpActivityUpdate
+): Promise<ApiResult<RenovaFollowUpDetail>> {
+  return apiRequest<RenovaFollowUpDetail>(`/api/v1/renova/cases/${caseId}/follow-up/${activityId}`, {
+    method: "PATCH",
+    body: input,
+    cache: "no-store",
+  });
 }
 
 /** Sends only the browser-redacted note; protected numeric values must never be passed here. */

@@ -6,6 +6,9 @@ import type { RenovaCaseListItem } from "@/features/renova/types";
 const getRenovaCasesMock = vi.fn();
 const getRenovaCaseCountsMock = vi.fn();
 const updateRenovaCaseMock = vi.fn();
+const getRenovaFollowUpMock = vi.fn();
+const createRenovaFollowUpActivityMock = vi.fn();
+const updateRenovaFollowUpActivityMock = vi.fn();
 const getContactsMock = vi.fn();
 const pushMock = vi.fn();
 
@@ -15,6 +18,9 @@ vi.mock("@/lib/api/renova", () => ({
   getRenovaCase: vi.fn(),
   createRenovaCase: vi.fn(),
   updateRenovaCase: (...args: unknown[]) => updateRenovaCaseMock(...args),
+  getRenovaFollowUp: (...args: unknown[]) => getRenovaFollowUpMock(...args),
+  createRenovaFollowUpActivity: (...args: unknown[]) => createRenovaFollowUpActivityMock(...args),
+  updateRenovaFollowUpActivity: (...args: unknown[]) => updateRenovaFollowUpActivityMock(...args),
 }));
 vi.mock("@/lib/api/contacts", () => ({
   getContacts: (...args: unknown[]) => getContactsMock(...args),
@@ -61,6 +67,16 @@ function makeCase(overrides: Partial<RenovaCaseListItem> = {}): RenovaCaseListIt
     total_debt: "12800.00",
     created_at: "2026-09-20T12:00:00Z",
     updated_at: "2026-09-21T15:30:00Z",
+    follow_up: {
+      last_call_activity_id: null,
+      last_call_at: null,
+      last_result: null,
+      contact_attempt_count: 0,
+      next_follow_up_at: null,
+      is_follow_up_overdue: false,
+      contact_state: "never_contacted",
+      note_preview: null,
+    },
     ...overrides,
   };
 }
@@ -76,11 +92,18 @@ describe("RenovaCasesTable", () => {
     getRenovaCasesMock.mockReset();
     getRenovaCaseCountsMock.mockReset();
     updateRenovaCaseMock.mockReset();
+    getRenovaFollowUpMock.mockReset();
+    createRenovaFollowUpActivityMock.mockReset();
+    updateRenovaFollowUpActivityMock.mockReset();
     getContactsMock.mockReset();
     pushMock.mockReset();
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase()] });
     getRenovaCaseCountsMock.mockResolvedValue({ ok: true, data: DEFAULT_COUNTS });
     updateRenovaCaseMock.mockResolvedValue({ ok: true, data: {} });
+    getRenovaFollowUpMock.mockResolvedValue({
+      ok: true,
+      data: { summary: makeCase().follow_up, activities: [] },
+    });
   });
 
   it("shows a loading state before the cases arrive", () => {
@@ -106,6 +129,7 @@ describe("RenovaCasesTable", () => {
       "Propuesta final",
       "Adeudos totales",
       "Estado",
+      "Seguimiento",
       "Fecha de ingreso",
       "Última actualización",
       "Acciones",
@@ -217,6 +241,128 @@ describe("RenovaCasesTable", () => {
 
     expect(onEdit).toHaveBeenCalledWith("case-1");
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("opens the explicit follow-up preview without opening the full case", async () => {
+    const onEdit = vi.fn();
+    render(<RenovaCasesTable onEdit={onEdit} />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /seguimiento de maría lópez: nunca contactado/i }));
+
+    await waitFor(() => expect(getRenovaFollowUpMock).toHaveBeenCalledWith("case-1"));
+    expect(screen.getByText("Última llamada")).toBeInTheDocument();
+    expect(screen.getByText(/no aparece en la ficha compartida/i)).toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it("registers a call with an editable result, date, attempt number and notes", async () => {
+    const savedSummary = {
+      ...makeCase().follow_up,
+      last_call_activity_id: "activity-1",
+      last_call_at: "2026-10-05T14:00:00Z",
+      last_result: "no_answer" as const,
+      contact_attempt_count: 3,
+      contact_state: "attempted_no_answer" as const,
+      note_preview: "No respondió; intentar por la tarde.",
+    };
+    createRenovaFollowUpActivityMock.mockResolvedValue({ ok: true, data: { summary: savedSummary, activities: [] } });
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /seguimiento de maría lópez/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Registrar llamada" }));
+    fireEvent.change(await screen.findByLabelText("Resultado"), { target: { value: "no_answer" } });
+    fireEvent.change(screen.getByLabelText("Número de intento"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Notas"), { target: { value: "No respondió; intentar por la tarde." } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(createRenovaFollowUpActivityMock).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          activity_type: "call",
+          result: "no_answer",
+          attempt_number: 3,
+          notes: "No respondió; intentar por la tarde.",
+        })
+      )
+    );
+    expect(await screen.findByRole("button", { name: /seguimiento de maría lópez: no contestó/i })).toBeInTheDocument();
+  });
+
+  it("lets the user correct the latest call instead of creating a duplicate", async () => {
+    const summary = {
+      ...makeCase().follow_up,
+      last_call_activity_id: "activity-1",
+      last_call_at: "2026-10-05T14:00:00Z",
+      last_result: "no_answer" as const,
+      contact_attempt_count: 2,
+      contact_state: "attempted_no_answer" as const,
+    };
+    const activity = {
+      id: "activity-1",
+      renova_case_id: "case-1",
+      actor_user_id: "user-me",
+      activity_type: "call" as const,
+      result: "no_answer" as const,
+      occurred_at: "2026-10-05T14:00:00Z",
+      next_follow_up_at: null,
+      attempt_number: 2,
+      notes: "No contestó.",
+      created_at: "2026-10-05T14:01:00Z",
+      updated_at: "2026-10-05T14:01:00Z",
+    };
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase({ follow_up: summary })] });
+    getRenovaFollowUpMock.mockResolvedValue({ ok: true, data: { summary, activities: [activity] } });
+    updateRenovaFollowUpActivityMock.mockResolvedValue({
+      ok: true,
+      data: { summary: { ...summary, last_result: "interested", contact_state: "contacted_interested" }, activities: [{ ...activity, result: "interested" }] },
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /seguimiento de maría lópez/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /editar última llamada/i }));
+    fireEvent.change(await screen.findByLabelText("Resultado"), { target: { value: "interested" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(updateRenovaFollowUpActivityMock).toHaveBeenCalledWith(
+        "case-1",
+        "activity-1",
+        expect.objectContaining({ result: "interested", attempt_number: 2 })
+      )
+    );
+    expect(createRenovaFollowUpActivityMock).not.toHaveBeenCalled();
+  });
+
+  it("schedules a next call from the same compact preview", async () => {
+    const scheduledSummary = {
+      ...makeCase().follow_up,
+      next_follow_up_at: "2026-10-08T16:30:00Z",
+    };
+    createRenovaFollowUpActivityMock.mockResolvedValue({
+      ok: true,
+      data: { summary: scheduledSummary, activities: [] },
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /seguimiento de maría lópez/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Agendar" }));
+    fireEvent.change(screen.getByLabelText("Fecha de la próxima llamada"), { target: { value: "2026-10-08T16:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(createRenovaFollowUpActivityMock).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          activity_type: "follow_up",
+          next_follow_up_at: expect.any(String),
+        })
+      )
+    );
   });
 
   it("opens and shares the selected client's case, even when it is not the first row", async () => {
