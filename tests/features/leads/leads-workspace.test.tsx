@@ -284,7 +284,8 @@ describe("LeadsWorkspace", () => {
     fireEvent.click(screen.getByText("María López"));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Editar prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByText("Editando expediente")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { level: 2, name: "María López" })).toBeInTheDocument();
     expect(getRenovaCaseMock).toHaveBeenCalledWith("case-9");
     await waitFor(() => expect(within(dialog).getByLabelText("Colonia")).toHaveValue("Centro"));
   });

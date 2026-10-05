@@ -14,9 +14,9 @@ interface StatCardProps {
 /** Compact KPI tile used on the dashboard overview. */
 export function StatCard({ label, value, icon: Icon, trend }: StatCardProps) {
   return (
-    <Card className="group relative overflow-hidden border-border/70 bg-card/55 shadow-none transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card/80">
+    <Card className="surface-panel group relative overflow-hidden rounded-2xl border-border/65 shadow-none transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30">
       <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-      <CardContent className="flex items-start justify-between gap-4 px-4 py-4">
+      <CardContent className="flex items-start justify-between gap-4 px-5 py-5">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.04em]">{value}</p>

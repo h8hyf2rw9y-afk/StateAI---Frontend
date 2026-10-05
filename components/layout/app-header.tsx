@@ -16,7 +16,7 @@ export function AppHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="relative z-20 flex h-16 shrink-0 items-center gap-4 border-b border-border/70 bg-background/70 px-4 backdrop-blur-xl lg:px-6">
+    <header className="relative z-20 flex h-[4.5rem] shrink-0 items-center gap-4 border-b border-border/60 bg-background/62 px-4 backdrop-blur-2xl lg:px-7">
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <Button
           variant="ghost"
@@ -44,9 +44,12 @@ export function AppHeader() {
         </SheetContent>
       </Sheet>
 
-      <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
-        <span className="size-1.5 rounded-full bg-primary" />
-        State AI workspace
+      <div className="hidden items-center gap-2.5 text-xs text-muted-foreground md:flex">
+        <span className="relative flex size-2 items-center justify-center">
+          <span className="absolute size-2 rounded-full bg-emerald-400/30 blur-[2px]" />
+          <span className="relative size-1.5 rounded-full bg-emerald-400" />
+        </span>
+        Centro operativo
       </div>
 
       <div className="flex-1" />
@@ -55,11 +58,11 @@ export function AppHeader() {
         href="/ai-assistant"
         className={buttonVariants({
           variant: "ghost",
-          className: "hidden h-9 gap-2 border border-border/70 bg-background/50 px-3 text-muted-foreground hover:text-foreground md:inline-flex",
+          className: "hidden h-9 gap-2 rounded-xl border border-primary/15 bg-primary/[0.045] px-3 text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.08] hover:text-foreground md:inline-flex",
         })}
       >
         <Sparkles className="size-3.5 text-primary" />
-        Ask State AI
+        Preguntar a State AI
         <ArrowUpRight className="ml-2 size-3.5" />
       </Link>
 

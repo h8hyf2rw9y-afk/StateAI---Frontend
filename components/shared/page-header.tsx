@@ -11,13 +11,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <div className="mb-3 flex items-center gap-2" aria-hidden="true">
-          <span className="h-px w-6 bg-primary/70" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80">Live workspace</span>
+        <div className="mb-2.5 flex items-center gap-2" aria-hidden="true">
+          <span className="h-px w-7 bg-gradient-to-r from-primary to-primary/20" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">PropPilot workspace</span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-[-0.04em] text-balance sm:text-[2rem]">{title}</h1>
+        <h1 className="text-3xl font-semibold tracking-[-0.045em] text-balance sm:text-[2.15rem]">{title}</h1>
         {description && (
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
         )}

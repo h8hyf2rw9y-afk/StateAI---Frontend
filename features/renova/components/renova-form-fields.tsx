@@ -62,10 +62,13 @@ export function FieldGrid({ children }: { children: ReactNode }) {
 /** A titled group of fields, separated from the next by spacing and a thin rule — deliberately not a card. */
 export function FormSection({ id, title, icon: Icon, children }: { id: string; title: string; icon: LucideIcon; children: ReactNode }) {
   return (
-    <section aria-labelledby={`renova-section-${id}`} className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 border-b pb-2">
-        <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-        <h3 id={`renova-section-${id}`} className="text-sm font-medium">
+    <section aria-labelledby={`renova-section-${id}`} className="relative flex flex-col gap-5 rounded-2xl border border-border/55 bg-background/24 p-4 sm:p-5">
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+      <div className="flex items-center gap-3 border-b border-border/45 pb-3">
+        <span className="flex size-8 items-center justify-center rounded-xl border border-primary/15 bg-primary/[0.065] text-primary">
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+        <h3 id={`renova-section-${id}`} className="text-sm font-semibold tracking-[-0.01em]">
           {title}
         </h3>
       </div>

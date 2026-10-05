@@ -202,16 +202,22 @@ export function RenovaCaseDialog({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "flex h-[calc(100dvh-1rem)] max-h-none w-full max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0",
+          "surface-panel flex h-[calc(100dvh-1rem)] max-h-none w-full max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden rounded-[1.5rem] border-border/65 p-0",
           expanded
             ? "sm:h-[calc(100dvh-2rem)] sm:max-w-[calc(100%-2rem)]"
             : "sm:h-auto sm:max-h-[85dvh] sm:max-w-[min(920px,calc(100%-2rem))]"
         )}
       >
-        <DialogHeader className="flex-row items-start justify-between gap-4 border-b px-4 py-4 sm:px-6">
+        <DialogHeader className="relative flex-row items-start justify-between gap-4 border-b border-border/55 bg-background/22 px-4 py-4 sm:px-6 sm:py-5">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <DialogTitle className="text-lg">{isEdit ? "Editar prospecto Renova" : "Nuevo prospecto Renova"}</DialogTitle>
-            <DialogDescription>Captura el expediente de compra potencial en un solo formulario.</DialogDescription>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">
+              {isEdit ? "Editando expediente" : "Alta de prospecto"}
+            </p>
+            <DialogTitle className="truncate text-xl font-semibold tracking-[-0.03em]">
+              {isEdit ? original?.owner_name ?? "Expediente Renova" : "Nuevo prospecto Renova"}
+            </DialogTitle>
+            <DialogDescription>Cliente, contexto, números y propiedad en una sola vista.</DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {caseId && onShare && (
@@ -236,7 +242,7 @@ export function RenovaCaseDialog({
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+        <div className="quiet-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
           {load.status === "loading" && (
             <p className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Cargando expediente…
@@ -252,7 +258,8 @@ export function RenovaCaseDialog({
                 void submit("prospect");
               }}
             >
-              <section aria-labelledby="quick-notes-title" className="mb-8 rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+              <section aria-labelledby="quick-notes-title" className="relative mb-6 overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.045] p-4 sm:p-5">
+                <div className="pointer-events-none absolute -right-10 -top-16 size-40 rounded-full bg-primary/10 blur-3xl" />
                 <div className="mb-3 flex items-start gap-2">
                   <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                   <div>

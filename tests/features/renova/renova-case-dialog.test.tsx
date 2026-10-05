@@ -74,11 +74,11 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Nuevo prospecto Renova")).toBeInTheDocument();
-    expect(within(dialog).getByText("Captura el expediente de compra potencial en un solo formulario.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Cliente, contexto, números y propiedad en una sola vista.")).toBeInTheDocument();
     expect(within(dialog).getByText("Datos del expediente")).toBeInTheDocument();
   });
 
-  it("shows all six sections at once, in order, in ONE form with no tabs, steps or accordions", async () => {
+  it("shows the five client-first sections at once, in order, in ONE form with no tabs, steps or accordions", async () => {
     renderCreate();
     const dialog = await screen.findByRole("dialog");
 
@@ -86,12 +86,11 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
       .getAllByRole("heading", { level: 3 })
       .map((h) => h.textContent);
     expect(headings).toEqual([
-      "Registro y propuesta",
-      "Ubicación e inmueble",
-      "Adeudos",
-      "Condición y situación",
-      "Titular y cónyuge",
-      "Preguntas clave",
+      "Cliente",
+      "Comentarios y contexto",
+      "Adeudos y propuesta",
+      "Propiedad",
+      "Control del expediente",
     ]);
     expect(dialog.querySelectorAll("form")).toHaveLength(1);
     expect(within(dialog).queryByRole("tab")).not.toBeInTheDocument();
@@ -290,12 +289,12 @@ describe("RenovaCaseDialog — money and debts", () => {
   it("computes the debt total live from the five debt fields and never stores it", async () => {
     renderCreate();
     await screen.findByRole("dialog");
-    expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos: —");
+    expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos—");
 
     type("Deuda predial", "12000");
     type("Deuda de agua", "800");
     type("Deuda de luz", "450");
-    expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos: $13,250 MXN");
+    expect(screen.getByTestId("debt-total")).toHaveTextContent("Total estimado de adeudos$13,250 MXN");
 
     type("Adeudo", "3000.5");
     expect(screen.getByTestId("debt-total")).toHaveTextContent("$16,250.50 MXN");
@@ -747,7 +746,7 @@ describe("RenovaCaseDialog — saving", () => {
     const message =
       "El servidor todavía no puede proteger estos datos. Configura la clave de cifrado antes de guardar NSS o número de crédito.";
     const alert = await screen.findByText(message);
-    expect(alert.closest("section")).toHaveTextContent("Titular y cónyuge");
+    expect(alert.closest("section")).toHaveTextContent("Cliente");
     expect(screen.getByLabelText("NSS")).toHaveValue("00123456789");
     expect(screen.getByLabelText("Colonia")).toHaveValue("Centro");
     expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("María López");
@@ -824,7 +823,8 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(getRenovaCaseMock).toHaveBeenCalledWith("case-1");
-    expect(within(dialog).getByText("Editar prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByText("Editando expediente")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { level: 2, name: "María López" })).toBeInTheDocument();
     expect(screen.getByLabelText(/nombre completo del titular/i)).toHaveValue("María López");
     expect(screen.getByLabelText("Calle y número")).toHaveValue("Av. Constitución 123");
     expect(screen.getByLabelText("Código postal")).toHaveValue("64000");
@@ -832,8 +832,8 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Rentada" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Valor de mercado")).toHaveValue("1,400,000");
-    // Same layout, same six sections.
-    expect(within(dialog).getAllByRole("heading", { level: 3 })).toHaveLength(6);
+    // Same layout, same five client-first sections.
+    expect(within(dialog).getAllByRole("heading", { level: 3 })).toHaveLength(5);
     expect(within(dialog).queryByRole("tab")).not.toBeInTheDocument();
   });
 

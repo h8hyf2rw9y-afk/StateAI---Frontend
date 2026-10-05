@@ -49,7 +49,9 @@ describe("RenovaCaseDetail", () => {
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("María López");
     expect(screen.getByText("En revisión", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText(/RN-9F3A2C · Yo · Ingreso/)).toBeInTheDocument();
+    expect(screen.getByText("RN-9F3A2C")).toBeInTheDocument();
+    expect(screen.getByText("Yo")).toBeInTheDocument();
+    expect(screen.getByText(/Ingreso/)).toBeInTheDocument();
   });
 
   it("shows address, property, financial, motivation and owner data in Spanish", async () => {
@@ -73,8 +75,20 @@ describe("RenovaCaseDetail", () => {
     ]) {
       expect(page).toHaveTextContent(text);
     }
-    for (const heading of ["Propietario", "Ubicación e inmueble", "Información financiera", "Motivación y comentarios", "Historial"]) {
-      expect(screen.getByText(heading)).toBeInTheDocument();
+    for (const heading of ["Contexto y comentarios", "Adeudos y propuesta", "Propiedad", "Personas y datos protegidos"]) {
+      expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    }
+    expect((await screen.findAllByText("Historial")).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("presents the dossier in client-first order: comments, debts, property and people", async () => {
+    await renderDetail();
+
+    const headings = ["Contexto y comentarios", "Adeudos y propuesta", "Propiedad", "Personas y datos protegidos"].map(
+      (name) => screen.getByRole("heading", { name })
+    );
+    for (let index = 1; index < headings.length; index += 1) {
+      expect(headings[index - 1].compareDocumentPosition(headings[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
   });
 
@@ -159,7 +173,8 @@ describe("RenovaCaseDetail — actions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Editar prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByText("Editando expediente")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { level: 2, name: "María López" })).toBeInTheDocument();
     await waitFor(() => expect(within(dialog).getByLabelText("Colonia")).toHaveValue("Centro"));
 
     fireEvent.change(within(dialog).getByLabelText("Colonia"), { target: { value: "Obispado" } });

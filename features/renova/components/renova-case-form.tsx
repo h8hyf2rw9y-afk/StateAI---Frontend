@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, FileText, MapPin, MessageCircleQuestion, Receipt, ShieldCheck, Users } from "lucide-react";
+import { House, MessageSquareText, Receipt, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import {
   FieldGrid,
   FormSection,
@@ -78,86 +78,21 @@ export function RenovaCaseForm({
 
   return (
     <RenovaFormProvider value={state}>
-      <div className="flex flex-col gap-8">
-        <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Datos del expediente</h2>
-
-        <FormSection id="registro" title="Registro y propuesta" icon={FileText}>
-          <FieldGrid>
-            <SelectField name="assigned_user_id" label="Asesor responsable" required options={advisorOptions} placeholder="Selecciona un asesor" />
-            <TextField name="entry_date" label="Fecha de ingreso" type="date" required />
-            <SelectField name="status" label="Estado del expediente" options={statusOptions} />
-            <MoneyField name="final_offer" label="Propuesta final" />
-            <MoneyField name="market_value" label="Valor de mercado" />
-            <MoneyField name="owner_expected_amount" label="Cuánto espera recibir" />
-          </FieldGrid>
-        </FormSection>
-
-        <FormSection id="ubicacion" title="Ubicación e inmueble" icon={MapPin}>
-          <FieldGrid>
-            <TextField name="street_address" label="Calle y número" size="half" />
-            <TextField name="neighborhood" label="Colonia" size="half" />
-            <TextField name="municipality" label="Municipio" />
-            <TextField name="postal_code" label="Código postal" inputMode="numeric" />
-            <SegmentedField
-              name="dwelling_type"
-              label="Tipo de vivienda"
-              size="sm"
-              allowClear
-              options={toOptions(RENOVA_DWELLING_TYPES, formatRenovaDwelling)}
-            />
-            <ToggleField name="is_duplex" label="Dúplex" size="xs" />
-            <TextField name="floors" label="Plantas" type="number" size="xs" />
-            <TextField name="bathrooms" label="Baños" type="number" size="xs" />
-            <TextField name="bedrooms" label="Recámaras" type="number" size="xs" />
-          </FieldGrid>
-        </FormSection>
-
-        <FormSection id="adeudos" title="Adeudos" icon={Receipt}>
-          <FieldGrid>
-            <SegmentedField
-              name="property_tax_debt_unit"
-              label="Deuda predial — ¿en pesos o en años?"
-              size="sm"
-              options={toOptions(RENOVA_PROPERTY_TAX_DEBT_UNITS, formatRenovaPropertyTaxDebtUnit)}
-            />
-            {propertyTaxDebtInYears ? (
-              <TextField name="property_tax_debt" label="Deuda predial (años)" type="number" size="sm" hint="Años que se deben de predial, no el monto en pesos." />
-            ) : (
-              <MoneyField name="property_tax_debt" label="Deuda predial" />
-            )}
-            <MoneyField name="other_debt" label="Adeudo" />
-            <MoneyField name="water_debt" label="Deuda de agua" />
-            <MoneyField name="electricity_debt" label="Deuda de luz" />
-            <MoneyField name="gas_debt" label="Deuda de gas" />
-            <TextField name="debt_owed_to" label="A quién se debe" />
-          </FieldGrid>
-          <p aria-live="polite" className="text-sm text-muted-foreground" data-testid="debt-total">
-            Total estimado de adeudos:{" "}
-            <span className="font-medium text-foreground">{debtTotal === null ? "—" : `${formatRenovaMoney(debtTotal)} MXN`}</span>
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">Expediente Renova</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-[-0.025em]">Datos del expediente</h2>
+          </div>
+          <p className="hidden max-w-xs text-right text-xs leading-relaxed text-muted-foreground sm:block">
+            Captura primero a la persona y su contexto; después completa números y propiedad.
           </p>
-        </FormSection>
+        </div>
 
-        <FormSection id="condicion" title="Condición y situación" icon={ClipboardList}>
+        <FormSection id="cliente" title="Cliente" icon={UserRound}>
           <FieldGrid>
-            <TextAreaField name="conditions" label="Condiciones de la casa" />
-            <SegmentedField
-              name="occupancy_status"
-              label="Situación actual"
-              size="half"
-              allowClear
-              options={toOptions(RENOVA_OCCUPANCY_STATUSES, formatRenovaOccupancy)}
-            />
-            <SegmentedField name="has_deeds" label="Escrituras" size="half" options={toOptions(RENOVA_DEEDS_STATUSES, formatRenovaDeeds)} />
-            <TextField name="deeds_holder_name" label="A nombre de quién están las escrituras" size="half" />
-            <TextAreaField name="general_situation" label="Comentarios generales" />
-          </FieldGrid>
-        </FormSection>
-
-        <FormSection id="titular" title="Titular y cónyuge" icon={Users}>
-          <FieldGrid>
-            <SubHeading>Titular</SubHeading>
-            <TextField name="owner_name" label="Nombre completo del titular" required />
-            <TextField name="owner_phone" label="Celular del titular" inputMode="tel" required />
+            <TextField name="owner_name" label="Nombre completo del titular" size="half" required />
+            <TextField name="owner_phone" label="Celular del titular" size="half" inputMode="tel" required />
             <SelectField
               name="marital_status"
               label="Estado civil al adquirir el inmueble"
@@ -187,8 +122,8 @@ export function RenovaCaseForm({
               revealed={protectedData?.values?.credit_number ?? null}
             />
             <SubHeading>Cónyuge</SubHeading>
-            <TextField name="spouse_name" label="Nombre completo del cónyuge" />
-            <TextField name="spouse_phone" label="Celular del cónyuge" inputMode="tel" />
+            <TextField name="spouse_name" label="Nombre completo del cónyuge" size="half" />
+            <TextField name="spouse_phone" label="Celular del cónyuge" size="half" inputMode="tel" />
           </FieldGrid>
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
@@ -201,10 +136,79 @@ export function RenovaCaseForm({
           )}
         </FormSection>
 
-        <FormSection id="preguntas" title="Preguntas clave" icon={MessageCircleQuestion}>
+        <FormSection id="comentarios" title="Comentarios y contexto" icon={MessageSquareText}>
           <FieldGrid>
-            <TextAreaField name="sale_reason" label="¿Por qué la quiere vender?" />
             <TextAreaField name="notes" label="Notas adicionales o contexto de la conversación" />
+            <TextAreaField name="general_situation" label="Comentarios generales" />
+            <TextAreaField name="sale_reason" label="¿Por qué la quiere vender?" />
+            <TextAreaField name="conditions" label="Condiciones de la casa" />
+          </FieldGrid>
+        </FormSection>
+
+        <FormSection id="adeudos" title="Adeudos y propuesta" icon={Receipt}>
+          <div aria-live="polite" data-testid="debt-total" className="flex flex-col gap-1 rounded-xl border border-primary/15 bg-primary/[0.045] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs text-muted-foreground">Total estimado de adeudos</span>
+            <span className="text-lg font-semibold tracking-[-0.025em] text-foreground">
+              {debtTotal === null ? "—" : `${formatRenovaMoney(debtTotal)} MXN`}
+            </span>
+          </div>
+          <FieldGrid>
+            <MoneyField name="final_offer" label="Propuesta final" />
+            <MoneyField name="market_value" label="Valor de mercado" />
+            <MoneyField name="owner_expected_amount" label="Cuánto espera recibir" />
+            <SegmentedField
+              name="property_tax_debt_unit"
+              label="Deuda predial — ¿en pesos o en años?"
+              size="sm"
+              options={toOptions(RENOVA_PROPERTY_TAX_DEBT_UNITS, formatRenovaPropertyTaxDebtUnit)}
+            />
+            {propertyTaxDebtInYears ? (
+              <TextField name="property_tax_debt" label="Deuda predial (años)" type="number" size="sm" hint="Años que se deben de predial, no el monto en pesos." />
+            ) : (
+              <MoneyField name="property_tax_debt" label="Deuda predial" />
+            )}
+            <MoneyField name="other_debt" label="Adeudo" />
+            <MoneyField name="water_debt" label="Deuda de agua" />
+            <MoneyField name="electricity_debt" label="Deuda de luz" />
+            <MoneyField name="gas_debt" label="Deuda de gas" />
+            <TextField name="debt_owed_to" label="A quién se debe" />
+          </FieldGrid>
+        </FormSection>
+
+        <FormSection id="propiedad" title="Propiedad" icon={House}>
+          <FieldGrid>
+            <TextField name="street_address" label="Calle y número" size="half" />
+            <TextField name="neighborhood" label="Colonia" size="half" />
+            <TextField name="municipality" label="Municipio" />
+            <TextField name="postal_code" label="Código postal" inputMode="numeric" />
+            <SegmentedField
+              name="dwelling_type"
+              label="Tipo de vivienda"
+              size="sm"
+              allowClear
+              options={toOptions(RENOVA_DWELLING_TYPES, formatRenovaDwelling)}
+            />
+            <ToggleField name="is_duplex" label="Dúplex" size="xs" />
+            <TextField name="floors" label="Plantas" type="number" size="xs" />
+            <TextField name="bathrooms" label="Baños" type="number" size="xs" />
+            <TextField name="bedrooms" label="Recámaras" type="number" size="xs" />
+            <SegmentedField
+              name="occupancy_status"
+              label="Situación actual"
+              size="half"
+              allowClear
+              options={toOptions(RENOVA_OCCUPANCY_STATUSES, formatRenovaOccupancy)}
+            />
+            <SegmentedField name="has_deeds" label="Escrituras" size="half" options={toOptions(RENOVA_DEEDS_STATUSES, formatRenovaDeeds)} />
+            <TextField name="deeds_holder_name" label="A nombre de quién están las escrituras" size="half" />
+          </FieldGrid>
+        </FormSection>
+
+        <FormSection id="control" title="Control del expediente" icon={SlidersHorizontal}>
+          <FieldGrid>
+            <SelectField name="assigned_user_id" label="Asesor responsable" required options={advisorOptions} placeholder="Selecciona un asesor" />
+            <TextField name="entry_date" label="Fecha de ingreso" type="date" required />
+            <SelectField name="status" label="Estado del expediente" options={statusOptions} />
           </FieldGrid>
         </FormSection>
       </div>
