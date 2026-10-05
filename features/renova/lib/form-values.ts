@@ -161,7 +161,10 @@ export function emptyRenovaFormValues(assignedUserId = ""): RenovaFormValues {
 export function valuesFromRenovaCase(renovaCase: RenovaCase): RenovaFormValues {
   const s = (value: string | number | null) => (value === null || value === undefined ? "" : String(value));
   // The API returns money as "1400000.00"; show it as a person would type it.
-  const money = (value: string | null) => (value === null ? "" : value.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1"));
+  // Tolerates `undefined` too (not just `null`): a response from a server
+  // that predates a newer field simply omits the key rather than sending
+  // null for it, and this must never crash the dialog.
+  const money = (value: string | null | undefined) => (value === null || value === undefined ? "" : value.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1"));
   return {
     assigned_user_id: renovaCase.assigned_user_id ?? "",
     entry_date: renovaCase.entry_date,
