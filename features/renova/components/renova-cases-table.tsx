@@ -25,6 +25,7 @@ import {
   formatRenovaMoney,
   formatRenovaStatus,
   getRenovaStatusClassName,
+  sortRenovaCasesByStatus,
   type RenovaCaseBucket,
   type RenovaCaseBucketCounts,
   type RenovaCaseListItem,
@@ -144,6 +145,10 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const isLoading = loaded?.key !== requestKey;
   const activeFilterCount = [statusFilter !== "all", advisorFilter !== "all"].filter(Boolean).length;
   const hasActiveFilters = debouncedQuery.trim() !== "" || activeFilterCount > 0;
+  // Grouped by status in pipeline order, not by entry date — a status
+  // change (reflected here the moment the refetch above returns) moves a
+  // row to its new group immediately, with no separate re-sort step.
+  const sortedCases = loaded?.cases ? sortRenovaCasesByStatus(loaded.cases) : null;
 
   function clearFilters() {
     setStatusFilter("all");
@@ -304,7 +309,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
         </div>
       )}
 
-      {!isLoading && loaded?.cases && loaded.cases.length === 0 && (
+      {!isLoading && sortedCases && sortedCases.length === 0 && (
         <div className="rounded-xl border">
           <EmptyState
             icon={EMPTY_STATE_ICON[bucket]}
@@ -330,7 +335,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
         </div>
       )}
 
-      {!isLoading && loaded?.cases && loaded.cases.length > 0 && (
+      {!isLoading && sortedCases && sortedCases.length > 0 && (
         <div className="overflow-x-auto rounded-md border bg-background">
           <Table>
             <TableHeader>
@@ -352,7 +357,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loaded.cases.map((renovaCase) => (
+              {sortedCases.map((renovaCase) => (
                 <TableRow
                   key={renovaCase.id}
                   role="button"

@@ -497,3 +497,169 @@ describe("RenovaCasesTable — the three buckets (Activos / Rechazados y cancela
     expect(screen.getByText("Rechazado Uno")).toBeInTheDocument();
   });
 });
+
+function ownerNamesInOrder(): string[] {
+  // Data rows carry role="button" (see RenovaCasesTable), not the implicit
+  // "row" role, so they're read straight off the table body instead.
+  return Array.from(document.querySelectorAll("tbody tr")).map((row) => row.querySelector("td")!.textContent);
+}
+
+describe("RenovaCasesTable — grouped by status, not by entry date", () => {
+  beforeEach(() => {
+    getRenovaCasesMock.mockReset();
+    getRenovaCaseCountsMock.mockReset();
+    updateRenovaCaseMock.mockReset();
+    getContactsMock.mockReset();
+    pushMock.mockReset();
+    getRenovaCaseCountsMock.mockResolvedValue({ ok: true, data: { active: 0, closed: 0, rejected: 0, cancelled: 0, archived: 0 } });
+  });
+
+  it("keeps same-status leads together even when the backend returns them interleaved by entry date", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        // Entry-date order (what the backend returns): new, negotiating, new, negotiating.
+        makeCase({ id: "1", owner_name: "Carlos", status: "new", entry_date: "2026-09-25" }),
+        makeCase({ id: "2", owner_name: "Raúl", status: "negotiating", entry_date: "2026-09-24" }),
+        makeCase({ id: "3", owner_name: "Beatriz", status: "new", entry_date: "2026-09-23" }),
+        makeCase({ id: "4", owner_name: "Martha", status: "negotiating", entry_date: "2026-09-22" }),
+      ],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Carlos");
+
+    // "new" (earlier in the pipeline) groups together before "negotiating";
+    // within each group, the backend's own entry-date order is preserved.
+    expect(ownerNamesInOrder()).toEqual(["Carlos", "Beatriz", "Raúl", "Martha"]);
+  });
+
+  it("orders the groups by the real pipeline flow, not alphabetically", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      // Alphabetically "Aceptado" < "Negociando", but the pipeline visits
+      // negotiating before accepted — this would fail under alphabetical sorting.
+      data: [
+        makeCase({ id: "1", owner_name: "Andrea", status: "accepted" }),
+        makeCase({ id: "2", owner_name: "Raúl", status: "negotiating" }),
+      ],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Andrea");
+
+    expect(ownerNamesInOrder()).toEqual(["Raúl", "Andrea"]);
+  });
+
+  it("moves a lead to its new status group immediately after a refetch — no manual reload needed", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "1", owner_name: "Raúl", status: "negotiating" }),
+        makeCase({ id: "2", owner_name: "Martha", status: "negotiating" }),
+        makeCase({ id: "3", owner_name: "Andrea", status: "accepted" }),
+      ],
+    });
+    const { rerender } = render(<RenovaCasesTable refreshKey={0} />);
+    await screen.findByText("Raúl");
+    expect(ownerNamesInOrder()).toEqual(["Raúl", "Martha", "Andrea"]);
+
+    // Martha: Negociando -> Aceptado (the same refetch-after-save mechanism
+    // the dialog already triggers via `refreshKey`, reused here).
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "1", owner_name: "Raúl", status: "negotiating" }),
+        makeCase({ id: "3", owner_name: "Andrea", status: "accepted" }),
+        makeCase({ id: "2", owner_name: "Martha", status: "accepted" }),
+      ],
+    });
+    rerender(<RenovaCasesTable refreshKey={1} />);
+
+    await waitFor(() => expect(ownerNamesInOrder()).toEqual(["Raúl", "Andrea", "Martha"]));
+
+    // And back the other way, to confirm this is genuinely dynamic.
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "2", owner_name: "Martha", status: "negotiating" }),
+        makeCase({ id: "1", owner_name: "Raúl", status: "negotiating" }),
+        makeCase({ id: "3", owner_name: "Andrea", status: "accepted" }),
+      ],
+    });
+    rerender(<RenovaCasesTable refreshKey={2} />);
+
+    await waitFor(() => expect(ownerNamesInOrder()).toEqual(["Martha", "Raúl", "Andrea"]));
+  });
+
+  it("status filter still narrows the grouped table to one status", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [makeCase({ id: "1", owner_name: "Raúl", status: "negotiating" })],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Raúl");
+
+    openFilters();
+    fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "negotiating" } });
+
+    await waitFor(() =>
+      expect(getRenovaCasesMock).toHaveBeenLastCalledWith(expect.objectContaining({ status: "negotiating" }))
+    );
+    expect(screen.getByText("Raúl")).toBeInTheDocument();
+  });
+
+  it("search still works on the grouped table", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "1", owner_name: "Raúl", status: "negotiating" }),
+        makeCase({ id: "2", owner_name: "Martha", status: "negotiating" }),
+      ],
+    });
+    render(<RenovaCasesTable />);
+    await screen.findByText("Raúl");
+    getRenovaCasesMock.mockClear();
+
+    fireEvent.change(screen.getByLabelText(/buscar expedientes renova/i), { target: { value: "martha" } });
+
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalledWith(expect.objectContaining({ q: "martha" })));
+  });
+
+  it("within 'Rechazados y cancelados', Rechazado still groups before Cancelado — the existing exit order is unchanged", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "1", owner_name: "Cancelado Uno", status: "cancelled" }),
+        makeCase({ id: "2", owner_name: "Rechazado Uno", status: "rejected" }),
+      ],
+    });
+    render(<RenovaCasesTable />);
+    await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio", { name: "Rechazados y cancelados" }));
+    await screen.findByText("Rechazado Uno");
+
+    expect(ownerNamesInOrder()).toEqual(["Rechazado Uno", "Cancelado Uno"]);
+  });
+
+  it("editing, sharing and archiving still target the right row once rows are reordered by status", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [
+        makeCase({ id: "1", owner_name: "Carlos", status: "accepted" }),
+        makeCase({ id: "2", owner_name: "Raúl", status: "new" }),
+      ],
+    });
+    const onShare = vi.fn();
+    const onEdit = vi.fn();
+    render(<RenovaCasesTable onShare={onShare} onEdit={onEdit} />);
+    await screen.findByText("Carlos");
+    // "new" sorts before "accepted", so Raúl's row now comes first even
+    // though it was sent second by the backend.
+    expect(ownerNamesInOrder()).toEqual(["Raúl", "Carlos"]);
+
+    fireEvent.click(screen.getByRole("button", { name: /ver ficha y compartir de carlos/i }));
+    expect(onShare).toHaveBeenCalledWith("1");
+
+    fireEvent.click(screen.getByText("Raúl"));
+    expect(onEdit).toHaveBeenCalledWith("2");
+  });
+});
