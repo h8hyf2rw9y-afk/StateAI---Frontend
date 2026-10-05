@@ -149,31 +149,11 @@ export const RENOVA_STATUSES = [
   "cancelled",
 ] as const;
 
-/**
- * Where a status sits in the real Renova flow — the SAME order as
- * RENOVA_STATUSES above (which already mirrors the backend's
- * RENOVA_CASE_STATUSES one for one, "rejected"/"cancelled" last), so there is
- * only one definition of the pipeline order in this codebase. An unknown
- * status (should never happen — the backend only sends real enum values)
- * sorts last rather than throwing.
- */
-function renovaStatusOrderIndex(status: string): number {
-  const index = RENOVA_STATUSES.findIndex((s) => s === status);
-  return index === -1 ? RENOVA_STATUSES.length : index;
-}
-
-/**
- * Groups cases by status in pipeline order (Nuevo, En revisión, …,
- * Rechazado, Cancelado) WITHOUT touching their relative order within the
- * same status — `Array.prototype.sort` is a stable sort, so whatever
- * secondary order the caller already had (the backend's own
- * entry_date/created_at ordering) is preserved inside each status group.
- * Used by the Leads → Renova table so same-status leads sit together
- * instead of being interleaved by entry date.
- */
-export function sortRenovaCasesByStatus<T extends { status: string }>(cases: T[]): T[] {
-  return [...cases].sort((a, b) => renovaStatusOrderIndex(a.status) - renovaStatusOrderIndex(b.status));
-}
+// Grouping by status (status_rank ASC, created_at DESC, id ASC) is now done
+// server-side -- see RenovaCaseRepository.list() -- so the Leads → Renova
+// table renders GET /renova/cases' rows as-is, including across pagination.
+// A client-side re-sort used to live here; removed so there is exactly one
+// definition of the pipeline order, not two that could silently drift.
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Borrador",

@@ -25,7 +25,6 @@ import {
   formatRenovaMoney,
   formatRenovaStatus,
   getRenovaStatusClassName,
-  sortRenovaCasesByStatus,
   type RenovaCaseBucket,
   type RenovaCaseBucketCounts,
   type RenovaCaseListItem,
@@ -145,10 +144,12 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const isLoading = loaded?.key !== requestKey;
   const activeFilterCount = [statusFilter !== "all", advisorFilter !== "all"].filter(Boolean).length;
   const hasActiveFilters = debouncedQuery.trim() !== "" || activeFilterCount > 0;
-  // Grouped by status in pipeline order, not by entry date — a status
-  // change (reflected here the moment the refetch above returns) moves a
-  // row to its new group immediately, with no separate re-sort step.
-  const sortedCases = loaded?.cases ? sortRenovaCasesByStatus(loaded.cases) : null;
+  // The backend already returns rows grouped by status (status_rank ASC,
+  // created_at DESC, id ASC — see RenovaCaseRepository.list()), including
+  // across pagination boundaries. This table trusts that order as-is: no
+  // client-side re-sort, so a status change only has to move a row once
+  // it's refetched here, never twice in two different places.
+  const sortedCases = loaded?.cases ?? null;
 
   function clearFilters() {
     setStatusFilter("all");

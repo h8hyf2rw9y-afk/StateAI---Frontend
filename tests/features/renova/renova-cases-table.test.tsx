@@ -504,7 +504,7 @@ function ownerNamesInOrder(): string[] {
   return Array.from(document.querySelectorAll("tbody tr")).map((row) => row.querySelector("td")!.textContent);
 }
 
-describe("RenovaCasesTable — grouped by status, not by entry date", () => {
+describe("RenovaCasesTable — grouped by status (ordering now owned by the backend)", () => {
   beforeEach(() => {
     getRenovaCasesMock.mockReset();
     getRenovaCaseCountsMock.mockReset();
@@ -514,33 +514,35 @@ describe("RenovaCasesTable — grouped by status, not by entry date", () => {
     getRenovaCaseCountsMock.mockResolvedValue({ ok: true, data: { active: 0, closed: 0, rejected: 0, cancelled: 0, archived: 0 } });
   });
 
-  it("keeps same-status leads together even when the backend returns them interleaved by entry date", async () => {
+  it("renders rows in exactly the order the API returns them, with no client-side re-sort", async () => {
+    // RenovaCaseRepository.list() already groups by status_rank, then
+    // created_at DESC, then id ASC -- this is what a real response looks
+    // like: "new" cases together, ahead of "negotiating", regardless of
+    // entry_date. The table must render this as-is.
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
       data: [
-        // Entry-date order (what the backend returns): new, negotiating, new, negotiating.
-        makeCase({ id: "1", owner_name: "Carlos", status: "new", entry_date: "2026-09-25" }),
-        makeCase({ id: "2", owner_name: "Raúl", status: "negotiating", entry_date: "2026-09-24" }),
-        makeCase({ id: "3", owner_name: "Beatriz", status: "new", entry_date: "2026-09-23" }),
+        makeCase({ id: "1", owner_name: "Carlos", status: "new", entry_date: "2026-09-23" }),
+        makeCase({ id: "2", owner_name: "Beatriz", status: "new", entry_date: "2026-09-25" }),
+        makeCase({ id: "3", owner_name: "Raúl", status: "negotiating", entry_date: "2026-09-24" }),
         makeCase({ id: "4", owner_name: "Martha", status: "negotiating", entry_date: "2026-09-22" }),
       ],
     });
     render(<RenovaCasesTable />);
     await screen.findByText("Carlos");
 
-    // "new" (earlier in the pipeline) groups together before "negotiating";
-    // within each group, the backend's own entry-date order is preserved.
     expect(ownerNamesInOrder()).toEqual(["Carlos", "Beatriz", "Raúl", "Martha"]);
   });
 
-  it("orders the groups by the real pipeline flow, not alphabetically", async () => {
+  it("does not reorder a pipeline-order response into alphabetical order", async () => {
+    // Alphabetically "Andrea" < "Raúl", but the backend (negotiating before
+    // accepted in the real flow) sent Raúl first -- the table must not
+    // second-guess that.
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
-      // Alphabetically "Aceptado" < "Negociando", but the pipeline visits
-      // negotiating before accepted — this would fail under alphabetical sorting.
       data: [
-        makeCase({ id: "1", owner_name: "Andrea", status: "accepted" }),
         makeCase({ id: "2", owner_name: "Raúl", status: "negotiating" }),
+        makeCase({ id: "1", owner_name: "Andrea", status: "accepted" }),
       ],
     });
     render(<RenovaCasesTable />);
@@ -624,12 +626,12 @@ describe("RenovaCasesTable — grouped by status, not by entry date", () => {
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalledWith(expect.objectContaining({ q: "martha" })));
   });
 
-  it("within 'Rechazados y cancelados', Rechazado still groups before Cancelado — the existing exit order is unchanged", async () => {
+  it("within 'Rechazados y cancelados', renders Rechazado before Cancelado exactly as the backend sent them", async () => {
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
       data: [
-        makeCase({ id: "1", owner_name: "Cancelado Uno", status: "cancelled" }),
         makeCase({ id: "2", owner_name: "Rechazado Uno", status: "rejected" }),
+        makeCase({ id: "1", owner_name: "Cancelado Uno", status: "cancelled" }),
       ],
     });
     render(<RenovaCasesTable />);
@@ -640,20 +642,18 @@ describe("RenovaCasesTable — grouped by status, not by entry date", () => {
     expect(ownerNamesInOrder()).toEqual(["Rechazado Uno", "Cancelado Uno"]);
   });
 
-  it("editing, sharing and archiving still target the right row once rows are reordered by status", async () => {
+  it("editing, sharing and archiving still target the right row regardless of status order", async () => {
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
       data: [
-        makeCase({ id: "1", owner_name: "Carlos", status: "accepted" }),
         makeCase({ id: "2", owner_name: "Raúl", status: "new" }),
+        makeCase({ id: "1", owner_name: "Carlos", status: "accepted" }),
       ],
     });
     const onShare = vi.fn();
     const onEdit = vi.fn();
     render(<RenovaCasesTable onShare={onShare} onEdit={onEdit} />);
     await screen.findByText("Carlos");
-    // "new" sorts before "accepted", so Raúl's row now comes first even
-    // though it was sent second by the backend.
     expect(ownerNamesInOrder()).toEqual(["Raúl", "Carlos"]);
 
     fireEvent.click(screen.getByRole("button", { name: /ver ficha y compartir de carlos/i }));
