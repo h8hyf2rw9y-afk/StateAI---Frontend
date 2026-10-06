@@ -19,6 +19,11 @@ vi.mock("@/hooks/useUser", () => ({
 }));
 vi.mock("@/components/ui/select", () => import("@/tests/test-utils/select-stub"));
 
+// Editar / Editar propuesta mount the full Renova form (~35 fields); under the
+// whole suite running in parallel the default 5s budget is occasionally too
+// tight — same note and fix as leads-workspace.test.tsx.
+vi.setConfig({ testTimeout: 15_000 });
+
 const history = [
   { id: "h2", action: "RENOVA_CASE_STATUS_CHANGED", created_at: "2026-09-21T15:30:00Z" },
   { id: "h1", action: "RENOVA_CASE_CREATED", created_at: "2026-09-20T12:00:00Z" },
@@ -260,5 +265,20 @@ describe("RenovaCaseDetail — actions", () => {
     await renderDetail();
 
     expect(screen.queryByRole("button", { name: /gestionar documentos/i })).not.toBeInTheDocument();
+  });
+
+  it("Editar propuesta opens the edit popup scrolled to the proposal fields", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar propuesta" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.contexts[0]).toHaveAttribute("id", "renova-section-adeudos");
+    expect(within(dialog).getByText("Modalidad de la propuesta")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Deuda que cubrirá Renova")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Efectivo para el propietario")).toBeInTheDocument();
   });
 });

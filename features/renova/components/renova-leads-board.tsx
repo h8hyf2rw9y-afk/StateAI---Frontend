@@ -10,6 +10,7 @@ import {
   ListFilter,
   Loader2,
   MapPin,
+  Phone,
   RotateCcw,
   Search,
   Share2,
@@ -29,6 +30,7 @@ import { useCurrentUser } from "@/features/auth/current-user-context";
 import { useTeamMembers } from "@/features/organization/use-team-members";
 import { getRenovaCaseCounts, getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
 import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
+import { googleMapsUrl } from "@/features/renova/lib/maps";
 import { useUser } from "@/hooks/useUser";
 import {
   RENOVA_CASE_BUCKETS,
@@ -52,6 +54,11 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 function addressLabel(item: RenovaCaseListItem): string {
   return [item.street_address, item.neighborhood, item.municipality].filter(Boolean).join(" · ") || "Dirección pendiente";
+}
+
+/** `tel:` keeps only what a dialer understands, so "81 1234-5678" still calls on a phone. */
+function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
 const EMPTY_FOLLOW_UP: RenovaFollowUpSummary = {
@@ -245,14 +252,26 @@ export function RenovaLeadsBoard({
                 {group.cases.map((item) => {
                   const followUp = item.follow_up ?? EMPTY_FOLLOW_UP;
                   const normalizedItem = item.follow_up ? item : { ...item, follow_up: followUp };
+                  const mapsUrl = googleMapsUrl(item);
                   return <article key={item.id} className="group rounded-2xl border border-border/70 bg-background/75 p-3.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-background">
                     <div className="flex items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 className="size-4" aria-hidden="true" /></div>
-                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onEdit?.(item.id)}><span className="block truncate text-sm font-medium transition-colors group-hover:text-primary">{item.owner_name}</span><span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground"><MapPin className="size-3 shrink-0" />{addressLabel(item)}</span></button>
+                      <div className="min-w-0 flex-1">
+                        <button type="button" className="block w-full truncate text-left text-sm font-medium transition-colors group-hover:text-primary" onClick={() => onEdit?.(item.id)}>{item.owner_name}</button>
+                        {/* The address opens Google Maps directly — no need to open the case first. */}
+                        {mapsUrl ? (
+                          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" title="Abrir en Google Maps" aria-label={`Ver en Google Maps: ${addressLabel(item)}`} className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-primary underline-offset-2 hover:underline">
+                            <MapPin className="size-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{addressLabel(item)}</span>
+                          </a>
+                        ) : (
+                          <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground"><MapPin className="size-3 shrink-0" aria-hidden="true" />{addressLabel(item)}</span>
+                        )}
+                      </div>
                       <Badge variant="outline" className={cn("shrink-0 border-transparent text-[10px]", getRenovaStatusClassName(item.status))}>{formatRenovaStatus(item.status)}</Badge>
                     </div>
                     <div className={cn("mt-3 rounded-xl bg-muted/55 px-3 py-2.5", followUp.is_follow_up_overdue && "bg-destructive/10")}><p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Seguimiento</p><p className={cn("mt-1 text-xs font-medium", followUp.is_follow_up_overdue && "text-destructive")}>{followUpLabel(followUp)}</p>{followUp.note_preview && <p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">{followUp.note_preview}</p>}</div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-muted-foreground"><div><span className="block">Propuesta</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(item.final_offer, item.currency)}</strong></div><div><span className="block">Adeudos</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(item.total_debt, item.currency)}</strong></div></div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-muted-foreground"><div><span className="block">Propuesta</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(item.final_offer, item.currency)}</strong></div><div><span className="block">Adeudos</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(item.total_debt, item.currency)}</strong></div><div className="col-start-2"><span className="block">Teléfono</span><a href={telHref(item.owner_phone)} aria-label={`Llamar a ${item.owner_name}: ${item.owner_phone}`} className="mt-0.5 flex items-center gap-1 font-medium text-foreground hover:text-primary"><Phone className="size-3 shrink-0" aria-hidden="true" />{item.owner_phone}</a></div></div>
                     <p className="mt-2 text-[10px] text-muted-foreground">Asesor: {advisorLabel(item.assigned_user_id, user?.id, members)}</p>
                     <div className="mt-3 flex items-center gap-1 border-t border-border/60 pt-2.5" onClick={(event) => event.stopPropagation()}>
                       {bucket !== "archived" && <div className="min-w-0 flex-1"><RenovaFollowUpPopover renovaCase={normalizedItem} onSaved={(savedFollowUp) => updateFollowUp(item.id, savedFollowUp)} /></div>}

@@ -63,8 +63,11 @@ export function RenovaCaseDialog({
   onClose,
   onSaved,
   onShare,
+  focusSection,
 }: {
   caseId?: string;
+  /** Opens the form scrolled to one section (e.g. "adeudos" for "Editar propuesta") instead of the top. */
+  focusSection?: "adeudos";
   onClose: () => void;
   onSaved: (renovaCase: RenovaCase, intent: RenovaSaveIntent) => void;
   onShare?: (caseId: string) => void;
@@ -88,6 +91,16 @@ export function RenovaCaseDialog({
   const [quickNotesResult, setQuickNotesResult] = useState<string | null>(null);
   const [isExtractingNotes, setIsExtractingNotes] = useState(false);
   const submittingRef = useRef(false);
+  const isReady = load.status === "ready";
+
+  useEffect(() => {
+    if (!focusSection || !isReady) return;
+    // After the loaded values render: FormSection titles carry id="renova-section-<id>".
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`renova-section-${focusSection}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusSection, isReady]);
 
   useEffect(() => {
     if (!caseId) return;

@@ -95,7 +95,7 @@ function Metric({ label, value, emphasis }: { label: string; value: string; emph
   );
 }
 
-function DossierSection({ id, index, title, description, icon: Icon, children }: { id: string; index: string; title: string; description: string; icon: LucideIcon; children: ReactNode }) {
+function DossierSection({ id, index, title, description, icon: Icon, action, children }: { id: string; index: string; title: string; description: string; icon: LucideIcon; action?: ReactNode; children: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-6 border-b border-border/55 px-5 py-7 last:border-b-0 sm:px-7 sm:py-9 xl:px-9">
       <div className="mb-6 flex items-start gap-3">
@@ -110,6 +110,7 @@ function DossierSection({ id, index, title, description, icon: Icon, children }:
           <h2 id={`${id}-title`} className="mt-1.5 text-xl font-semibold tracking-[-0.035em]">{title}</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
         </div>
+        {action && <div className="shrink-0 pt-5">{action}</div>}
       </div>
       {children}
     </section>
@@ -130,7 +131,8 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const members = useTeamMembers();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [historyKey, setHistoryKey] = useState(0);
-  const [editing, setEditing] = useState(false);
+  // false = closed; true = edit from the top; "adeudos" = open straight at the proposal.
+  const [editing, setEditing] = useState<boolean | "adeudos">(false);
   const [sharing, setSharing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -250,7 +252,18 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                   </div>
                 </DossierSection>
 
-                <DossierSection id="adeudos" index="02" title="Adeudos y propuesta" description="Obligaciones conocidas y cifras de la posible operación." icon={ReceiptText}>
+                <DossierSection
+                  id="adeudos"
+                  index="02"
+                  title="Adeudos y propuesta"
+                  description="Obligaciones conocidas y cifras de la posible operación."
+                  icon={ReceiptText}
+                  action={
+                    <Button size="sm" variant="outline" className="rounded-xl bg-background/35" onClick={() => { protectedData.hide(); setEditing("adeudos"); }}>
+                      <Pencil /> Editar propuesta
+                    </Button>
+                  }
+                >
                   <DataGrid>
                     <DataItem label="Deuda predial">{formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency) ?? "—"}</DataItem>
                     <DataItem label="Adeudo">{money(c.other_debt)}</DataItem>
@@ -315,7 +328,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
         </>
       )}
 
-      {editing && <RenovaCaseDialog caseId={caseId} onClose={() => setEditing(false)} onSaved={(saved) => { setEditing(false); applySaved(saved); setNotice("Cambios guardados."); setActionError(null); }} />}
+      {editing && <RenovaCaseDialog caseId={caseId} focusSection={editing === "adeudos" ? "adeudos" : undefined} onClose={() => setEditing(false)} onSaved={(saved) => { setEditing(false); applySaved(saved); setNotice("Cambios guardados."); setActionError(null); }} />}
       {sharing && <RenovaShareDialog caseId={caseId} onClose={() => setSharing(false)} />}
     </>
   );

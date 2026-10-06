@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RenovaLeadsBoard } from "@/features/renova/components/renova-leads-board";
+import { googleMapsUrl } from "@/features/renova/lib/maps";
 import type { RenovaCaseListItem } from "@/features/renova/types";
 
 const getRenovaCasesMock = vi.fn();
@@ -151,5 +152,26 @@ describe("RenovaLeadsBoard", () => {
         expect.objectContaining({ assigned_user_id: "advisor-2" })
       )
     );
+  });
+
+  it("opens the property on Google Maps straight from the card's address", async () => {
+    render(<RenovaLeadsBoard />);
+    const link = await screen.findByRole("link", { name: /ver en google maps: cardo 2010/i });
+    expect(link).toHaveAttribute("href", googleMapsUrl(item()));
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("keeps an incomplete address as plain text, not a link", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [item({ street_address: null, neighborhood: null, municipality: null, postal_code: null })] });
+    render(<RenovaLeadsBoard />);
+    expect(await screen.findByText("Dirección pendiente")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /google maps/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the owner's phone under Adeudos as a tap-to-call link", async () => {
+    render(<RenovaLeadsBoard />);
+    const phone = await screen.findByRole("link", { name: /llamar a maría gonzález/i });
+    expect(phone).toHaveTextContent("+52 81 5555 0101");
+    expect(phone).toHaveAttribute("href", "tel:+528155550101");
   });
 });
