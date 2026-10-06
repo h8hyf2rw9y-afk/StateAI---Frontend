@@ -46,6 +46,7 @@ import {
 } from "@/features/renova/types";
 import { getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
+import { useTeamMembers } from "@/features/organization/use-team-members";
 import { cn } from "@/lib/utils";
 
 type LoadState = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; renovaCase: RenovaCase };
@@ -125,6 +126,7 @@ const DOSSIER_NAV = [
 /** A client-first Renova dossier: identity first, then conversation context, debts, property and protected identity data. */
 export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const { user } = useUser();
+  const members = useTeamMembers();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [historyKey, setHistoryKey] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -199,7 +201,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                   <h1 className="truncate text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">{c.owner_name}</h1>
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5"><Phone className="size-3.5" aria-hidden="true" />{c.owner_phone || "Sin teléfono"}</span>
-                    <span className="flex items-center gap-1.5"><UserRound className="size-3.5" aria-hidden="true" />{advisorLabel(c.assigned_user_id, user?.id)}</span>
+                    <span className="flex items-center gap-1.5"><UserRound className="size-3.5" aria-hidden="true" />{advisorLabel(c.assigned_user_id, user?.id, members)}</span>
                     <span className="flex items-center gap-1.5"><CalendarDays className="size-3.5" aria-hidden="true" />Ingreso {formatRenovaDate(c.entry_date)}</span>
                   </div>
                 </div>

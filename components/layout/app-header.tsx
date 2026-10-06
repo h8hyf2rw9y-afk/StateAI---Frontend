@@ -5,7 +5,9 @@ import Link from "next/link";
 import { ArrowUpRight, Menu, Sparkles } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { NAV_ITEMS } from "@/components/navigation/nav-config";
+import { navItemsFor } from "@/components/navigation/nav-config";
+import { isRenovaOnly } from "@/features/auth/access";
+import { useCurrentUser } from "@/features/auth/current-user-context";
 import { NavLink } from "@/components/navigation/nav-link";
 import { Logo } from "@/components/shared/logo";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -14,6 +16,10 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 /** Slim topbar: mobile nav trigger on small screens, user menu on the right. Page titles live in each page via PageHeader, not here. */
 export function AppHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { me } = useCurrentUser();
+  // A Renova-only advisor has no CRM notifications and no access to the AI
+  // assistant (the backend refuses both), so neither is offered.
+  const showCrmExtras = me !== null && !isRenovaOnly(me.role);
 
   return (
     <header className="relative z-20 flex h-[4.5rem] shrink-0 items-center gap-4 border-b border-border/60 bg-background/62 px-4 backdrop-blur-2xl lg:px-7">
@@ -33,7 +39,7 @@ export function AppHeader() {
             <Logo showParentBrand={false} />
           </SheetHeader>
           <nav className="flex flex-col gap-1 p-3">
-            {NAV_ITEMS.map((item) => (
+            {navItemsFor(me?.role).map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
@@ -54,19 +60,21 @@ export function AppHeader() {
 
       <div className="flex-1" />
 
-      <Link
-        href="/ai-assistant"
-        className={buttonVariants({
-          variant: "ghost",
-          className: "hidden h-9 gap-2 rounded-xl border border-primary/15 bg-primary/[0.045] px-3 text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.08] hover:text-foreground md:inline-flex",
-        })}
-      >
-        <Sparkles className="size-3.5 text-primary" />
-        Preguntar a State AI
-        <ArrowUpRight className="ml-2 size-3.5" />
-      </Link>
+      {showCrmExtras && (
+        <Link
+          href="/ai-assistant"
+          className={buttonVariants({
+            variant: "ghost",
+            className: "hidden h-9 gap-2 rounded-xl border border-primary/15 bg-primary/[0.045] px-3 text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.08] hover:text-foreground md:inline-flex",
+          })}
+        >
+          <Sparkles className="size-3.5 text-primary" />
+          Preguntar a State AI
+          <ArrowUpRight className="ml-2 size-3.5" />
+        </Link>
+      )}
 
-      <NotificationBell />
+      {showCrmExtras && <NotificationBell />}
       <UserMenu />
     </header>
   );

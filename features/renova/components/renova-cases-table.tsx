@@ -14,6 +14,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { getRenovaCaseCounts, getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
+import { isRenovaOnly } from "@/features/auth/access";
+import { useCurrentUser } from "@/features/auth/current-user-context";
+import { useTeamMembers } from "@/features/organization/use-team-members";
+import type { OrganizationMember } from "@/lib/api/organization";
 import { advisorLabel, getRenovaErrorMessage } from "@/features/renova/lib/errors";
 import {
   RENOVA_CASE_BUCKETS,
@@ -54,6 +58,7 @@ const EMPTY_STATE_ICON: Record<RenovaCaseBucket, typeof FolderOpen> = {
 
 interface ColumnContext {
   currentUserId: string | undefined;
+  members: OrganizationMember[];
   onFollowUpSaved: (caseId: string, followUp: RenovaFollowUpSummary) => void;
 }
 
@@ -86,7 +91,7 @@ const TOGGLEABLE_COLUMNS: ColumnDef[] = [
     id: "advisor",
     label: "Asesor",
     cellClassName: "text-muted-foreground",
-    render: (c, ctx) => advisorLabel(c.assigned_user_id, ctx.currentUserId),
+    render: (c, ctx) => advisorLabel(c.assigned_user_id, ctx.currentUserId, ctx.members),
   },
   { id: "market_value", label: "Valor de mercado", headClassName: `max-w-28 ${MONEY_HEAD}`, cellClassName: MONEY_CELL, render: (c) => formatRenovaMoney(c.market_value, c.currency) },
   {
@@ -178,7 +183,12 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [advisorFilter, setAdvisorFilter] = useState<"all" | "mine">("all");
+  // "all", "mine", or (owners/admins only) a teammate's user id.
+  const [advisorFilter, setAdvisorFilter] = useState<string>("all");
+  const { me } = useCurrentUser();
+  const renovaOnly = isRenovaOnly(me?.role);
+  const members = useTeamMembers();
+  const teammates = members.filter((member) => member.id !== user?.id);
   const [bucket, setBucket] = useState<RenovaCaseBucket>("active");
   const [localRefresh, setLocalRefresh] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -190,7 +200,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   const [counts, setCounts] = useState<RenovaCaseBucketCounts | null>(null);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(readHiddenColumns);
   const visibleColumns = TOGGLEABLE_COLUMNS.filter((column) => !hiddenColumns.has(column.id));
-  const columnContext: ColumnContext = { currentUserId: user?.id, onFollowUpSaved: updateFollowUpSummary };
+  const columnContext: ColumnContext = { currentUserId: user?.id, members, onFollowUpSaved: updateFollowUpSummary };
 
   function toggleColumn(id: string) {
     const next = new Set(hiddenColumns);
@@ -211,7 +221,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
     return () => clearTimeout(timer);
   }, [query]);
 
-  const advisorId = advisorFilter === "mine" ? user?.id : undefined;
+  const advisorId = advisorFilter === "all" ? undefined : advisorFilter === "mine" ? user?.id : advisorFilter;
   const requestKey = JSON.stringify([debouncedQuery, statusFilter, advisorId ?? null, bucket, refreshKey, localRefresh]);
 
   useEffect(() => {
@@ -395,18 +405,34 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="renova-filter-advisor">Asesor</Label>
-                <Select value={advisorFilter} onValueChange={(v) => setAdvisorFilter(v === "mine" ? "mine" : "all")}>
-                  <SelectTrigger id="renova-filter-advisor" aria-label="Filtrar por asesor">
-                    <SelectValue>{(v: string | null) => (v === "mine" ? "Mis expedientes" : "Todos los asesores")}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los asesores</SelectItem>
-                    <SelectItem value="mine">Mis expedientes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* A Renova-only advisor only ever has their own cases, so there is nothing to filter. */}
+              {!renovaOnly && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="renova-filter-advisor">Asesor</Label>
+                  <Select value={advisorFilter} onValueChange={(v) => setAdvisorFilter(v ?? "all")}>
+                    <SelectTrigger id="renova-filter-advisor" aria-label="Filtrar por asesor">
+                      <SelectValue>
+                        {(v: string | null) =>
+                          !v || v === "all"
+                            ? "Todos los asesores"
+                            : v === "mine"
+                              ? "Mis expedientes"
+                              : (teammates.find((member) => member.id === v)?.email ?? "Otro asesor")
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los asesores</SelectItem>
+                      <SelectItem value="mine">Mis expedientes</SelectItem>
+                      {teammates.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.email ?? "Asesor sin correo"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button variant="ghost" size="sm" onClick={clearFilters} disabled={activeFilterCount === 0}>
                 Limpiar filtros
               </Button>

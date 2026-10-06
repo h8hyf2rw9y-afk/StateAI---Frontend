@@ -23,6 +23,7 @@ import { useProtectedData } from "@/features/renova/lib/use-protected-data";
 import type { RenovaCase } from "@/features/renova/types";
 import { createRenovaCase, extractRenovaQuickNotes, getRenovaCase, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
+import { useTeamMembers } from "@/features/organization/use-team-members";
 import { cn } from "@/lib/utils";
 
 export type RenovaSaveIntent = "draft" | "prospect";
@@ -71,6 +72,7 @@ export function RenovaCaseDialog({
   const isEdit = Boolean(caseId);
   const { user } = useUser();
   const currentUserId = user?.id;
+  const members = useTeamMembers();
 
   const [values, setValues] = useState<RenovaFormValues>(() => emptyRenovaFormValues());
   const [initialValues, setInitialValues] = useState<RenovaFormValues>(() => emptyRenovaFormValues());
@@ -190,10 +192,16 @@ export function RenovaCaseDialog({
     onSaved(response.data, intent);
   }
 
+  // Owners/admins can hand a case to any active teammate; everyone else
+  // only ever has themselves (and the case's current advisor, if different).
+  const teammates = members.filter((m) => m.is_active && m.id !== currentUserId);
   const advisorOptions = [
     ...(currentUserId ? [{ value: currentUserId, label: "Yo (usuario actual)" }] : []),
-    ...(effective.assigned_user_id && effective.assigned_user_id !== currentUserId
-      ? [{ value: effective.assigned_user_id, label: advisorLabel(effective.assigned_user_id, currentUserId) }]
+    ...teammates.map((m) => ({ value: m.id, label: m.email ?? "Asesor sin correo" })),
+    ...(effective.assigned_user_id &&
+    effective.assigned_user_id !== currentUserId &&
+    !teammates.some((m) => m.id === effective.assigned_user_id)
+      ? [{ value: effective.assigned_user_id, label: advisorLabel(effective.assigned_user_id, currentUserId, members) }]
       : []),
   ];
 

@@ -1,5 +1,6 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
+import type { UserRole } from "@/types/user";
 
 /**
  * Mirrors the backend's CurrentUser schema (app/schemas/user.py) field for
@@ -9,7 +10,7 @@ export interface CurrentUser {
   id: string;
   email: string | null;
   organization_id: string;
-  role: "owner" | "admin" | "agent";
+  role: UserRole;
   provider: string | null;
 }
 

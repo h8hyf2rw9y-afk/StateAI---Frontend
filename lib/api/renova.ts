@@ -10,6 +10,9 @@ import type {
   RenovaFollowUpActivityInput,
   RenovaFollowUpActivityUpdate,
   RenovaFollowUpDetail,
+  RenovaOperationCase,
+  RenovaOperationsResponse,
+  RenovaOperationUpdate,
   RenovaPipelineResponse,
   RenovaSensitiveData,
 } from "@/features/renova/types";
@@ -107,6 +110,22 @@ export function extractRenovaQuickNotes(content: string): Promise<ApiResult<Smar
 /** The Renova Kanban board: every active-flow case, already grouped by stage — see GET /renova/pipeline. */
 export function getRenovaPipeline(): Promise<ApiResult<RenovaPipelineResponse>> {
   return apiRequest<RenovaPipelineResponse>("/api/v1/renova/pipeline");
+}
+
+/** Accepted/purchased properties grouped through the post-acceptance route. */
+export function getRenovaOperations(): Promise<ApiResult<RenovaOperationsResponse>> {
+  return apiRequest<RenovaOperationsResponse>("/api/v1/renova/operations", { cache: "no-store" });
+}
+
+export function updateRenovaOperation(
+  caseId: string,
+  input: RenovaOperationUpdate
+): Promise<ApiResult<RenovaOperationCase>> {
+  return apiRequest<RenovaOperationCase>(`/api/v1/renova/cases/${caseId}/operation`, {
+    method: "PATCH",
+    body: input,
+    cache: "no-store",
+  });
 }
 
 interface AuditLogRow {

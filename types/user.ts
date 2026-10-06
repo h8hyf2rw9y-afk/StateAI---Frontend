@@ -6,7 +6,8 @@
  * on the backend. None of this is wired to real auth yet — see lib/auth/.
  */
 
-export type UserRole = "owner" | "admin" | "agent";
+/** "renova_agent" only ever uses the Renova module, and only sees their own cases there (see features/auth/access.ts). */
+export type UserRole = "owner" | "admin" | "agent" | "renova_agent";
 
 export interface Organization {
   id: string;

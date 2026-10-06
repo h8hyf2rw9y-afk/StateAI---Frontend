@@ -476,6 +476,8 @@ const HISTORY_LABELS: Record<string, string> = {
   RENOVA_CASE_STATUS_CHANGED: "Cambio de estado",
   RENOVA_CASE_ASSIGNEE_CHANGED: "Cambio de asesor",
   RENOVA_CASE_FINANCIALS_UPDATED: "Actualización de montos y adeudos",
+  RENOVA_OPERATION_STAGE_CHANGED: "Cambio de etapa operativa",
+  RENOVA_OPERATION_UPDATED: "Seguimiento operativo actualizado",
 };
 export function formatRenovaHistoryAction(action: string): string {
   return HISTORY_LABELS[action] ?? "Movimiento registrado";
@@ -531,6 +533,73 @@ export interface RenovaPipelineStageData {
 
 export interface RenovaPipelineResponse {
   stages: RenovaPipelineStageData[];
+}
+
+// --- Renova post-acceptance operations ------------------------------------
+// Separate from `status`: Leads keeps its Activos / Rechazados y cancelados /
+// Archivados buckets, while an accepted property follows this second route
+// through survey, notary, renovation, resale and owner settlement.
+export const RENOVA_OPERATION_STAGES = [
+  "proposal_accepted",
+  "site_survey",
+  "notary_contract",
+  "renovation",
+  "for_sale",
+  "buyer_closing",
+  "owner_settlement",
+  "closed",
+] as const;
+export type RenovaOperationStage = (typeof RENOVA_OPERATION_STAGES)[number];
+
+const OPERATION_STAGE_LABELS: Record<RenovaOperationStage, string> = {
+  proposal_accepted: "Propuesta aceptada",
+  site_survey: "Levantamiento",
+  notary_contract: "Notaría y contrato",
+  renovation: "Remodelación",
+  for_sale: "En venta",
+  buyer_closing: "Firma comprador",
+  owner_settlement: "Liquidar propietario",
+  closed: "Cerrada",
+};
+
+export function formatRenovaOperationStage(stage: RenovaOperationStage): string {
+  return OPERATION_STAGE_LABELS[stage];
+}
+
+export interface RenovaOperationCase {
+  id: string;
+  owner_name: string;
+  owner_phone: string;
+  status: string;
+  assigned_user_id: string | null;
+  street_address: string | null;
+  neighborhood: string | null;
+  municipality: string | null;
+  currency: string;
+  proposal_type: string | null;
+  debt_coverage_amount: string | null;
+  owner_cash_offer: string | null;
+  final_offer: string | null;
+  operation_stage: RenovaOperationStage;
+  operation_next_action: string | null;
+  operation_due_at: string | null;
+  operation_stage_updated_at: string | null;
+  updated_at: string;
+}
+
+export interface RenovaOperationStageData {
+  stage: RenovaOperationStage;
+  cases: RenovaOperationCase[];
+}
+
+export interface RenovaOperationsResponse {
+  stages: RenovaOperationStageData[];
+}
+
+export interface RenovaOperationUpdate {
+  operation_stage?: RenovaOperationStage;
+  operation_next_action?: string | null;
+  operation_due_at?: string | null;
 }
 
 /**

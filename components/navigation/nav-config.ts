@@ -1,3 +1,6 @@
+import type { UserRole } from "@/types/user";
+import { isRenovaOnly } from "@/features/auth/access";
+
 export type NavIconName =
   | "dashboard"
   | "leads"
@@ -6,6 +9,7 @@ export type NavIconName =
   | "tasks"
   | "appointments"
   | "ai-assistant"
+  | "admin"
   | "settings";
 
 export interface NavItem {
@@ -13,6 +17,8 @@ export interface NavItem {
   href: string;
   icon: NavIconName;
   group: "workspace" | "organize" | "system";
+  /** Only these roles see the entry (omitted: every role except a Renova-only advisor). */
+  roles?: UserRole[];
 }
 
 /**
@@ -35,5 +41,22 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Tasks", href: "/tasks", icon: "tasks", group: "organize" },
   { label: "Appointments", href: "/appointments", icon: "appointments", group: "organize" },
   { label: "AI Assistant", href: "/ai-assistant", icon: "ai-assistant", group: "system" },
+  { label: "Administración", href: "/admin", icon: "admin", group: "system", roles: ["owner", "admin"] },
   { label: "Settings", href: "/settings", icon: "settings", group: "system" },
 ];
+
+/**
+ * The entries a role actually gets. A Renova-only advisor sees just their
+ * Renova workspace and Settings — the backend refuses every other section
+ * to them anyway (see features/auth/access.ts).
+ */
+export function navItemsFor(role: UserRole | undefined): NavItem[] {
+  if (!role) return [];
+  if (isRenovaOnly(role)) {
+    return [
+      { label: "Renova", href: "/leads?view=renova", icon: "leads", group: "workspace" },
+      { label: "Settings", href: "/settings", icon: "settings", group: "system" },
+    ];
+  }
+  return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+}
