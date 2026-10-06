@@ -16,6 +16,7 @@ import {
   type RenovaFormState,
 } from "@/features/renova/components/renova-form-fields";
 import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
+import { GoogleMapsLink } from "@/features/renova/components/google-maps-link";
 import { sumDebts } from "@/features/renova/lib/money";
 import type { ProtectedData } from "@/features/renova/lib/use-protected-data";
 import {
@@ -235,6 +236,8 @@ export function RenovaCaseForm({
             <TextField name="neighborhood" label="Colonia" size="half" />
             <TextField name="municipality" label="Municipio" />
             <TextField name="postal_code" label="Código postal" inputMode="numeric" />
+            {/* Live as the address is typed, so it can be checked on the map before saving. */}
+            <GoogleMapsLink address={state.values} className="sm:col-span-6 lg:col-span-12" />
             <SegmentedField
               name="dwelling_type"
               label="Tipo de vivienda"

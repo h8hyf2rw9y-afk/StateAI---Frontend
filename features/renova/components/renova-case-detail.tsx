@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormError } from "@/features/auth/components/form-error";
+import { GoogleMapsLink } from "@/features/renova/components/google-maps-link";
 import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
 import { RenovaCaseHistory } from "@/features/renova/components/renova-case-history";
 import { ProtectedDataControls } from "@/features/renova/components/renova-protected-data";
@@ -278,7 +279,10 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 <DossierSection id="propiedad" index="03" title="Propiedad" description="Ubicación, configuración física y situación documental." icon={House}>
                   <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
                     <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                    <div><p className="text-sm font-medium">{c.street_address || "Dirección sin registrar"}</p><p className="mt-1 text-xs text-muted-foreground">{[c.neighborhood, c.municipality, c.postal_code].filter(Boolean).join(" · ") || "Ubicación pendiente"}</p></div>
+                    <div className="flex flex-col gap-3">
+                      <div><p className="text-sm font-medium">{c.street_address || "Dirección sin registrar"}</p><p className="mt-1 text-xs text-muted-foreground">{[c.neighborhood, c.municipality, c.postal_code].filter(Boolean).join(" · ") || "Ubicación pendiente"}</p></div>
+                      <GoogleMapsLink address={c} hideWhenIncomplete />
+                    </div>
                   </div>
                   <DataGrid>
                     <DataItem label="Tipo de vivienda">{formatRenovaDwellingWithDuplex(c.dwelling_type, c.is_duplex)}</DataItem>
