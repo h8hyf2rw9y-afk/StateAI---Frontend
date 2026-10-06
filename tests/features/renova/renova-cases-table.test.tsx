@@ -97,6 +97,7 @@ describe("RenovaCasesTable", () => {
     updateRenovaFollowUpActivityMock.mockReset();
     getContactsMock.mockReset();
     pushMock.mockReset();
+    window.localStorage.clear();
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [makeCase()] });
     getRenovaCaseCountsMock.mockResolvedValue({ ok: true, data: DEFAULT_COUNTS });
     updateRenovaCaseMock.mockResolvedValue({ ok: true, data: {} });
@@ -142,6 +143,54 @@ describe("RenovaCasesTable", () => {
     // selector: the status filter (a stubbed native select in tests) also has an "En revisión" <option>.
     expect(screen.getByText("En revisión", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Yo" })).toBeInTheDocument();
+  });
+
+  it("hides a column from the Columnas menu and brings it back", async () => {
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /^columnas/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Valor de mercado" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Asesor" }));
+
+    expect(screen.queryByRole("columnheader", { name: "Valor de mercado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Asesor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "Yo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Celular" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Columnas (2 ocultas)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Asesor" }));
+    expect(screen.getByRole("columnheader", { name: "Asesor" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar todas" }));
+    expect(screen.getByRole("columnheader", { name: "Valor de mercado" })).toBeInTheDocument();
+  });
+
+  it("never offers to hide Propietario or Acciones", async () => {
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+
+    fireEvent.click(screen.getByRole("button", { name: /^columnas/i }));
+
+    expect(screen.queryByRole("checkbox", { name: "Propietario" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Acciones" })).not.toBeInTheDocument();
+  });
+
+  it("remembers hidden columns across visits and ignores unknown stored ids", async () => {
+    window.localStorage.setItem("renova-cases-table:hidden-columns", JSON.stringify(["market_value", "gone"]));
+    const { unmount } = render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+    expect(screen.queryByRole("columnheader", { name: "Valor de mercado" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Columnas (1 oculta)" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^columnas/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Asesor" }));
+    unmount();
+
+    render(<RenovaCasesTable />);
+    await screen.findByText("María López");
+    expect(screen.queryByRole("columnheader", { name: "Asesor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Valor de mercado" })).not.toBeInTheDocument();
   });
 
   it("shows a dash for a case with no street address on file", async () => {
