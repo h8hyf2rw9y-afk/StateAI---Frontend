@@ -53,7 +53,7 @@ export function LeadsWorkspace() {
   const view = renovaOnly ? "renova" : parseLeadsView(searchParams.get("view"));
   // Bumped after a Renova case is created so the table reloads.
   const [renovaRefresh, setRenovaRefresh] = useState(0);
-  const [renovaDialog, setRenovaDialog] = useState<{ caseId?: string } | null>(null);
+  const [renovaDialog, setRenovaDialog] = useState<{ caseId?: string; focus?: "propuesta" } | null>(null);
   const [shareCaseId, setShareCaseId] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -132,13 +132,14 @@ export function LeadsWorkspace() {
         <div className="animate-enter">
           {view === "all" && <LeadsTable view="all" />}
           {view === "active" && <LeadsTable view="active" />}
-          {view === "renova" && <RenovaWorkspace refreshKey={renovaRefresh} onEdit={(caseId) => setRenovaDialog({ caseId })} onShare={(caseId) => setShareCaseId(caseId)} />}
+          {view === "renova" && <RenovaWorkspace refreshKey={renovaRefresh} onEdit={(caseId, focus) => setRenovaDialog({ caseId, focus })} onShare={(caseId) => setShareCaseId(caseId)} />}
         </div>
       </div>
 
       {renovaDialog && (
         <RenovaCaseDialog
           caseId={renovaDialog.caseId}
+          focusSection={renovaDialog.focus}
           onClose={() => setRenovaDialog(null)}
           onSaved={handleRenovaSaved}
           onShare={(caseId) => setShareCaseId(caseId)}

@@ -66,8 +66,8 @@ export function RenovaCaseDialog({
   focusSection,
 }: {
   caseId?: string;
-  /** Opens the form scrolled to one section (e.g. "adeudos" for "Editar propuesta") instead of the top. */
-  focusSection?: "adeudos";
+  /** Opens the form scrolled to one section (e.g. "propuesta" for "Editar propuesta") instead of the top. */
+  focusSection?: "propuesta";
   onClose: () => void;
   onSaved: (renovaCase: RenovaCase, intent: RenovaSaveIntent) => void;
   onShare?: (caseId: string) => void;

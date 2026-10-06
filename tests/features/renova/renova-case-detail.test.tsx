@@ -276,7 +276,7 @@ describe("RenovaCaseDetail — actions", () => {
 
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
-    expect(scrollIntoView.mock.contexts[0]).toHaveAttribute("id", "renova-section-adeudos");
+    expect(scrollIntoView.mock.contexts[0]).toHaveAttribute("id", "renova-section-propuesta");
     expect(within(dialog).getByText("Modalidad de la propuesta")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Deuda que cubrirá Retify")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Efectivo para el propietario")).toBeInTheDocument();

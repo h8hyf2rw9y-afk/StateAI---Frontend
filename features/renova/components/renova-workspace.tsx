@@ -17,7 +17,7 @@ export function RenovaWorkspace({
   onShare,
 }: {
   refreshKey?: number;
-  onEdit?: (caseId: string) => void;
+  onEdit?: (caseId: string, focus?: "propuesta") => void;
   onShare?: (caseId: string) => void;
 }) {
   const [section, setSection] = useState<Section>("leads");

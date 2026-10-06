@@ -78,7 +78,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
     expect(within(dialog).getByText("Datos del expediente")).toBeInTheDocument();
   });
 
-  it("shows the five client-first sections at once, in order, in ONE form with no tabs, steps or accordions", async () => {
+  it("shows the client-first sections at once, in order — Propuesta right after Cliente — in ONE form with no tabs, steps or accordions", async () => {
     renderCreate();
     const dialog = await screen.findByRole("dialog");
 
@@ -87,8 +87,9 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
       .map((h) => h.textContent);
     expect(headings).toEqual([
       "Cliente",
+      "Propuesta",
       "Comentarios y contexto",
-      "Adeudos y propuesta",
+      "Adeudos y otros montos",
       "Propiedad",
       "Control del expediente",
     ]);
@@ -424,10 +425,52 @@ describe("RenovaCaseDialog — structured proposal", () => {
   it("shows a pending-classification note for a legacy case with no proposal_type, without pre-filling the new fields", async () => {
     await renderEdit({ proposal_type: null, final_offer: "275000.00", debt_coverage_amount: null, owner_cash_offer: null });
 
-    expect(screen.getByText(/propuesta histórica registrada/i)).toBeInTheDocument();
+    expect(screen.getByText(/propuesta registrada \(formato anterior\)/i)).toBeInTheDocument();
     expect(screen.getByText(/\$275,000/)).toBeInTheDocument();
     expect(screen.getByLabelText("Deuda que cubrirá Retify")).toHaveValue("");
     expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("");
+  });
+
+  it("one click moves a legacy proposal into the editable fields as all debt", async () => {
+    await renderEdit({ proposal_type: null, final_offer: "275000.00", debt_coverage_amount: null, owner_cash_offer: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Todo es liquidación de deuda" }));
+
+    expect(screen.getByRole("radio", { name: "Solo liquidación de deuda" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("275,000");
+    expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("");
+    expect(screen.queryByText(/formato anterior/i)).not.toBeInTheDocument();
+  });
+
+  it("one click moves a legacy proposal into the editable fields as all cash", async () => {
+    await renderEdit({ proposal_type: null, final_offer: "275000.00", debt_coverage_amount: null, owner_cash_offer: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Todo es efectivo" }));
+
+    expect(screen.getByRole("radio", { name: "Solo efectivo" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("275,000");
+    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("");
+  });
+
+  it("Deuda + efectivo splits a legacy proposal into the known debt plus the rest as cash", async () => {
+    await renderEdit({
+      proposal_type: null,
+      final_offer: "275000.00",
+      debt_coverage_amount: null,
+      owner_cash_offer: null,
+      property_tax_debt: "12000.00",
+      property_tax_debt_unit: "mxn",
+      other_debt: "63000.00",
+      water_debt: null,
+      electricity_debt: null,
+      gas_debt: null,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Deuda + efectivo" }));
+
+    expect(screen.getByRole("radio", { name: "Deuda más efectivo" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("75,000");
+    expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("200,000");
   });
 
   it("does not show the pending-classification note once a proposal is already classified", async () => {
@@ -944,8 +987,8 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     expect(screen.getByRole("checkbox", { name: "Dúplex" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Rentada" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Valor de mercado")).toHaveValue("1,400,000");
-    // Same layout, same five client-first sections.
-    expect(within(dialog).getAllByRole("heading", { level: 3 })).toHaveLength(5);
+    // Same layout, same six client-first sections.
+    expect(within(dialog).getAllByRole("heading", { level: 3 })).toHaveLength(6);
     expect(within(dialog).queryByRole("tab")).not.toBeInTheDocument();
   });
 

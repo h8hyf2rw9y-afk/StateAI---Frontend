@@ -174,4 +174,11 @@ describe("RenovaLeadsBoard", () => {
     expect(phone).toHaveTextContent("+52 81 5555 0101");
     expect(phone).toHaveAttribute("href", "tel:+528155550101");
   });
+
+  it("tapping Propuesta opens the case straight at the proposal", async () => {
+    const onEdit = vi.fn();
+    render(<RenovaLeadsBoard onEdit={onEdit} />);
+    fireEvent.click(await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i }));
+    expect(onEdit).toHaveBeenCalledWith("case-1", "propuesta");
+  });
 });

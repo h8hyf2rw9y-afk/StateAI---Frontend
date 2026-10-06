@@ -131,8 +131,8 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   const members = useTeamMembers();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [historyKey, setHistoryKey] = useState(0);
-  // false = closed; true = edit from the top; "adeudos" = open straight at the proposal.
-  const [editing, setEditing] = useState<boolean | "adeudos">(false);
+  // false = closed; true = edit from the top; "propuesta" = open straight at the proposal.
+  const [editing, setEditing] = useState<boolean | "propuesta">(false);
   const [sharing, setSharing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -259,7 +259,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                   description="Obligaciones conocidas y cifras de la posible operación."
                   icon={ReceiptText}
                   action={
-                    <Button size="sm" variant="outline" className="rounded-xl bg-background/35" onClick={() => { protectedData.hide(); setEditing("adeudos"); }}>
+                    <Button size="sm" variant="outline" className="rounded-xl bg-background/35" onClick={() => { protectedData.hide(); setEditing("propuesta"); }}>
                       <Pencil /> Editar propuesta
                     </Button>
                   }
@@ -328,7 +328,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
         </>
       )}
 
-      {editing && <RenovaCaseDialog caseId={caseId} focusSection={editing === "adeudos" ? "adeudos" : undefined} onClose={() => setEditing(false)} onSaved={(saved) => { setEditing(false); applySaved(saved); setNotice("Cambios guardados."); setActionError(null); }} />}
+      {editing && <RenovaCaseDialog caseId={caseId} focusSection={editing === "propuesta" ? "propuesta" : undefined} onClose={() => setEditing(false)} onSaved={(saved) => { setEditing(false); applySaved(saved); setNotice("Cambios guardados."); setActionError(null); }} />}
       {sharing && <RenovaShareDialog caseId={caseId} onClose={() => setSharing(false)} />}
     </>
   );

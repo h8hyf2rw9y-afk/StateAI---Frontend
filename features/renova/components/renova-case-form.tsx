@@ -1,6 +1,7 @@
 "use client";
 
-import { House, MessageSquareText, Receipt, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
+import { HandCoins, House, MessageSquareText, Receipt, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   FieldGrid,
   FormSection,
@@ -88,6 +89,29 @@ export function RenovaCaseForm({
     coverageAmount === null && cashAmount === null ? null : (coverageAmount ?? 0) + (cashAmount ?? 0);
   const coverageMismatchesKnownDebt =
     proposalType && coverageAmount !== null && debtTotal !== null && coverageAmount !== debtTotal;
+  // A case from before the structured proposal keeps a single historical
+  // total. It's never split automatically (it may be debt, cash or both);
+  // one click tells the form which, pre-filling the fields to adjust.
+  const legacyAmount = legacyFinalOffer !== null && legacyFinalOffer.trim() ? Number(legacyFinalOffer) : null;
+  function classifyLegacy(type: (typeof RENOVA_PROPOSAL_TYPES)[number]) {
+    if (legacyAmount === null) return;
+    // Same shape as a typed amount: "275000", or "457939.19" — never a padded ".00".
+    const money = (value: number) => String(Math.round(value * 100) / 100);
+    const amount = money(legacyAmount);
+    state.set("proposal_type", type);
+    if (type === "debt_only") {
+      state.set("debt_coverage_amount", amount);
+      state.set("owner_cash_offer", "");
+    } else if (type === "cash_only") {
+      state.set("debt_coverage_amount", "");
+      state.set("owner_cash_offer", amount);
+    } else {
+      // Known debt first, the rest as cash; without a usable debt total, leave the split to the user.
+      const canSplit = debtTotal !== null && debtTotal > 0 && debtTotal < legacyAmount;
+      state.set("debt_coverage_amount", canSplit ? money(debtTotal) : "");
+      state.set("owner_cash_offer", canSplit ? money(legacyAmount - debtTotal) : "");
+    }
+  }
   // "Borrador" is a system state (it is what "Guardar borrador" sets), so it is only offered while the case still is one.
   const statusOptions = toOptions(
     RENOVA_STATUSES.filter((status) => status !== "draft" || state.values.status === "draft"),
@@ -154,31 +178,30 @@ export function RenovaCaseForm({
           )}
         </FormSection>
 
-        <FormSection id="comentarios" title="Comentarios y contexto" icon={MessageSquareText}>
-          <FieldGrid>
-            <TextAreaField name="notes" label="Notas adicionales o contexto de la conversación" />
-            <TextAreaField name="general_situation" label="Comentarios generales" />
-            <TextAreaField name="sale_reason" label="¿Por qué la quiere vender?" />
-            <TextAreaField name="conditions" label="Condiciones de la casa" />
-          </FieldGrid>
-        </FormSection>
-
-        <FormSection id="adeudos" title="Adeudos y propuesta" icon={Receipt}>
-          <div aria-live="polite" data-testid="debt-total" className="flex flex-col gap-1 rounded-xl border border-primary/15 bg-primary/[0.045] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs text-muted-foreground">Total estimado de adeudos</span>
-            <span className="text-lg font-semibold tracking-[-0.025em] text-foreground">
-              {debtTotal === null ? "—" : `${formatRenovaMoney(debtTotal)} MXN`}
-            </span>
-          </div>
-
-          {legacyFinalOffer !== null && (
-            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-              Propuesta histórica registrada: <strong>{formatRenovaMoney(legacyFinalOffer)}</strong>. Selecciona una modalidad
-              abajo para clasificarla como cobertura de deuda y/o efectivo.
-            </p>
+        {/* Its own section, right after the client — it's what changes most often during a negotiation. */}
+        <FormSection id="propuesta" title="Propuesta" icon={HandCoins}>
+          {legacyAmount !== null && !proposalType && (
+            <div className="flex flex-col gap-3 rounded-xl border border-amber-500/35 bg-amber-500/10 p-4">
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between">
+                <span className="text-xs font-medium text-amber-800 dark:text-amber-200">Propuesta registrada (formato anterior)</span>
+                <span className="text-xl font-semibold tracking-[-0.03em] text-foreground">{formatRenovaMoney(legacyFinalOffer)} MXN</span>
+              </div>
+              <p className="text-xs text-amber-800/90 dark:text-amber-200/90">
+                ¿Cómo se compone? Elige una opción para pasarla a los campos de abajo y poder modificarla.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("debt_only")}>
+                  Todo es liquidación de deuda
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("cash_only")}>
+                  Todo es efectivo
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("debt_plus_cash")}>
+                  Deuda + efectivo
+                </Button>
+              </div>
+            </div>
           )}
-
-          <SubHeading>Propuesta</SubHeading>
           <FieldGrid>
             <SegmentedField
               name="proposal_type"
@@ -206,6 +229,24 @@ export function RenovaCaseForm({
               {formatRenovaMoney(debtTotal)}). Esto no bloquea la propuesta, solo revísalo antes de confirmar.
             </p>
           )}
+        </FormSection>
+
+        <FormSection id="comentarios" title="Comentarios y contexto" icon={MessageSquareText}>
+          <FieldGrid>
+            <TextAreaField name="notes" label="Notas adicionales o contexto de la conversación" />
+            <TextAreaField name="general_situation" label="Comentarios generales" />
+            <TextAreaField name="sale_reason" label="¿Por qué la quiere vender?" />
+            <TextAreaField name="conditions" label="Condiciones de la casa" />
+          </FieldGrid>
+        </FormSection>
+
+        <FormSection id="adeudos" title="Adeudos y otros montos" icon={Receipt}>
+          <div aria-live="polite" data-testid="debt-total" className="flex flex-col gap-1 rounded-xl border border-primary/15 bg-primary/[0.045] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs text-muted-foreground">Total estimado de adeudos</span>
+            <span className="text-lg font-semibold tracking-[-0.025em] text-foreground">
+              {debtTotal === null ? "—" : `${formatRenovaMoney(debtTotal)} MXN`}
+            </span>
+          </div>
 
           <SubHeading>Otros montos</SubHeading>
           <FieldGrid>
