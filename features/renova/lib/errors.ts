@@ -21,15 +21,18 @@ export function getRenovaErrorMessage(error: ApiError): string {
 }
 
 /**
- * The backend has no endpoint that lists an organization's users (and the
- * `users` table has no names — those live in Supabase Auth), so the ONLY
- * advisor identity the UI can honestly name is the signed-in user. Any other
- * advisor id is shown generically rather than invented.
+ * The signed-in user is "Yo". Owners/admins also receive the organization's
+ * members (see useTeamMembers), so another advisor shows as their email;
+ * anyone else's id is shown generically rather than invented.
  */
-export function advisorLabel(assignedUserId: string | null, currentUserId: string | undefined): string {
+export function advisorLabel(
+  assignedUserId: string | null,
+  currentUserId: string | undefined,
+  members: { id: string; email: string | null }[] = []
+): string {
   if (!assignedUserId) return "Sin asignar";
   if (assignedUserId === currentUserId) return "Yo";
-  return "Otro asesor";
+  return members.find((member) => member.id === assignedUserId)?.email ?? "Otro asesor";
 }
 
 /** Messages for a failed "Mostrar datos protegidos" — never anything the server returned besides the status. */

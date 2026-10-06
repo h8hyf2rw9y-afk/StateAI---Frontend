@@ -11,6 +11,7 @@ import {
   CalendarClock,
   Sparkles,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { NavIconName, NavItem } from "./nav-config";
@@ -25,6 +26,7 @@ const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   tasks: ListTodo,
   appointments: CalendarClock,
   "ai-assistant": Sparkles,
+  admin: ShieldCheck,
   settings: Settings,
 };
 
@@ -36,7 +38,8 @@ interface NavLinkProps {
 /** A single primary-nav entry that highlights itself when its route is active. */
 export function NavLink({ item, onNavigate }: NavLinkProps) {
   const pathname = usePathname();
-  const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+  const path = item.href.split("?")[0];
+  const isActive = pathname === path || pathname?.startsWith(`${path}/`);
   const Icon = NAV_ICONS[item.icon];
 
   return (

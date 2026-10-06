@@ -13,6 +13,8 @@ import { RenovaShareDialog } from "@/features/renova/components/renova-share-dia
 import type { RenovaCase } from "@/features/renova/types";
 import { RenovaCasesTable } from "@/features/renova/components/renova-cases-table";
 import { LEADS_VIEWS, LEADS_VIEW_LABELS, parseLeadsView, type LeadsView } from "@/features/leads/views";
+import { isRenovaOnly } from "@/features/auth/access";
+import { useCurrentUser } from "@/features/auth/current-user-context";
 
 const DESCRIPTIONS: Record<LeadsView, string> = {
   all: "Every contact in your organization's CRM.",
@@ -44,7 +46,11 @@ const DESCRIPTIONS: Record<LeadsView, string> = {
 export function LeadsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const view = parseLeadsView(searchParams.get("view"));
+  const { me } = useCurrentUser();
+  // A Renova-only advisor has no CRM contacts to list (the backend refuses
+  // them), so Leads is just their Renova workspace — whatever the URL says.
+  const renovaOnly = isRenovaOnly(me?.role);
+  const view = renovaOnly ? "renova" : parseLeadsView(searchParams.get("view"));
   // Bumped after a Renova case is created so the table reloads.
   const [renovaRefresh, setRenovaRefresh] = useState(0);
   const [renovaDialog, setRenovaDialog] = useState<{ caseId?: string } | null>(null);
@@ -105,13 +111,17 @@ export function LeadsWorkspace() {
       <div className="flex flex-col gap-4 rounded-[1.5rem] border border-border/70 bg-card/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-4">
         <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="-mx-1 overflow-x-auto px-1">
-            <GooeyNav
-              aria-label="Vistas de leads"
-              size="sm"
-              items={LEADS_VIEWS.map((v) => LEADS_VIEW_LABELS[v])}
-              value={LEADS_VIEWS.indexOf(view)}
-              onChange={(index) => handleViewChange(LEADS_VIEWS[index])}
-            />
+            {renovaOnly ? (
+              <p className="px-2 text-sm font-medium">Mis expedientes Renova</p>
+            ) : (
+              <GooeyNav
+                aria-label="Vistas de leads"
+                size="sm"
+                items={LEADS_VIEWS.map((v) => LEADS_VIEW_LABELS[v])}
+                value={LEADS_VIEWS.indexOf(view)}
+                onChange={(index) => handleViewChange(LEADS_VIEWS[index])}
+              />
+            )}
           </div>
           <div className="hidden items-center gap-2 pr-1 text-[11px] text-muted-foreground sm:flex">
             <CircleDot className="size-3 text-emerald-400" aria-hidden="true" />

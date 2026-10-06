@@ -1,6 +1,9 @@
 import { apiRequest } from "./client";
 import type { ApiResult } from "@/types/api";
 import type { CurrentUser } from "@/lib/api/me";
+import type { UserRole } from "@/types/user";
+
+export type InvitableRole = Exclude<UserRole, "owner">;
 
 /**
  * Bringing a specific person into YOUR organization (app/api/routes/
@@ -42,7 +45,7 @@ export function getMyOrganization(): Promise<ApiResult<Organization>> {
 
 export function createOrganizationInvitation(
   email: string,
-  role: "admin" | "agent" = "agent"
+  role: InvitableRole = "agent"
 ): Promise<ApiResult<OrganizationInvitationCreated>> {
   return apiRequest<OrganizationInvitationCreated>("/api/v1/organization/invitations", {
     method: "POST",
@@ -56,6 +59,36 @@ export function getOrganizationInvitations(): Promise<ApiResult<OrganizationInvi
 
 export function revokeOrganizationInvitation(invitationId: string): Promise<ApiResult<void>> {
   return apiRequest<void>(`/api/v1/organization/invitations/${invitationId}`, { method: "DELETE" });
+}
+
+export interface MemberRenovaCaseCounts {
+  active: number;
+  closed: number;
+  archived: number;
+}
+
+/** One row of the admin "Usuarios" list — mirrors app/schemas/organization_member.py. */
+export interface OrganizationMember {
+  id: string;
+  email: string | null;
+  role: UserRole;
+  is_active: boolean;
+  deactivated_at: string | null;
+  created_at: string;
+  renova_cases: MemberRenovaCaseCounts;
+}
+
+/** Owner/admin only. */
+export function getOrganizationMembers(): Promise<ApiResult<OrganizationMember[]>> {
+  return apiRequest<OrganizationMember[]>("/api/v1/organization/members", { cache: "no-store" });
+}
+
+/** Owner/admin only: switch an account off (keeps every case it owns) or back on. */
+export function setOrganizationMemberActive(memberId: string, isActive: boolean): Promise<ApiResult<OrganizationMember>> {
+  return apiRequest<OrganizationMember>(`/api/v1/organization/members/${memberId}`, {
+    method: "PATCH",
+    body: { is_active: isActive },
+  });
 }
 
 /** Public — no session required. The register page calls this before anyone signs in, to show which organization a link joins. */
