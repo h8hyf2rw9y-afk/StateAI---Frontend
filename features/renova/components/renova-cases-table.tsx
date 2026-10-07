@@ -29,6 +29,7 @@ import {
   formatRenovaMoney,
   formatRenovaStatus,
   getRenovaStatusClassName,
+  renovaProposalAmount,
   type RenovaCaseBucket,
   type RenovaCaseBucketCounts,
   type RenovaCaseListItem,
@@ -101,7 +102,7 @@ const TOGGLEABLE_COLUMNS: ColumnDef[] = [
     cellClassName: MONEY_CELL,
     render: (c) => formatRenovaMoney(c.owner_expected_amount, c.currency),
   },
-  { id: "final_offer", label: "Propuesta final", headClassName: `max-w-24 ${MONEY_HEAD}`, cellClassName: MONEY_CELL, render: (c) => formatRenovaMoney(c.final_offer, c.currency) },
+  { id: "final_offer", label: "Propuesta final", headClassName: `max-w-24 ${MONEY_HEAD}`, cellClassName: MONEY_CELL, render: (c) => formatRenovaMoney(renovaProposalAmount(c), c.currency) },
   { id: "total_debt", label: "Adeudos totales", headClassName: `max-w-24 ${MONEY_HEAD}`, cellClassName: MONEY_CELL, render: (c) => formatRenovaMoney(c.total_debt, c.currency) },
   {
     id: "status",

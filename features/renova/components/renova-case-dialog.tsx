@@ -14,6 +14,7 @@ import {
   emptyRenovaFormValues,
   isRenovaFormDirty,
   toRenovaPayload,
+  withInferredProposalType,
   valuesFromRenovaCase,
   type RenovaFormValues,
 } from "@/features/renova/lib/form-values";
@@ -170,7 +171,9 @@ export function RenovaCaseDialog({
   async function submit(intent: RenovaSaveIntent) {
     if (submittingRef.current || load.status !== "ready") return;
 
-    const { errors: found, firstInvalidField } = validateRenovaForm(effective);
+    const prepared = withInferredProposalType(effective);
+    if (prepared.proposal_type !== effective.proposal_type) set("proposal_type", prepared.proposal_type);
+    const { errors: found, firstInvalidField } = validateRenovaForm(prepared);
     if (firstInvalidField) {
       setErrors(found);
       setFormError("Revisa los campos marcados antes de guardar.");
@@ -184,8 +187,8 @@ export function RenovaCaseDialog({
     setFormError(null);
     setProtectedError(null);
 
-    const status = intent === "draft" ? "draft" : effective.status === "draft" ? "new" : effective.status;
-    const payload = toRenovaPayload(effective, isEdit ? "edit" : "create", status);
+    const status = intent === "draft" ? "draft" : prepared.status === "draft" ? "new" : prepared.status;
+    const payload = toRenovaPayload(prepared, isEdit ? "edit" : "create", status);
     const response = caseId ? await updateRenovaCase(caseId, payload) : await createRenovaCase(payload);
 
     if (!response.ok) {

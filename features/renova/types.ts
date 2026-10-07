@@ -393,6 +393,12 @@ export function formatRenovaDeeds(value: string): string {
 // frontend either — see getRenovaProposal below, the ONE place that
 // decides which of these three states a case is in.
 export const RENOVA_PROPOSAL_TYPES = ["debt_only", "debt_plus_cash", "cash_only"] as const;
+/**
+ * What a proposal can be today, in the order offered: Retify always covers the
+ * owner's debt, with or without cash on top. "cash_only" stays above only so
+ * an older case that already has it is still labeled correctly.
+ */
+export const RENOVA_SELECTABLE_PROPOSAL_TYPES = ["debt_plus_cash", "debt_only"] as const;
 const PROPOSAL_TYPE_LABELS: Record<string, string> = {
   debt_only: "Solo liquidación de deuda",
   debt_plus_cash: "Deuda más efectivo",
@@ -416,6 +422,15 @@ export interface RenovaProposalSummary {
   totalProposalValue: string | null;
   /** Only meaningful when state === "legacy" — the pre-classification figure, never auto-split into the two amounts above. */
   legacyFinalOffer: string | null;
+}
+
+/**
+ * The single amount a list shows as "Propuesta": the structured total when
+ * there is one (debt coverage + cash, derived by the server), otherwise the
+ * historical final_offer of a case from before the structured model.
+ */
+export function renovaProposalAmount(c: { total_proposal_value: string | null; final_offer: string | null }): string | null {
+  return c.total_proposal_value ?? c.final_offer;
 }
 
 /** The ONE place that reads proposal_type/final_offer together to decide what to show — every view (form, dossier, share card) calls this instead of re-deriving the state itself. */

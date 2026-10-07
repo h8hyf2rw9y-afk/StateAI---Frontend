@@ -26,7 +26,7 @@ import {
   RENOVA_MARITAL_STATUSES,
   RENOVA_OCCUPANCY_STATUSES,
   RENOVA_PROPERTY_TAX_DEBT_UNITS,
-  RENOVA_PROPOSAL_TYPES,
+  RENOVA_SELECTABLE_PROPOSAL_TYPES,
   RENOVA_STATUSES,
   formatRenovaDeeds,
   formatRenovaDwelling,
@@ -93,7 +93,7 @@ export function RenovaCaseForm({
   // total. It's never split automatically (it may be debt, cash or both);
   // one click tells the form which, pre-filling the fields to adjust.
   const legacyAmount = legacyFinalOffer !== null && legacyFinalOffer.trim() ? Number(legacyFinalOffer) : null;
-  function classifyLegacy(type: (typeof RENOVA_PROPOSAL_TYPES)[number]) {
+  function classifyLegacy(type: (typeof RENOVA_SELECTABLE_PROPOSAL_TYPES)[number]) {
     if (legacyAmount === null) return;
     // Same shape as a typed amount: "275000", or "457939.19" — never a padded ".00".
     const money = (value: number) => String(Math.round(value * 100) / 100);
@@ -102,9 +102,6 @@ export function RenovaCaseForm({
     if (type === "debt_only") {
       state.set("debt_coverage_amount", amount);
       state.set("owner_cash_offer", "");
-    } else if (type === "cash_only") {
-      state.set("debt_coverage_amount", "");
-      state.set("owner_cash_offer", amount);
     } else {
       // Known debt first, the rest as cash; without a usable debt total, leave the split to the user.
       const canSplit = debtTotal !== null && debtTotal > 0 && debtTotal < legacyAmount;
@@ -193,9 +190,6 @@ export function RenovaCaseForm({
                 <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("debt_only")}>
                   Todo es liquidación de deuda
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("cash_only")}>
-                  Todo es efectivo
-                </Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("debt_plus_cash")}>
                   Deuda + efectivo
                 </Button>
@@ -208,7 +202,7 @@ export function RenovaCaseForm({
               label="Modalidad de la propuesta"
               size="half"
               allowClear
-              options={toOptions(RENOVA_PROPOSAL_TYPES, formatRenovaProposalType)}
+              options={toOptions(RENOVA_SELECTABLE_PROPOSAL_TYPES, formatRenovaProposalType)}
             />
             <MoneyField name="debt_coverage_amount" label="Deuda que cubrirá Retify" size="half" />
             <MoneyField name="owner_cash_offer" label="Efectivo para el propietario" size="half" />

@@ -181,4 +181,13 @@ describe("RenovaLeadsBoard", () => {
     fireEvent.click(await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i }));
     expect(onEdit).toHaveBeenCalledWith("case-1", "propuesta");
   });
+
+  it("shows the structured proposal total on the card even without a legacy final_offer", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [item({ final_offer: null, proposal_type: "debt_only", debt_coverage_amount: "320000.00", total_proposal_value: "320000.00" })],
+    });
+    render(<RenovaLeadsBoard />);
+    expect(await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i })).toHaveTextContent("$320,000");
+  });
 });

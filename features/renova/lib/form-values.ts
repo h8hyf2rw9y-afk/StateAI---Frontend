@@ -248,6 +248,21 @@ const OPTIONAL_TEXT_FIELDS = [
  * Money goes as decimal strings (no float rounding); counts as integers.
  * `status` is decided by the caller (draft vs prospect), not read from the form.
  */
+/**
+ * Amounts typed without picking a modalidad still make a real proposal:
+ * debt + cash when there is cash, otherwise debt only. An explicit choice is
+ * never changed. Without this, a coverage typed alone was saved but never
+ * became the case's proposal (so the lead card kept showing "—").
+ */
+export function withInferredProposalType(values: RenovaFormValues): RenovaFormValues {
+  if (values.proposal_type) return values;
+  const positive = (raw: string) => raw.trim() !== "" && Number(raw) > 0;
+  const hasCoverage = positive(values.debt_coverage_amount);
+  const hasCash = positive(values.owner_cash_offer);
+  if (!hasCoverage && !hasCash) return values;
+  return { ...values, proposal_type: hasCash ? "debt_plus_cash" : "debt_only" };
+}
+
 export function toRenovaPayload(values: RenovaFormValues, mode: "create" | "edit", status: string): RenovaCaseInput {
   const payload: RenovaCaseInput = {
     assigned_user_id: values.assigned_user_id,

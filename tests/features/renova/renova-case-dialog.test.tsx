@@ -353,7 +353,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Solo liquidación de deuda" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
-    expect(await screen.findByText("Indica cuánta deuda cubrirá Renova.")).toBeInTheDocument();
+    expect(await screen.findByText("Indica cuánta deuda cubrirá Retify.")).toBeInTheDocument();
     expect(createRenovaCaseMock).not.toHaveBeenCalled();
 
     type("Deuda que cubrirá Retify", "320000");
@@ -375,19 +375,37 @@ describe("RenovaCaseDialog — structured proposal", () => {
     expect(createRenovaCaseMock).not.toHaveBeenCalled();
   });
 
-  it("cash_only requires a positive cash offer and rejects a positive debt coverage amount", async () => {
+  it("offers only the two modalidades Retify uses: deuda + efectivo, or solo deuda", async () => {
+    renderCreate();
+    const dialog = await screen.findByRole("dialog");
+    const group = within(dialog).getByRole("radio", { name: "Deuda más efectivo" }).closest("[role=radiogroup]") as HTMLElement;
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Deuda más efectivo", "Solo liquidación de deuda"]);
+    expect(within(dialog).queryByRole("radio", { name: "Solo efectivo" })).not.toBeInTheDocument();
+  });
+
+  it("a debt coverage typed without a modalidad is saved as a debt-only proposal", async () => {
     renderCreate();
     await screen.findByRole("dialog");
     fillRequired();
-    fireEvent.click(screen.getByRole("radio", { name: "Solo efectivo" }));
+    type("Deuda que cubrirá Retify", "320000");
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
-    expect(await screen.findByText("Indica el efectivo para el propietario.")).toBeInTheDocument();
 
-    type("Efectivo para el propietario", "150000");
-    type("Deuda que cubrirá Retify", "1");
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ proposal_type: "debt_only", debt_coverage_amount: "320000" });
+  });
+
+  it("debt plus cash typed without a modalidad is saved as deuda + efectivo", async () => {
+    renderCreate();
+    await screen.findByRole("dialog");
+    fillRequired();
+    type("Deuda que cubrirá Retify", "320000");
+    type("Efectivo para el propietario", "140000");
+
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
-    expect(await screen.findByText("Una propuesta de solo efectivo no cubre deuda.")).toBeInTheDocument();
+
+    await waitFor(() => expect(createRenovaCaseMock).toHaveBeenCalled());
+    expect(createRenovaCaseMock.mock.calls[0][0]).toMatchObject({ proposal_type: "debt_plus_cash", owner_cash_offer: "140000" });
   });
 
   it("debt_only accepts an explicit $0 cash offer as valid — zero is a real value, not a missing one", async () => {
@@ -437,19 +455,9 @@ describe("RenovaCaseDialog — structured proposal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Todo es liquidación de deuda" }));
 
     expect(screen.getByRole("radio", { name: "Solo liquidación de deuda" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("275,000");
+    expect(screen.getByLabelText("Deuda que cubrirá Retify")).toHaveValue("275,000");
     expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("");
     expect(screen.queryByText(/formato anterior/i)).not.toBeInTheDocument();
-  });
-
-  it("one click moves a legacy proposal into the editable fields as all cash", async () => {
-    await renderEdit({ proposal_type: null, final_offer: "275000.00", debt_coverage_amount: null, owner_cash_offer: null });
-
-    fireEvent.click(screen.getByRole("button", { name: "Todo es efectivo" }));
-
-    expect(screen.getByRole("radio", { name: "Solo efectivo" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("275,000");
-    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("");
   });
 
   it("Deuda + efectivo splits a legacy proposal into the known debt plus the rest as cash", async () => {
@@ -469,7 +477,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Deuda + efectivo" }));
 
     expect(screen.getByRole("radio", { name: "Deuda más efectivo" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("75,000");
+    expect(screen.getByLabelText("Deuda que cubrirá Retify")).toHaveValue("75,000");
     expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("200,000");
   });
 
