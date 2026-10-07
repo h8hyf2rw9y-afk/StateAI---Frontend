@@ -40,7 +40,7 @@ import {
   formatRenovaMoney,
   formatRenovaStatus,
   getRenovaStatusClassName,
-  renovaProposalAmount,
+  renovaProposalBreakdown,
   type RenovaCaseBucket,
   type RenovaCaseBucketCounts,
   type RenovaCaseListItem,
@@ -254,6 +254,7 @@ export function RenovaLeadsBoard({
                   const followUp = item.follow_up ?? EMPTY_FOLLOW_UP;
                   const normalizedItem = item.follow_up ? item : { ...item, follow_up: followUp };
                   const mapsUrl = googleMapsUrl(item);
+                  const breakdown = renovaProposalBreakdown(item);
                   return <article key={item.id} className="group rounded-2xl border border-border/70 bg-background/75 p-3.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-background">
                     <div className="flex items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 className="size-4" aria-hidden="true" /></div>
@@ -272,7 +273,17 @@ export function RenovaLeadsBoard({
                       <Badge variant="outline" className={cn("shrink-0 border-transparent text-[10px]", getRenovaStatusClassName(item.status))}>{formatRenovaStatus(item.status)}</Badge>
                     </div>
                     <div className={cn("mt-3 rounded-xl bg-muted/55 px-3 py-2.5", followUp.is_follow_up_overdue && "bg-destructive/10")}><p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Seguimiento</p><p className={cn("mt-1 text-xs font-medium", followUp.is_follow_up_overdue && "text-destructive")}>{followUpLabel(followUp)}</p>{followUp.note_preview && <p className="mt-1 line-clamp-2 text-[10px] text-muted-foreground">{followUp.note_preview}</p>}</div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-muted-foreground"><div><span className="block">Propuesta</span><button type="button" aria-label={`Editar propuesta de ${item.owner_name}`} title="Editar propuesta" className="mt-0.5 block text-left font-medium text-foreground underline-offset-2 hover:text-primary hover:underline" onClick={() => onEdit?.(item.id, "propuesta")}>{formatRenovaMoney(renovaProposalAmount(item), item.currency)}</button></div><div><span className="block">Adeudos</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(item.total_debt, item.currency)}</strong></div><div className="col-start-2"><span className="block">Teléfono</span><a href={telHref(item.owner_phone)} aria-label={`Llamar a ${item.owner_name}: ${item.owner_phone}`} className="mt-0.5 flex items-center gap-1 font-medium text-foreground hover:text-primary"><Phone className="size-3 shrink-0" aria-hidden="true" />{item.owner_phone}</a></div></div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
+                      <div>
+                        <span className="block">Propuesta</span>
+                        <button type="button" aria-label={`Editar propuesta de ${item.owner_name}`} title="Editar propuesta" className="mt-0.5 block text-left font-medium text-foreground underline-offset-2 hover:text-primary hover:underline" onClick={() => onEdit?.(item.id, "propuesta")}>
+                          {breakdown.liquidatesDebt ? "Liquidar deuda" : breakdown.needsClassification ? "Por clasificar" : formatRenovaMoney(breakdown.offer, item.currency)}
+                        </button>
+                      </div>
+                      <div><span className="block">Adeudos</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(breakdown.adeudo, item.currency)}</strong></div>
+                      <div><span className="block">Monto final</span><strong className="mt-0.5 block font-medium text-foreground">{formatRenovaMoney(breakdown.total, item.currency)}</strong></div>
+                      <div><span className="block">Teléfono</span><a href={telHref(item.owner_phone)} aria-label={`Llamar a ${item.owner_name}: ${item.owner_phone}`} className="mt-0.5 flex items-center gap-1 font-medium text-foreground hover:text-primary"><Phone className="size-3 shrink-0" aria-hidden="true" />{item.owner_phone}</a></div>
+                    </div>
                     <p className="mt-2 text-[10px] text-muted-foreground">Asesor: {advisorLabel(item.assigned_user_id, user?.id, members)}</p>
                     <div className="mt-3 flex items-center gap-1 border-t border-border/60 pt-2.5" onClick={(event) => event.stopPropagation()}>
                       {bucket !== "archived" && <div className="min-w-0 flex-1"><RenovaFollowUpPopover renovaCase={normalizedItem} onSaved={(savedFollowUp) => updateFollowUp(item.id, savedFollowUp)} /></div>}

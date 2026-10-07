@@ -170,7 +170,14 @@ export function valuesFromRenovaCase(renovaCase: RenovaCase): RenovaFormValues {
     entry_date: renovaCase.entry_date,
     status: renovaCase.status,
     proposal_type: s(renovaCase.proposal_type),
-    debt_coverage_amount: money(renovaCase.debt_coverage_amount),
+    // "Adeudo" now lives in Propuesta and is the debt Retify liquidates
+    // (debt_coverage_amount). A case that only had it in the old "Adeudo"
+    // debt field shows it there — except an unclassified legacy proposal,
+    // whose historical total must not be re-read as "solo deuda" on save.
+    debt_coverage_amount: money(
+      renovaCase.debt_coverage_amount ??
+        (renovaCase.proposal_type || renovaCase.final_offer === null ? renovaCase.other_debt : null)
+    ),
     owner_cash_offer: money(renovaCase.owner_cash_offer),
     market_value: money(renovaCase.market_value),
     owner_expected_amount: money(renovaCase.owner_expected_amount),
@@ -261,6 +268,22 @@ export function withInferredProposalType(values: RenovaFormValues): RenovaFormVa
   const hasCash = positive(values.owner_cash_offer);
   if (!hasCoverage && !hasCash) return values;
   return { ...values, proposal_type: hasCash ? "debt_plus_cash" : "debt_only" };
+}
+
+/**
+ * What a save sends for the proposal: the inferred modalidad, no cash on a
+ * "solo liquidación de deuda" proposal (that field is hidden for it), and the
+ * old "Adeudo" debt field kept equal to the proposal's Adeudo so the debt
+ * total stays right. An unclassified case keeps its fields untouched.
+ */
+export function prepareProposalForSave(values: RenovaFormValues): RenovaFormValues {
+  const v = withInferredProposalType(values);
+  if (!v.proposal_type) return v;
+  return {
+    ...v,
+    owner_cash_offer: v.proposal_type === "debt_only" ? "" : v.owner_cash_offer,
+    other_debt: v.debt_coverage_amount,
+  };
 }
 
 export function toRenovaPayload(values: RenovaFormValues, mode: "create" | "edit", status: string): RenovaCaseInput {

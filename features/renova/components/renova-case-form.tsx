@@ -76,19 +76,21 @@ export function RenovaCaseForm({
 }: RenovaCaseFormProps) {
   const propertyTaxDebtInYears = state.values.property_tax_debt_unit === "years";
   // Years and pesos can't be summed — a years-unit value never enters the live total (the server excludes it from total_debt the same way).
-  const debtTotal = sumDebts(propertyTaxDebtInYears ? { ...state.values, property_tax_debt: "" } : state.values);
+  // The proposal's "Adeudo" IS the old "Adeudo" debt (kept equal on save —
+  // see prepareProposalForSave), so the live debt total already counts it.
+  const adeudoValue = state.values.debt_coverage_amount.trim() ? state.values.debt_coverage_amount : state.values.other_debt;
+  const debtValues = { ...state.values, other_debt: adeudoValue, ...(propertyTaxDebtInYears ? { property_tax_debt: "" } : {}) };
+  const debtTotal = sumDebts(debtValues);
 
-  // The three proposal amount fields are shown unconditionally (the form
-  // never hides $0 — see the task's own note); the total below is computed
-  // the SAME way the backend computes total_proposal_value, purely for live
-  // display — the server's figure, returned on save, is the authoritative one.
+  // Monto final = Adeudo + Propuesta de Retify, computed the SAME way the
+  // backend computes total_proposal_value — live display only; the server's
+  // figure, returned on save, is the authoritative one.
   const proposalType = state.values.proposal_type;
+  const liquidatesDebtOnly = proposalType === "debt_only";
   const coverageAmount = state.values.debt_coverage_amount.trim() ? Number(state.values.debt_coverage_amount) : null;
-  const cashAmount = state.values.owner_cash_offer.trim() ? Number(state.values.owner_cash_offer) : null;
+  const cashAmount = !liquidatesDebtOnly && state.values.owner_cash_offer.trim() ? Number(state.values.owner_cash_offer) : null;
   const proposalTotal =
     coverageAmount === null && cashAmount === null ? null : (coverageAmount ?? 0) + (cashAmount ?? 0);
-  const coverageMismatchesKnownDebt =
-    proposalType && coverageAmount !== null && debtTotal !== null && coverageAmount !== debtTotal;
   // A case from before the structured proposal keeps a single historical
   // total. It's never split automatically (it may be debt, cash or both);
   // one click tells the form which, pre-filling the fields to adjust.
@@ -103,10 +105,11 @@ export function RenovaCaseForm({
       state.set("debt_coverage_amount", amount);
       state.set("owner_cash_offer", "");
     } else {
-      // Known debt first, the rest as cash; without a usable debt total, leave the split to the user.
-      const canSplit = debtTotal !== null && debtTotal > 0 && debtTotal < legacyAmount;
-      state.set("debt_coverage_amount", canSplit ? money(debtTotal) : "");
-      state.set("owner_cash_offer", canSplit ? money(legacyAmount - debtTotal) : "");
+      // The captured Adeudo first, the rest as the Retify offer; without a usable Adeudo, leave the split to the user.
+      const adeudo = adeudoValue.trim() ? Number(adeudoValue) : null;
+      const canSplit = adeudo !== null && adeudo > 0 && adeudo < legacyAmount;
+      state.set("debt_coverage_amount", canSplit ? money(adeudo) : "");
+      state.set("owner_cash_offer", canSplit ? money(legacyAmount - adeudo) : "");
     }
   }
   // "Borrador" is a system state (it is what "Guardar borrador" sets), so it is only offered while the case still is one.
@@ -191,7 +194,7 @@ export function RenovaCaseForm({
                   Todo es liquidación de deuda
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => classifyLegacy("debt_plus_cash")}>
-                  Deuda + efectivo
+                  Adeudo + propuesta de Retify
                 </Button>
               </div>
             </div>
@@ -204,25 +207,28 @@ export function RenovaCaseForm({
               allowClear
               options={toOptions(RENOVA_SELECTABLE_PROPOSAL_TYPES, formatRenovaProposalType)}
             />
-            <MoneyField name="debt_coverage_amount" label="Deuda que cubrirá Retify" size="half" />
-            <MoneyField name="owner_cash_offer" label="Efectivo para el propietario" size="half" />
+            <MoneyField name="debt_coverage_amount" label="Adeudo" size="half" />
+            {liquidatesDebtOnly ? (
+              <div className="flex flex-col justify-end gap-1.5 sm:col-span-6 lg:col-span-6">
+                <span className="text-sm font-medium">Propuesta de Retify</span>
+                <p className="flex h-9 items-center rounded-lg border border-dashed border-border/80 px-3 text-sm text-muted-foreground">
+                  Liquidar deuda
+                </p>
+              </div>
+            ) : (
+              <MoneyField name="owner_cash_offer" label="Propuesta de Retify" size="half" />
+            )}
           </FieldGrid>
           <div
             aria-live="polite"
             data-testid="proposal-total"
             className="flex flex-col gap-1 rounded-xl border border-border/70 bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <span className="text-xs text-muted-foreground">Valor total de la propuesta (solo lectura)</span>
+            <span className="text-xs text-muted-foreground">Monto final (adeudo + propuesta)</span>
             <span className="text-lg font-semibold tracking-[-0.025em] text-foreground">
               {proposalTotal === null ? "—" : `${formatRenovaMoney(proposalTotal)} MXN`}
             </span>
           </div>
-          {coverageMismatchesKnownDebt && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              La cobertura propuesta ({formatRenovaMoney(coverageAmount)}) no coincide con la deuda total conocida (
-              {formatRenovaMoney(debtTotal)}). Esto no bloquea la propuesta, solo revísalo antes de confirmar.
-            </p>
-          )}
         </FormSection>
 
         <FormSection id="comentarios" title="Comentarios y contexto" icon={MessageSquareText}>
@@ -257,7 +263,6 @@ export function RenovaCaseForm({
             ) : (
               <MoneyField name="property_tax_debt" label="Deuda predial" />
             )}
-            <MoneyField name="other_debt" label="Adeudo" />
             <MoneyField name="water_debt" label="Deuda de agua" />
             <MoneyField name="electricity_debt" label="Deuda de luz" />
             <MoneyField name="gas_debt" label="Deuda de gas" />

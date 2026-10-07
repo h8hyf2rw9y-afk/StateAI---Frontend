@@ -266,7 +266,6 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                 >
                   <DataGrid>
                     <DataItem label="Deuda predial">{formatRenovaPropertyTaxDebt(c.property_tax_debt, c.property_tax_debt_unit, c.currency) ?? "—"}</DataItem>
-                    <DataItem label="Adeudo">{money(c.other_debt)}</DataItem>
                     <DataItem label="Deuda de agua">{money(c.water_debt)}</DataItem>
                     <DataItem label="Deuda de luz">{money(c.electricity_debt)}</DataItem>
                     <DataItem label="Deuda de gas">{money(c.gas_debt)}</DataItem>
@@ -275,16 +274,22 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                     {proposal!.state === "classified" ? (
                       <>
                         <DataItem label="Modalidad de la propuesta">{formatRenovaProposalType(proposal!.proposalType)}</DataItem>
-                        <DataItem label="Deuda que cubre Retify">{money(proposal!.debtCoverageAmount)}</DataItem>
-                        <DataItem label="Efectivo para el propietario">{money(proposal!.ownerCashOffer)}</DataItem>
-                        <DataItem label="Valor total de la propuesta">{money(proposal!.totalProposalValue)}</DataItem>
+                        <DataItem label="Adeudo">{money(proposal!.debtCoverageAmount)}</DataItem>
+                        <DataItem label="Propuesta de Retify">{proposal!.proposalType === "debt_only" ? "Liquidar deuda" : money(proposal!.ownerCashOffer)}</DataItem>
+                        <DataItem label="Monto final">{money(proposal!.totalProposalValue)}</DataItem>
                       </>
                     ) : proposal!.state === "legacy" ? (
+                      <>
+                      <DataItem label="Adeudo">{money(c.other_debt)}</DataItem>
                       <DataItem label="Propuesta histórica (sin clasificar)" wide>
                         {money(proposal!.legacyFinalOffer)} — edita el expediente para clasificarla.
                       </DataItem>
+                      </>
                     ) : (
-                      <DataItem label="Propuesta">Sin propuesta registrada.</DataItem>
+                      <>
+                        <DataItem label="Adeudo">{money(c.other_debt)}</DataItem>
+                        <DataItem label="Propuesta">Sin propuesta registrada.</DataItem>
+                      </>
                     )}
                   </DataGrid>
                 </DossierSection>

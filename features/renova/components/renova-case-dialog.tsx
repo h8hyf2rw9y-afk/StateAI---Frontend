@@ -14,7 +14,7 @@ import {
   emptyRenovaFormValues,
   isRenovaFormDirty,
   toRenovaPayload,
-  withInferredProposalType,
+  prepareProposalForSave,
   valuesFromRenovaCase,
   type RenovaFormValues,
 } from "@/features/renova/lib/form-values";
@@ -171,7 +171,7 @@ export function RenovaCaseDialog({
   async function submit(intent: RenovaSaveIntent) {
     if (submittingRef.current || load.status !== "ready") return;
 
-    const prepared = withInferredProposalType(effective);
+    const prepared = prepareProposalForSave(effective);
     if (prepared.proposal_type !== effective.proposal_type) set("proposal_type", prepared.proposal_type);
     const { errors: found, firstInvalidField } = validateRenovaForm(prepared);
     if (firstInvalidField) {

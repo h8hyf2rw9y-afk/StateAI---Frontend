@@ -433,6 +433,38 @@ export function renovaProposalAmount(c: { total_proposal_value: string | null; f
   return c.total_proposal_value ?? c.final_offer;
 }
 
+/**
+ * How a lead card reads a proposal: Adeudo (the debt Retify liquidates), the
+ * Propuesta de Retify (cash offer — or "liquidar deuda" when that's all it
+ * is) and the Monto final (adeudo + propuesta). An unclassified case shows its
+ * captured debt and, if any, its historical total.
+ */
+export interface RenovaProposalBreakdown {
+  adeudo: string | null;
+  /** null when there's no cash offer to show (see `liquidatesDebt` / `needsClassification`). */
+  offer: string | null;
+  liquidatesDebt: boolean;
+  needsClassification: boolean;
+  total: string | null;
+}
+
+export function renovaProposalBreakdown(c: {
+  proposal_type: string | null;
+  debt_coverage_amount: string | null;
+  owner_cash_offer: string | null;
+  total_proposal_value: string | null;
+  final_offer: string | null;
+  other_debt: string | null;
+}): RenovaProposalBreakdown {
+  if (c.proposal_type === "debt_only") {
+    return { adeudo: c.debt_coverage_amount, offer: null, liquidatesDebt: true, needsClassification: false, total: c.total_proposal_value ?? c.debt_coverage_amount };
+  }
+  if (c.proposal_type) {
+    return { adeudo: c.debt_coverage_amount, offer: c.owner_cash_offer, liquidatesDebt: false, needsClassification: false, total: c.total_proposal_value };
+  }
+  return { adeudo: c.other_debt, offer: null, liquidatesDebt: false, needsClassification: c.final_offer !== null, total: c.final_offer };
+}
+
 /** The ONE place that reads proposal_type/final_offer together to decide what to show — every view (form, dossier, share card) calls this instead of re-deriving the state itself. */
 export function getRenovaProposal(c: {
   proposal_type: string | null;

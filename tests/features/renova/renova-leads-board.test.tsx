@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RenovaLeadsBoard } from "@/features/renova/components/renova-leads-board";
 import { googleMapsUrl } from "@/features/renova/lib/maps";
 import type { RenovaCaseListItem } from "@/features/renova/types";
@@ -182,12 +182,36 @@ describe("RenovaLeadsBoard", () => {
     expect(onEdit).toHaveBeenCalledWith("case-1", "propuesta");
   });
 
-  it("shows the structured proposal total on the card even without a legacy final_offer", async () => {
+  it("a solo-deuda proposal reads 'Liquidar deuda', with its Adeudo and the same Monto final", async () => {
     getRenovaCasesMock.mockResolvedValue({
       ok: true,
       data: [item({ final_offer: null, proposal_type: "debt_only", debt_coverage_amount: "320000.00", total_proposal_value: "320000.00" })],
     });
     render(<RenovaLeadsBoard />);
-    expect(await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i })).toHaveTextContent("$320,000");
+    const card = (await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i })).closest("article") as HTMLElement;
+    expect(screen.getByRole("button", { name: /editar propuesta de maría gonzález/i })).toHaveTextContent("Liquidar deuda");
+    expect(within(card).getByText("Adeudos").nextSibling).toHaveTextContent("$320,000");
+    expect(within(card).getByText("Monto final").nextSibling).toHaveTextContent("$320,000");
+  });
+
+  it("a deuda + efectivo proposal shows the Retify offer, the Adeudo and Monto final = adeudo + oferta", async () => {
+    getRenovaCasesMock.mockResolvedValue({
+      ok: true,
+      data: [item({ final_offer: "460000.00", proposal_type: "debt_plus_cash", debt_coverage_amount: "320000.00", owner_cash_offer: "140000.00", total_proposal_value: "460000.00" })],
+    });
+    render(<RenovaLeadsBoard />);
+    const button = await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i });
+    const card = button.closest("article") as HTMLElement;
+    expect(button).toHaveTextContent("$140,000");
+    expect(within(card).getByText("Adeudos").nextSibling).toHaveTextContent("$320,000");
+    expect(within(card).getByText("Monto final").nextSibling).toHaveTextContent("$460,000");
+  });
+
+  it("a legacy unclassified proposal asks to be classified and keeps its historical total as Monto final", async () => {
+    getRenovaCasesMock.mockResolvedValue({ ok: true, data: [item({ final_offer: "830000.00", proposal_type: null })] });
+    render(<RenovaLeadsBoard />);
+    const button = await screen.findByRole("button", { name: /editar propuesta de maría gonzález/i });
+    expect(button).toHaveTextContent("Por clasificar");
+    expect(within(button.closest("article") as HTMLElement).getByText("Monto final").nextSibling).toHaveTextContent("$830,000");
   });
 });

@@ -82,11 +82,11 @@ export function validateRenovaForm(values: RenovaFormValues): RenovaValidation {
     const coverageAmount = coverage ? Number(coverage) : null;
     const cashAmount = cash ? Number(cash) : null;
     if (values.proposal_type === "debt_only") {
-      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica cuánta deuda cubrirá Retify.";
-      else if (cashAmount && cashAmount > 0) errors.owner_cash_offer = "Una propuesta de solo deuda no incluye efectivo.";
+      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica el adeudo.";
+      else if (cashAmount && cashAmount > 0) errors.owner_cash_offer = "Con solo liquidación de deuda no hay propuesta en efectivo.";
     } else if (values.proposal_type === "debt_plus_cash") {
-      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica cuánta deuda cubrirá Retify.";
-      if (!cashAmount || cashAmount <= 0) errors.owner_cash_offer = "Indica el efectivo para el propietario.";
+      if (!coverageAmount || coverageAmount <= 0) errors.debt_coverage_amount = "Indica el adeudo.";
+      if (!cashAmount || cashAmount <= 0) errors.owner_cash_offer = "Indica la propuesta de Retify.";
     } else if (values.proposal_type === "cash_only") {
       if (!cashAmount || cashAmount <= 0) errors.owner_cash_offer = "Indica el efectivo para el propietario.";
       else if (coverageAmount && coverageAmount > 0) errors.debt_coverage_amount = "Una propuesta de solo efectivo no cubre deuda.";

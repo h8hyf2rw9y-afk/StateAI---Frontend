@@ -172,7 +172,7 @@ describe("RenovaCaseDetail — structured proposal", () => {
     expect(document.body).toHaveTextContent("$460,000");
   });
 
-  it("shows an explicit $0 cash offer for a debt_only proposal instead of hiding the row", async () => {
+  it("shows a debt_only proposal as 'Liquidar deuda', with its Adeudo and Monto final", async () => {
     await renderDetail({
       proposal_type: "debt_only",
       debt_coverage_amount: "320000.00",
@@ -181,7 +181,8 @@ describe("RenovaCaseDetail — structured proposal", () => {
     });
 
     expect(document.body).toHaveTextContent("Solo liquidación de deuda");
-    expect(document.body.textContent).toContain("$0");
+    expect(document.body).toHaveTextContent("Liquidar deuda");
+    expect(document.body).toHaveTextContent("Monto final");
   });
 
   it("flags a legacy unclassified case for manual classification instead of showing the new breakdown", async () => {
@@ -278,7 +279,7 @@ describe("RenovaCaseDetail — actions", () => {
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     expect(scrollIntoView.mock.contexts[0]).toHaveAttribute("id", "renova-section-propuesta");
     expect(within(dialog).getByText("Modalidad de la propuesta")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Deuda que cubrirá Retify")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Efectivo para el propietario")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Adeudo")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Propuesta de Retify")).toBeInTheDocument();
   });
 });
