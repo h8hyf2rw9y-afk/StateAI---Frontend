@@ -133,7 +133,7 @@ export function RenovaShareCard({
             {proposal.state === "classified" ? (
               <dl className="grid grid-cols-2 gap-x-10 gap-y-6">
                 <Item label="Modalidad" value={formatRenovaProposalType(proposal.proposalType)} className="col-span-2" />
-                <Item label="Deuda que cubre Renova" value={money(proposal.debtCoverageAmount)} large />
+                <Item label="Deuda que cubre Retify" value={money(proposal.debtCoverageAmount)} large />
                 <Item label="Efectivo para el propietario" value={money(proposal.ownerCashOffer)} large />
                 <Item label="Valor total de la propuesta" value={money(proposal.totalProposalValue)} large className="col-span-2" />
               </dl>

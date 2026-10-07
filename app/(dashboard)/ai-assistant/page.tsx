@@ -130,7 +130,7 @@ export default function AiAssistantPage() {
             onClick={() => setWorkspace("renova")}
             className="gap-2"
           >
-            <Bot className="size-4" /> Chat Renova
+            <Bot className="size-4" /> Chat Retify
           </Button>
           <Button
             type="button"

@@ -5,6 +5,7 @@ import { TeamInvitations } from "@/features/admin/components/team-invitations";
 const getOrganizationInvitationsMock = vi.fn();
 const createOrganizationInvitationMock = vi.fn();
 const revokeOrganizationInvitationMock = vi.fn();
+let currentRole = "owner";
 
 vi.mock("@/lib/api/organization", () => ({
   getOrganizationInvitations: () => getOrganizationInvitationsMock(),
@@ -12,6 +13,9 @@ vi.mock("@/lib/api/organization", () => ({
   revokeOrganizationInvitation: (...args: unknown[]) => revokeOrganizationInvitationMock(...args),
 }));
 vi.mock("@/components/ui/select", () => import("@/tests/test-utils/select-stub"));
+vi.mock("@/features/auth/current-user-context", () => ({
+  useCurrentUser: () => ({ me: { id: "me", role: currentRole }, error: null, isLoading: false }),
+}));
 
 function invitation(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -28,18 +32,19 @@ function invitation(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  currentRole = "owner";
   getOrganizationInvitationsMock.mockResolvedValue({ ok: true, data: [] });
   revokeOrganizationInvitationMock.mockResolvedValue({ ok: true, data: undefined });
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
 });
 
 describe("TeamInvitations", () => {
-  it("invites as Asesor Renova by default and shows a copyable link", async () => {
+  it("invites as Asesor Retify by default and shows a copyable link", async () => {
     createOrganizationInvitationMock.mockResolvedValue({ ok: true, data: { ...invitation(), token: "tok-abc123" } });
     render(<TeamInvitations />);
     await screen.findByText(/aún no hay invitaciones/i);
 
-    expect(screen.getByText(/solo usa renova y solo ve sus propios expedientes/i)).toBeInTheDocument();
+    expect(screen.getByText(/solo usa retify y solo ve los expedientes que tiene asignados/i)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/^correo$/i), { target: { value: "colega@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: /^invitar$/i }));
 
@@ -57,6 +62,17 @@ describe("TeamInvitations", () => {
     fireEvent.click(screen.getByRole("button", { name: /^invitar$/i }));
 
     await waitFor(() => expect(createOrganizationInvitationMock).toHaveBeenCalledWith("crm@example.com", "agent"));
+  });
+
+  it("lets a normal admin invite advisors but not administrators or CRM agents", async () => {
+    currentRole = "admin";
+    render(<TeamInvitations />);
+    await screen.findByText(/aún no hay invitaciones/i);
+
+    const role = screen.getByLabelText(/^rol$/i);
+    expect(role).toHaveTextContent("Asesor Retify");
+    expect(role).not.toHaveTextContent("Administrador");
+    expect(role).not.toHaveTextContent("Agente CRM");
   });
 
   it("keeps the email and shows the error when creating fails", async () => {

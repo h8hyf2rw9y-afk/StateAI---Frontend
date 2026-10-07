@@ -3,11 +3,11 @@ import { canManageTeam, homePathFor, isPathAllowed, isRenovaOnly } from "@/featu
 import { navItemsFor } from "@/components/navigation/nav-config";
 
 describe("access rules", () => {
-  it("keeps a Renova-only advisor inside Leads → Renova and Settings", () => {
-    for (const path of ["/leads", "/leads/renova/case-1", "/settings"]) {
+  it("keeps a Retify-only advisor inside the Retify workspace and Settings", () => {
+    for (const path of ["/leads", "/leads/renova/case-1", "/pipeline", "/retify/operations", "/retify/chat", "/settings"]) {
       expect(isPathAllowed("renova_agent", path)).toBe(true);
     }
-    for (const path of ["/dashboard", "/leads/contact-1", "/pipeline", "/tasks", "/ai-assistant", "/admin", "/properties/p1"]) {
+    for (const path of ["/dashboard", "/leads/contact-1", "/tasks", "/ai-assistant", "/admin", "/properties/p1"]) {
       expect(isPathAllowed("renova_agent", path)).toBe(false);
     }
     expect(homePathFor("renova_agent")).toBe("/leads?view=renova");
@@ -23,10 +23,34 @@ describe("access rules", () => {
     expect(isRenovaOnly("agent")).toBe(false);
   });
 
+  it("keeps a normal admin in the Retify supervisor workspace", () => {
+    for (const path of ["/leads", "/pipeline", "/retify/operations", "/retify/chat", "/admin", "/settings"]) {
+      expect(isPathAllowed("admin", path)).toBe(true);
+    }
+    for (const path of ["/dashboard", "/contacts", "/properties", "/tasks", "/ai-assistant"]) {
+      expect(isPathAllowed("admin", path)).toBe(false);
+    }
+    expect(homePathFor("admin")).toBe("/leads?view=renova");
+  });
+
   it("builds the menu per role", () => {
     expect(navItemsFor(undefined)).toEqual([]);
-    expect(navItemsFor("renova_agent").map((item) => item.href)).toEqual(["/leads?view=renova", "/settings"]);
+    expect(navItemsFor("renova_agent").map((item) => item.href)).toEqual([
+      "/leads?view=renova",
+      "/pipeline?view=renova",
+      "/retify/operations",
+      "/retify/chat",
+      "/settings",
+    ]);
     expect(navItemsFor("owner").map((item) => item.href)).toContain("/admin");
+    expect(navItemsFor("admin").map((item) => item.href)).toEqual([
+      "/leads?view=renova",
+      "/pipeline?view=renova",
+      "/retify/operations",
+      "/retify/chat",
+      "/admin",
+      "/settings",
+    ]);
     expect(navItemsFor("agent").map((item) => item.href)).not.toContain("/admin");
     expect(navItemsFor("agent").map((item) => item.href)).toContain("/dashboard");
   });

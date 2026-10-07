@@ -79,7 +79,7 @@ describe("LeadsWorkspace", () => {
 
     expect(screen.getByRole("button", { name: "Todos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Clientes activos" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Renova" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retify" })).toBeInTheDocument();
     await screen.findByText("Carlos Mendoza");
   });
 
@@ -100,7 +100,7 @@ describe("LeadsWorkspace", () => {
   it.each([
     ["view=all", "Todos"],
     ["view=active", "Clientes activos"],
-    ["view=renova", "Renova"],
+    ["view=renova", "Retify"],
   ])("?%s selects the %s tab (state comes from the URL)", async (query, label) => {
     renderAt(query);
 
@@ -115,7 +115,7 @@ describe("LeadsWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clientes activos" }));
     expect(pushMock).toHaveBeenLastCalledWith("/leads?view=active");
 
-    fireEvent.click(screen.getByRole("button", { name: "Renova" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retify" }));
     expect(pushMock).toHaveBeenLastCalledWith("/leads?view=renova");
     expect(pushMock).toHaveBeenCalledTimes(2);
   });
@@ -144,7 +144,7 @@ describe("LeadsWorkspace", () => {
     renderAt("");
 
     expect(screen.getByRole("navigation", { name: /vistas de leads/i })).toBeInTheDocument();
-    const tab = screen.getByRole("button", { name: "Renova" });
+    const tab = screen.getByRole("button", { name: "Retify" });
     tab.focus();
     expect(tab).toHaveFocus();
   });
@@ -171,7 +171,7 @@ describe("LeadsWorkspace", () => {
   it("Renova loads Renova cases and never touches the Contacts API", async () => {
     renderAt("view=renova");
 
-    await screen.findByText(/aún no hay expedientes renova/i);
+    await screen.findByText(/aún no hay expedientes retify/i);
     expect(getRenovaCasesMock).toHaveBeenCalled();
     expect(getContactsMock).not.toHaveBeenCalled();
   });
@@ -179,7 +179,7 @@ describe("LeadsWorkspace", () => {
   it("shows no Contact roles or contact columns in the Renova view", async () => {
     getRenovaCasesMock.mockResolvedValue({ ok: true, data: [] });
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
+    await screen.findByText(/aún no hay expedientes retify/i);
 
     expect(screen.queryByText("Buyer")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^filters/i })).not.toBeInTheDocument();
@@ -192,22 +192,22 @@ describe("LeadsWorkspace", () => {
     await screen.findByText("Carlos Mendoza");
 
     expect(screen.getByRole("button", { name: /add lead/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /nuevo prospecto renova/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /nuevo prospecto retify/i })).not.toBeInTheDocument();
   });
 
   it("Renova shows 'Nuevo prospecto Renova' and no 'Add lead'", async () => {
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
+    await screen.findByText(/aún no hay expedientes retify/i);
 
-    expect(screen.getByRole("button", { name: /nuevo prospecto renova/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /nuevo prospecto retify/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add lead/i })).not.toBeInTheDocument();
   });
 
   it("Renova shows search, a Filtros button and the table — with the form NOT inline in the page", async () => {
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
+    await screen.findByText(/aún no hay expedientes retify/i);
 
-    expect(screen.getByLabelText(/buscar expedientes renova/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/buscar expedientes retify/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^filtros/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/fecha de ingreso/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -215,12 +215,12 @@ describe("LeadsWorkspace", () => {
 
   it("'Nuevo prospecto Renova' opens the Renova popup — not the contact form", async () => {
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
+    await screen.findByText(/aún no hay expedientes retify/i);
 
-    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
+    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto retify/i }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Nuevo prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByText("Nuevo prospecto Retify")).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/fecha de ingreso/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
   });
@@ -230,8 +230,8 @@ describe("LeadsWorkspace", () => {
     createRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
     getRenovaCaseMock.mockResolvedValue({ ok: true, data: created });
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
-    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
+    await screen.findByText(/aún no hay expedientes retify/i);
+    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto retify/i }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText(/nombre completo del titular/i), { target: { value: "María López" } });
     fireEvent.change(within(dialog).getByLabelText(/celular del titular/i), { target: { value: "+52 81 5555 0101" } });
@@ -264,8 +264,8 @@ describe("LeadsWorkspace", () => {
   it("saving a draft says so", async () => {
     createRenovaCaseMock.mockResolvedValue({ ok: true, data: makeRenovaCase({ status: "draft" }) });
     renderAt("view=renova");
-    await screen.findByText(/aún no hay expedientes renova/i);
-    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto renova/i }));
+    await screen.findByText(/aún no hay expedientes retify/i);
+    fireEvent.click(screen.getByRole("button", { name: /nuevo prospecto retify/i }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText(/nombre completo del titular/i), { target: { value: "María López" } });
     fireEvent.change(within(dialog).getByLabelText(/celular del titular/i), { target: { value: "+52 81 5555 0101" } });

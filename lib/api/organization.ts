@@ -91,6 +91,14 @@ export function setOrganizationMemberActive(memberId: string, isActive: boolean)
   });
 }
 
+/** Owner only: changes a teammate between Retify advisor, Retify administrator and general CRM agent. */
+export function setOrganizationMemberRole(memberId: string, role: InvitableRole): Promise<ApiResult<OrganizationMember>> {
+  return apiRequest<OrganizationMember>(`/api/v1/organization/members/${memberId}`, {
+    method: "PATCH",
+    body: { role },
+  });
+}
+
 /** Public — no session required. The register page calls this before anyone signs in, to show which organization a link joins. */
 export function previewOrganizationInvitation(token: string): Promise<ApiResult<OrganizationInvitationPreview>> {
   return apiRequest<OrganizationInvitationPreview>(`/api/v1/organization/invitations/preview/${token}`, {

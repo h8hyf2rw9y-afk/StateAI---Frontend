@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/features/auth/current-user-context";
 const DESCRIPTIONS: Record<LeadsView, string> = {
   all: "Every contact in your organization's CRM.",
   active: "Clients with an open opportunity or a live buyer search.",
-  renova: "Expedientes Renova — evaluación de compra para flipping, separados de tus contactos.",
+  renova: "Expedientes Retify — adquisición de propiedades, seguimiento y operación en un solo lugar.",
 };
 
 /**
@@ -78,7 +78,7 @@ export function LeadsWorkspace() {
           view === "renova" ? (
             <Button onClick={() => setRenovaDialog({})}>
               <Plus />
-              Nuevo prospecto Renova
+              Nuevo prospecto Retify
             </Button>
           ) : (
             <ContactForm
@@ -112,7 +112,7 @@ export function LeadsWorkspace() {
         <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="-mx-1 overflow-x-auto px-1">
             {renovaOnly ? (
-              <p className="px-2 text-sm font-medium">Mis expedientes Renova</p>
+              <p className="px-2 text-sm font-medium">Mis expedientes Retify</p>
             ) : (
               <GooeyNav
                 aria-label="Vistas de leads"
@@ -125,7 +125,7 @@ export function LeadsWorkspace() {
           </div>
           <div className="hidden items-center gap-2 pr-1 text-[11px] text-muted-foreground sm:flex">
             <CircleDot className="size-3 text-emerald-400" aria-hidden="true" />
-            {view === "renova" ? "Expedientes independientes" : "CRM conectado"}
+            {view === "renova" ? "Espacio operativo Retify" : "CRM conectado"}
           </div>
         </div>
 

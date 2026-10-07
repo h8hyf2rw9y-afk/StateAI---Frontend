@@ -35,14 +35,14 @@ describe("RenovaChatWorkspace", () => {
   it("shows the bounded read-only capabilities", async () => {
     render(<RenovaChatWorkspace />);
 
-    expect(await screen.findByText("Pregunta sobre tus leads de Renova")).toBeInTheDocument();
+    expect(await screen.findByText("Pregunta sobre tus expedientes Retify")).toBeInTheDocument();
     expect(screen.getByText("Solo lectura")).toBeInTheDocument();
     expect(screen.getByText("¿Cuántos leads activos tengo?")).toBeInTheDocument();
     expect(screen.getByTestId("renova-chat-shell")).toHaveClass(
       "h-[calc(100dvh-9rem)]",
       "overflow-hidden"
     );
-    expect(screen.getByRole("log", { name: "Mensajes de Renova Assistant" })).toHaveClass(
+    expect(screen.getByRole("log", { name: "Mensajes de Retify Assistant" })).toHaveClass(
       "min-h-0",
       "overflow-y-auto",
       "overscroll-contain"
@@ -58,7 +58,7 @@ describe("RenovaChatWorkspace", () => {
     render(<RenovaChatWorkspace />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "El asistente de Renova no está disponible en este momento. Inténtalo más tarde."
+      "El asistente de Retify no está disponible en este momento. Inténtalo más tarde."
     );
     expect(screen.queryByText("This couldn't be found.")).not.toBeInTheDocument();
   });
@@ -90,7 +90,7 @@ describe("RenovaChatWorkspace", () => {
       },
     });
     render(<RenovaChatWorkspace />);
-    const input = await screen.findByLabelText("Pregunta para Renova Assistant");
+    const input = await screen.findByLabelText("Pregunta para Retify Assistant");
     fireEvent.change(input, { target: { value: "¿Cuántos leads activos tengo?" } });
     fireEvent.click(screen.getByRole("button", { name: "Enviar pregunta" }));
 

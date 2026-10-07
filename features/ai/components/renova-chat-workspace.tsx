@@ -16,7 +16,7 @@ import type { RenovaChatConversation, RenovaChatMessage } from "@/features/ai/re
 
 const SUGGESTIONS = [
   "¿Cuántos leads activos tengo?",
-  "Muéstrame el pipeline de Renova",
+  "Muéstrame el pipeline de Retify",
   "¿Cuál es la deuda total de Juan Carlos?",
   "¿Cuál es la dirección de Juan Carlos?",
 ];
@@ -25,7 +25,7 @@ type LoadState = "loading" | "ready" | "error";
 
 function getRenovaChatLoadErrorMessage(status?: number): string {
   if (status === 404) {
-    return "El asistente de Renova no está disponible en este momento. Inténtalo más tarde.";
+    return "El asistente de Retify no está disponible en este momento. Inténtalo más tarde.";
   }
   return "";
 }
@@ -184,7 +184,7 @@ export function RenovaChatWorkspace() {
             )}
             {loadState === "ready" && conversations.length === 0 && (
               <p className="px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-                Tus conversaciones sobre Renova aparecerán aquí.
+                Tus conversaciones sobre Retify aparecerán aquí.
               </p>
             )}
             {conversations.map((conversation) => (
@@ -216,7 +216,7 @@ export function RenovaChatWorkspace() {
                   <Sparkles className="size-4" />
                 </span>
                 <div>
-                  <h2 className="font-semibold">Renova Assistant</h2>
+                  <h2 className="font-semibold">Retify Assistant</h2>
                   <p className="text-xs text-muted-foreground">Consultas de expedientes y pipeline</p>
                 </div>
               </div>
@@ -230,7 +230,7 @@ export function RenovaChatWorkspace() {
             ref={messagesViewportRef}
             role="log"
             aria-live="polite"
-            aria-label="Mensajes de Renova Assistant"
+            aria-label="Mensajes de Retify Assistant"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8"
           >
             {messagesLoading && (
@@ -244,7 +244,7 @@ export function RenovaChatWorkspace() {
                 <span className="mb-5 flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_0_30px_rgba(124,58,237,0.16)]">
                   <Bot className="size-7" />
                 </span>
-                <h3 className="text-xl font-semibold tracking-tight">Pregunta sobre tus leads de Renova</h3>
+                <h3 className="text-xl font-semibold tracking-tight">Pregunta sobre tus expedientes Retify</h3>
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
                   Consulta cantidades, etapas, adeudos, teléfonos, direcciones y datos registrados de un propietario.
                 </p>
@@ -285,7 +285,7 @@ export function RenovaChatWorkspace() {
                 {sending && (
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-border/70 bg-muted/45 px-4 py-3 text-sm text-muted-foreground">
-                      <Loader2 className="size-4 animate-spin" /> Consultando Renova…
+                      <Loader2 className="size-4 animate-spin" /> Consultando Retify…
                     </div>
                   </div>
                 )}
@@ -305,11 +305,11 @@ export function RenovaChatWorkspace() {
                     if (input.trim()) void submit(input);
                   }
                 }}
-                placeholder="Pregunta por tus leads de Renova…"
+                placeholder="Pregunta por tus expedientes Retify…"
                 className="max-h-36 min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
                 disabled={sending}
                 maxLength={2000}
-                aria-label="Pregunta para Renova Assistant"
+                aria-label="Pregunta para Retify Assistant"
               />
               <Button type="submit" size="icon" disabled={sending || !input.trim()} aria-label="Enviar pregunta">
                 {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

@@ -112,7 +112,7 @@ describe("RenovaCasesTable", () => {
 
     render(<RenovaCasesTable />);
 
-    expect(screen.getByText(/cargando expedientes renova/i)).toBeInTheDocument();
+    expect(screen.getByText(/cargando expedientes retify/i)).toBeInTheDocument();
   });
 
   it("renders the real columns for each case, including Dirección and Última actualización", async () => {
@@ -250,8 +250,8 @@ describe("RenovaCasesTable", () => {
 
     render(<RenovaCasesTable />);
 
-    expect(await screen.findByText("Aún no hay expedientes Renova")).toBeInTheDocument();
-    expect(screen.getByText(/nuevo prospecto renova/i)).toBeInTheDocument();
+    expect(await screen.findByText("Aún no hay expedientes Retify")).toBeInTheDocument();
+    expect(screen.getByText(/nuevo prospecto retify/i)).toBeInTheDocument();
   });
 
   it("shows a friendly Spanish error on failure", async () => {
@@ -445,7 +445,7 @@ describe("RenovaCasesTable", () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
 
-    expect(screen.getByLabelText(/buscar expedientes renova/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/buscar expedientes retify/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/filtrar por estado/i)).not.toBeInTheDocument();
     openFilters();
     expect(screen.getByLabelText(/filtrar por estado/i)).toBeInTheDocument();
@@ -468,7 +468,7 @@ describe("RenovaCasesTable", () => {
     await screen.findByText("María López");
     getRenovaCasesMock.mockClear();
 
-    fireEvent.change(screen.getByLabelText(/buscar expedientes renova/i), { target: { value: "lópez" } });
+    fireEvent.change(screen.getByLabelText(/buscar expedientes retify/i), { target: { value: "lópez" } });
 
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalledWith(expect.objectContaining({ q: "lópez" })));
     expect(getRenovaCasesMock.mock.calls.at(-1)![0]).not.toHaveProperty("organization_id");
@@ -506,7 +506,7 @@ describe("RenovaCasesTable", () => {
     openFilters();
     fireEvent.change(screen.getByLabelText(/filtrar por estado/i), { target: { value: "cancelled" } });
 
-    expect(await screen.findByText(/cargando expedientes renova/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cargando expedientes retify/i)).toBeInTheDocument();
     expect(screen.queryByText("María López")).not.toBeInTheDocument();
   });
 
@@ -534,7 +534,7 @@ describe("RenovaCasesTable", () => {
   it("never calls the Contacts API", async () => {
     render(<RenovaCasesTable />);
     await screen.findByText("María López");
-    fireEvent.change(screen.getByLabelText(/buscar expedientes renova/i), { target: { value: "x" } });
+    fireEvent.change(screen.getByLabelText(/buscar expedientes retify/i), { target: { value: "x" } });
     await waitFor(() => expect(getRenovaCasesMock.mock.calls.length).toBeGreaterThan(1));
 
     expect(getContactsMock).not.toHaveBeenCalled();
@@ -820,7 +820,7 @@ describe("RenovaCasesTable — grouped by status (ordering now owned by the back
     await screen.findByText("Raúl");
     getRenovaCasesMock.mockClear();
 
-    fireEvent.change(screen.getByLabelText(/buscar expedientes renova/i), { target: { value: "martha" } });
+    fireEvent.change(screen.getByLabelText(/buscar expedientes retify/i), { target: { value: "martha" } });
 
     await waitFor(() => expect(getRenovaCasesMock).toHaveBeenCalledWith(expect.objectContaining({ q: "martha" })));
   });

@@ -99,7 +99,7 @@ export function RenovaCaseForm({
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">Expediente Renova</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary/80">Expediente Retify</p>
             <h2 className="mt-1 text-lg font-semibold tracking-[-0.025em]">Datos del expediente</h2>
           </div>
           <p className="hidden max-w-xs text-right text-xs leading-relaxed text-muted-foreground sm:block">
@@ -187,7 +187,7 @@ export function RenovaCaseForm({
               allowClear
               options={toOptions(RENOVA_PROPOSAL_TYPES, formatRenovaProposalType)}
             />
-            <MoneyField name="debt_coverage_amount" label="Deuda que cubrirá Renova" size="half" />
+            <MoneyField name="debt_coverage_amount" label="Deuda que cubrirá Retify" size="half" />
             <MoneyField name="owner_cash_offer" label="Efectivo para el propietario" size="half" />
           </FieldGrid>
           <div

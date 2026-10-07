@@ -11,7 +11,13 @@ import { FormError } from "@/features/auth/components/form-error";
 import { ROLE_LABELS } from "@/features/auth/access";
 import { useCurrentUser } from "@/features/auth/current-user-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { getOrganizationMembers, setOrganizationMemberActive, type OrganizationMember } from "@/lib/api/organization";
+import {
+  getOrganizationMembers,
+  setOrganizationMemberActive,
+  setOrganizationMemberRole,
+  type InvitableRole,
+  type OrganizationMember,
+} from "@/lib/api/organization";
 import { cn } from "@/lib/utils";
 
 function formatDate(iso: string): string {
@@ -27,6 +33,12 @@ function canToggle(member: OrganizationMember, me: { id: string; role: string } 
   return true;
 }
 
+function canChangeRole(member: OrganizationMember, me: { id: string; role: string } | null): boolean {
+  return Boolean(me?.role === "owner" && member.id !== me.id && member.role !== "owner");
+}
+
+const CHANGEABLE_ROLES: InvitableRole[] = ["renova_agent", "admin", "agent"];
+
 /**
  * Who is in the organization: email, role, whether the account can sign in,
  * and how many Renova cases each one carries. Deactivating keeps the account
@@ -39,6 +51,7 @@ export function TeamMembers() {
   const [pending, setPending] = useState<OrganizationMember | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<{ member: OrganizationMember; role: InvitableRole } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,13 +79,27 @@ export function TeamMembers() {
     setMembers((current) => current?.map((m) => (m.id === response.data.id ? response.data : m)) ?? current);
   }
 
+  async function confirmRoleChange() {
+    if (!pendingRole) return;
+    setIsSaving(true);
+    setActionError(null);
+    const response = await setOrganizationMemberRole(pendingRole.member.id, pendingRole.role);
+    setIsSaving(false);
+    setPendingRole(null);
+    if (!response.ok) {
+      setActionError(getApiErrorMessage(response.error));
+      return;
+    }
+    setMembers((current) => current?.map((m) => (m.id === response.data.id ? response.data : m)) ?? current);
+  }
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-3">
         <div>
           <h3 className="text-sm font-medium">Usuarios</h3>
           <p className="text-xs text-muted-foreground">
-            Cada asesor Renova solo ve sus propios expedientes; tú ves los de todos en Leads → Renova (filtra por asesor).
+            Cada asesor Retify solo ve los expedientes que tiene asignados; tú ves los de todo el equipo y puedes filtrar por asesor.
           </p>
         </div>
         {actionError && <FormError message={actionError} />}
@@ -104,7 +131,24 @@ export function TeamMembers() {
                       {member.email ?? "Sin correo"}
                       {member.id === me?.id && <span className="ml-1.5 text-xs text-muted-foreground">(tú)</span>}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{ROLE_LABELS[member.role] ?? member.role}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {canChangeRole(member, me) ? (
+                        <select
+                          aria-label={`Rol de ${member.email ?? "este usuario"}`}
+                          className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                          value={member.role}
+                          onChange={(event) =>
+                            setPendingRole({ member, role: event.target.value as InvitableRole })
+                          }
+                        >
+                          {CHANGEABLE_ROLES.map((role) => (
+                            <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        ROLE_LABELS[member.role] ?? member.role
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -161,6 +205,21 @@ export function TeamMembers() {
             <Button variant={pending?.is_active ? "destructive" : "default"} disabled={isSaving} onClick={confirmToggle}>
               {isSaving ? "Guardando…" : pending?.is_active ? "Desactivar" : "Reactivar"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pendingRole !== null} onOpenChange={(open) => !open && !isSaving && setPendingRole(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar permisos</DialogTitle>
+            <DialogDescription>
+              {pendingRole?.member.email ?? "Este usuario"} cambiará de {pendingRole ? ROLE_LABELS[pendingRole.member.role] : "rol"} a {pendingRole ? ROLE_LABELS[pendingRole.role] : "otro rol"}. El cambio quedará registrado en la bitácora.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" disabled={isSaving} onClick={() => setPendingRole(null)}>Cancelar</Button>
+            <Button disabled={isSaving} onClick={confirmRoleChange}>{isSaving ? "Guardando…" : "Confirmar cambio"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -153,7 +153,7 @@ describe("RenovaCaseDetail", () => {
   it("links back to the Renova list", async () => {
     await renderDetail();
 
-    expect(screen.getByRole("link", { name: /volver a renova/i })).toHaveAttribute("href", "/leads?view=renova");
+    expect(screen.getByRole("link", { name: /volver a retify/i })).toHaveAttribute("href", "/leads?view=renova");
   });
 });
 
@@ -278,7 +278,7 @@ describe("RenovaCaseDetail — actions", () => {
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     expect(scrollIntoView.mock.contexts[0]).toHaveAttribute("id", "renova-section-adeudos");
     expect(within(dialog).getByText("Modalidad de la propuesta")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Deuda que cubrirá Renova")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Deuda que cubrirá Retify")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Efectivo para el propietario")).toBeInTheDocument();
   });
 });

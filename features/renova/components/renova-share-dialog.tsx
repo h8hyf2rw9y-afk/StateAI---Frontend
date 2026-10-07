@@ -190,7 +190,7 @@ export function RenovaShareDialog({ caseId, onClose }: { caseId: string; onClose
   async function handleShare() {
     setExportState({ kind: "generating" });
     try {
-      const outcome = await shareOrDownload(await buildFile(), `Ficha Renova ${renovaShortId(renovaCase!.id)}`);
+      const outcome = await shareOrDownload(await buildFile(), `Ficha Retify ${renovaShortId(renovaCase!.id)}`);
       if (outcome === "shared") setExportState({ kind: "ready", message: "Imagen compartida." });
       else if (outcome === "downloaded") setExportState({ kind: "ready", message: DOWNLOAD_FALLBACK_MESSAGE });
       else setExportState({ kind: "idle" });

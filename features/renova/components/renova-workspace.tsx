@@ -26,7 +26,7 @@ export function RenovaWorkspace({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-fit rounded-xl bg-muted/65 p-1" role="radiogroup" aria-label="Área Renova">
+        <div className="flex w-fit rounded-xl bg-muted/65 p-1" role="radiogroup" aria-label="Área Retify">
           <Button type="button" role="radio" aria-checked={section === "leads"} variant="ghost" size="sm" className={cn("rounded-lg", section === "leads" && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => setSection("leads")}><Users /> Leads</Button>
           <Button type="button" role="radio" aria-checked={section === "operations"} variant="ghost" size="sm" className={cn("rounded-lg", section === "operations" && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => setSection("operations")}><Route /> Operaciones</Button>
         </div>

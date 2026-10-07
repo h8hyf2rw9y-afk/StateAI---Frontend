@@ -7,13 +7,18 @@ import type { UserRole } from "@/types/user";
  */
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  owner: "Dueño",
+  owner: "Administrador supremo",
   admin: "Administrador",
   agent: "Agente CRM",
-  renova_agent: "Asesor Renova",
+  renova_agent: "Asesor Retify",
 };
 
 export function isRenovaOnly(role: UserRole | undefined): boolean {
+  return role === "admin" || role === "renova_agent";
+}
+
+/** Only advisors are case-scoped; owner, admin and legacy CRM agents can review the Retify team. */
+export function isRetifyAdvisor(role: UserRole | undefined): boolean {
   return role === "renova_agent";
 }
 
@@ -26,7 +31,7 @@ export function homePathFor(role: UserRole): string {
   return isRenovaOnly(role) ? "/leads?view=renova" : "/dashboard";
 }
 
-const RENOVA_ONLY_PATHS = ["/leads", "/settings"];
+const RENOVA_ONLY_PATHS = ["/leads", "/pipeline", "/retify", "/settings"];
 
 function matches(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -35,8 +40,8 @@ function matches(pathname: string, prefix: string): boolean {
 export function isPathAllowed(role: UserRole, pathname: string): boolean {
   if (matches(pathname, "/admin")) return canManageTeam(role);
   if (isRenovaOnly(role)) {
-    // Inside Leads, only the Renova side: /leads (the workspace forces
-    // ?view=renova) and /leads/renova/... — never a CRM contact page.
+    // Inside Leads and Pipeline the workspaces force the Retify view, so a
+    // manually edited query string can never expose the traditional CRM.
     if (matches(pathname, "/leads")) return pathname === "/leads" || matches(pathname, "/leads/renova");
     return RENOVA_ONLY_PATHS.some((prefix) => matches(pathname, prefix));
   }

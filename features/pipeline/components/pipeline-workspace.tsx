@@ -12,10 +12,12 @@ import { PIPELINE_VIEWS, PIPELINE_VIEW_LABELS, parsePipelineView, type PipelineV
 import { RenovaCaseDialog } from "@/features/renova/components/renova-case-dialog";
 import { RenovaPipelineBoard } from "@/features/renova/components/renova-pipeline-board";
 import type { RenovaCase } from "@/features/renova/types";
+import { isRenovaOnly } from "@/features/auth/access";
+import { useCurrentUser } from "@/features/auth/current-user-context";
 
 const DESCRIPTIONS: Record<PipelineView, string> = {
   crm: "Every open opportunity, organized by sales stage.",
-  renova: "Expedientes Renova en el flujo de compra, de Nuevo a Comprado.",
+  renova: "Expedientes Retify en el flujo de adquisición, de Nuevo a Comprado.",
 };
 
 /**
@@ -29,7 +31,9 @@ const DESCRIPTIONS: Record<PipelineView, string> = {
 export function PipelineWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const view = parsePipelineView(searchParams.get("view"));
+  const { me } = useCurrentUser();
+  const retifyOnly = isRenovaOnly(me?.role);
+  const view = retifyOnly ? "renova" : parsePipelineView(searchParams.get("view"));
   const [renovaDialogOpen, setRenovaDialogOpen] = useState(false);
   const [renovaBoardKey, setRenovaBoardKey] = useState(0);
   const [saved, setSaved] = useState<string | null>(null);
@@ -54,7 +58,7 @@ export function PipelineWorkspace() {
           view === "renova" ? (
             <Button onClick={() => setRenovaDialogOpen(true)}>
               <Plus />
-              Nuevo prospecto Renova
+              Nuevo prospecto Retify
             </Button>
           ) : (
             <OpportunityForm
@@ -87,17 +91,21 @@ export function PipelineWorkspace() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="-mx-1 overflow-x-auto px-1">
-            <GooeyNav
-              aria-label="Vistas de pipeline"
-              size="sm"
-              items={PIPELINE_VIEWS.map((v) => PIPELINE_VIEW_LABELS[v])}
-              value={PIPELINE_VIEWS.indexOf(view)}
-              onChange={(index) => handleViewChange(PIPELINE_VIEWS[index])}
-            />
+            {retifyOnly ? (
+              <p className="px-2 text-sm font-medium">Mi pipeline Retify</p>
+            ) : (
+              <GooeyNav
+                aria-label="Vistas de pipeline"
+                size="sm"
+                items={PIPELINE_VIEWS.map((v) => PIPELINE_VIEW_LABELS[v])}
+                value={PIPELINE_VIEWS.indexOf(view)}
+                onChange={(index) => handleViewChange(PIPELINE_VIEWS[index])}
+              />
+            )}
           </div>
           <div className="hidden items-center gap-2 pr-1 text-[11px] text-muted-foreground sm:flex">
             <CircleDot className="size-3 text-emerald-400" aria-hidden="true" />
-            {view === "renova" ? "Expedientes independientes" : "CRM conectado"}
+            {view === "renova" ? "Flujo de adquisición Retify" : "CRM conectado"}
           </div>
         </div>
 

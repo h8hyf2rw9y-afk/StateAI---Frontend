@@ -41,7 +41,7 @@ function sumMoney(values: (string | null)[]): number | null {
 
 const IN_PROGRESS_STAGES: readonly RenovaPipelineStageStatus[] = ["new", "offer_preparation", "offer_sent", "negotiating"];
 
-const EXIT_CONFIRMATION_TEXT = "Este expediente saldrá del pipeline de Renova, pero conservará su historial.";
+const EXIT_CONFIRMATION_TEXT = "Este expediente saldrá del pipeline de Retify, pero conservará su historial.";
 
 /**
  * The Renova Kanban board (/pipeline?view=renova). Fetches the whole active
@@ -210,7 +210,7 @@ export function RenovaPipelineBoard() {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border py-16 text-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">Cargando pipeline Renova…</p>
+        <p className="text-sm text-muted-foreground">Cargando pipeline Retify…</p>
       </div>
     );
   }
@@ -229,7 +229,7 @@ export function RenovaPipelineBoard() {
         <EmptyState
           icon={Home}
           title="Sin expedientes en el pipeline"
-          description="Los expedientes Renova en Nuevo, Preparación de oferta, Oferta enviada, Negociando, Aceptado o Comprado aparecerán aquí."
+          description="Los expedientes Retify en Nuevo, Preparación de oferta, Oferta enviada, Negociando, Aceptado o Comprado aparecerán aquí."
         />
       </div>
     );
@@ -256,7 +256,7 @@ export function RenovaPipelineBoard() {
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por propietario o celular…"
-            aria-label="Buscar en el pipeline Renova"
+            aria-label="Buscar en el pipeline Retify"
             className="rounded-md bg-background pl-9 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

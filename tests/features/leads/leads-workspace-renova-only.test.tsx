@@ -40,8 +40,8 @@ describe("LeadsWorkspace for a Renova-only advisor", () => {
     render(<LeadsWorkspace />);
 
     expect(await screen.findByText("Mi cliente")).toBeInTheDocument();
-    expect(screen.getByText("Mis expedientes Renova")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /nuevo prospecto renova/i })).toBeInTheDocument();
+    expect(screen.getByText("Mis expedientes Retify")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /nuevo prospecto retify/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add lead/i })).not.toBeInTheDocument();
     expect(screen.queryByText("Clientes activos")).not.toBeInTheDocument();
     expect(getContactsMock).not.toHaveBeenCalled();

@@ -17,7 +17,7 @@ export const DEFAULT_LEADS_VIEW: LeadsView = "all";
 export const LEADS_VIEW_LABELS: Record<LeadsView, string> = {
   all: "Todos",
   active: "Clientes activos",
-  renova: "Renova",
+  renova: "Retify",
 };
 
 /** Anything missing or unrecognized (`?view=bogus`) falls back to "all" rather than breaking the page. */

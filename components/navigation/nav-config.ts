@@ -6,8 +6,10 @@ export type NavIconName =
   | "leads"
   | "properties"
   | "pipeline"
+  | "operations"
   | "tasks"
   | "appointments"
+  | "retify-chat"
   | "ai-assistant"
   | "admin"
   | "settings";
@@ -53,10 +55,17 @@ export const NAV_ITEMS: NavItem[] = [
 export function navItemsFor(role: UserRole | undefined): NavItem[] {
   if (!role) return [];
   if (isRenovaOnly(role)) {
-    return [
-      { label: "Renova", href: "/leads?view=renova", icon: "leads", group: "workspace" },
-      { label: "Settings", href: "/settings", icon: "settings", group: "system" },
+    const retifyItems: NavItem[] = [
+      { label: "Expedientes Retify", href: "/leads?view=renova", icon: "leads", group: "workspace" },
+      { label: "Pipeline Retify", href: "/pipeline?view=renova", icon: "pipeline", group: "workspace" },
+      { label: "Operaciones", href: "/retify/operations", icon: "operations", group: "workspace" },
+      { label: "Chat Retify", href: "/retify/chat", icon: "retify-chat", group: "system" },
     ];
+    if (role === "admin") {
+      retifyItems.push({ label: "Administración", href: "/admin", icon: "admin", group: "system", roles: ["admin"] });
+    }
+    retifyItems.push({ label: "Settings", href: "/settings", icon: "settings", group: "system" });
+    return retifyItems;
   }
   return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
 }

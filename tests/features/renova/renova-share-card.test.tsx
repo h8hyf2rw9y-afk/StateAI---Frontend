@@ -171,7 +171,7 @@ describe("RenovaShareCard — structured proposal breakdown", () => {
     });
 
     expect(c).toHaveTextContent("Solo liquidación de deuda");
-    expect(c).toHaveTextContent("Deuda que cubre Renova");
+    expect(c).toHaveTextContent("Deuda que cubre Retify");
     expect(c).toHaveTextContent("$320,000");
     expect(c).toHaveTextContent("Efectivo para el propietario");
     expect(c.textContent).toContain("$0"); // the zero is shown explicitly, never hidden
@@ -211,7 +211,7 @@ describe("RenovaShareCard — structured proposal breakdown", () => {
 
     expect(c).toHaveTextContent("pendiente de clasificar");
     expect(c).toHaveTextContent("$275,000");
-    expect(c.textContent).not.toContain("Deuda que cubre Renova");
+    expect(c.textContent).not.toContain("Deuda que cubre Retify");
   });
 });
 

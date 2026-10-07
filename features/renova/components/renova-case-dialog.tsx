@@ -236,7 +236,7 @@ export function RenovaCaseDialog({
               {isEdit ? "Editando expediente" : "Alta de prospecto"}
             </p>
             <DialogTitle className="truncate text-xl font-semibold tracking-[-0.03em]">
-              {isEdit ? original?.owner_name ?? "Expediente Renova" : "Nuevo prospecto Renova"}
+              {isEdit ? original?.owner_name ?? "Expediente Retify" : "Nuevo prospecto Retify"}
             </DialogTitle>
             <DialogDescription>Cliente, contexto, números y propiedad en una sola vista.</DialogDescription>
           </div>

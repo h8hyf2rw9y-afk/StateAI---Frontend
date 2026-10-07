@@ -184,7 +184,7 @@ describe("RenovaPipelineBoard — rejecting/cancelling", () => {
 
     fireEvent.click(moveMenuItem("case-1", "Rechazado"));
 
-    expect(screen.getByText("Este expediente saldrá del pipeline de Renova, pero conservará su historial.")).toBeInTheDocument();
+    expect(screen.getByText("Este expediente saldrá del pipeline de Retify, pero conservará su historial.")).toBeInTheDocument();
     // Not applied until confirmed.
     expect(updateRenovaCaseMock).not.toHaveBeenCalled();
   });
@@ -276,7 +276,7 @@ describe("RenovaPipelineBoard — filters view only, never the data", () => {
       new: [makeCard({ id: "case-1", owner_name: "Ana Buscada" }), makeCard({ id: "case-2", owner_name: "Beto Distinto" })],
     });
 
-    fireEvent.change(screen.getByLabelText("Buscar en el pipeline Renova"), { target: { value: "Buscada" } });
+    fireEvent.change(screen.getByLabelText("Buscar en el pipeline Retify"), { target: { value: "Buscada" } });
 
     expect(columnFor("new").getByText("Ana Buscada")).toBeInTheDocument();
     expect(columnFor("new").queryByText("Beto Distinto")).not.toBeInTheDocument();

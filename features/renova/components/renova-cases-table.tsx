@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { getRenovaCaseCounts, getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
 import { useUser } from "@/hooks/useUser";
-import { isRenovaOnly } from "@/features/auth/access";
+import { isRetifyAdvisor } from "@/features/auth/access";
 import { useCurrentUser } from "@/features/auth/current-user-context";
 import { useTeamMembers } from "@/features/organization/use-team-members";
 import type { OrganizationMember } from "@/lib/api/organization";
@@ -186,7 +186,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
   // "all", "mine", or (owners/admins only) a teammate's user id.
   const [advisorFilter, setAdvisorFilter] = useState<string>("all");
   const { me } = useCurrentUser();
-  const renovaOnly = isRenovaOnly(me?.role);
+  const canSeeTeam = !isRetifyAdvisor(me?.role);
   const members = useTeamMembers();
   const teammates = members.filter((member) => member.id !== user?.id);
   const [bucket, setBucket] = useState<RenovaCaseBucket>("active");
@@ -363,7 +363,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por propietario o celular…"
-            aria-label="Buscar expedientes Renova"
+            aria-label="Buscar expedientes Retify"
             className="h-10 rounded-xl border-border/70 bg-background/45 pl-9 shadow-none"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -405,8 +405,8 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                   </SelectContent>
                 </Select>
               </div>
-              {/* A Renova-only advisor only ever has their own cases, so there is nothing to filter. */}
-              {!renovaOnly && (
+              {/* Advisors only have their own cases; owner/admin can filter the whole Retify team. */}
+              {canSeeTeam && (
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="renova-filter-advisor">Asesor</Label>
                   <Select value={advisorFilter} onValueChange={(v) => setAdvisorFilter(v ?? "all")}>
@@ -489,7 +489,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
       {isLoading && (
         <div className="flex flex-col items-center gap-2 rounded-xl border py-16 text-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">Cargando expedientes Renova…</p>
+          <p className="text-sm text-muted-foreground">Cargando expedientes Retify…</p>
         </div>
       )}
 
@@ -510,7 +510,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                   ? "No hay expedientes archivados"
                   : bucket === "closed"
                     ? "No hay expedientes rechazados o cancelados"
-                    : "Aún no hay expedientes Renova"
+                    : "Aún no hay expedientes Retify"
             }
             description={
               hasActiveFilters
@@ -519,7 +519,7 @@ export function RenovaCasesTable({ refreshKey = 0, onEdit, onShare }: { refreshK
                   ? "Los expedientes que archives desde Rechazados y cancelados aparecerán aquí."
                   : bucket === "closed"
                     ? "Los expedientes que rechaces o cancelas aparecerán aquí sin perder sus datos."
-                    : "Registra el primero con “Nuevo prospecto Renova”."
+                    : "Registra el primero con “Nuevo prospecto Retify”."
             }
           />
         </div>

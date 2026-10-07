@@ -28,7 +28,7 @@ describe("OrganizationSettingsTab", () => {
     render(<OrganizationSettingsTab />);
 
     expect(await screen.findByDisplayValue("Reyes Realty")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Asesor Renova")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Asesor Retify")).toBeInTheDocument();
   });
 
   it("points owners to Administración instead of duplicating the invite form", async () => {

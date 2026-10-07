@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmptyState } from "@/components/shared/empty-state";
 import { FormError } from "@/features/auth/components/form-error";
 import { RenovaFollowUpPopover } from "@/features/renova/components/renova-follow-up-popover";
-import { isRenovaOnly } from "@/features/auth/access";
+import { isRetifyAdvisor } from "@/features/auth/access";
 import { useCurrentUser } from "@/features/auth/current-user-context";
 import { useTeamMembers } from "@/features/organization/use-team-members";
 import { getRenovaCaseCounts, getRenovaCases, updateRenovaCase } from "@/lib/api/renova";
@@ -96,7 +96,7 @@ export function RenovaLeadsBoard({
 }) {
   const { user } = useUser();
   const { me } = useCurrentUser();
-  const renovaOnly = isRenovaOnly(me?.role);
+  const canSeeTeam = !isRetifyAdvisor(me?.role);
   const members = useTeamMembers();
   const teammates = members.filter((member) => member.id !== user?.id);
   const [bucket, setBucket] = useState<RenovaCaseBucket>("active");
@@ -182,7 +182,7 @@ export function RenovaLeadsBoard({
       ? "No hay expedientes rechazados o cancelados"
       : bucket === "archived"
         ? "No hay expedientes archivados"
-        : "Aún no hay expedientes Renova";
+        : "Aún no hay expedientes Retify";
 
   return (
     <div className="flex flex-col gap-4">
@@ -197,14 +197,14 @@ export function RenovaLeadsBoard({
         </div>
         <div className="relative flex-1 xl:ml-auto xl:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar propietario o celular…" aria-label="Buscar expedientes Renova" className="h-10 rounded-xl bg-background/45 pl-9" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar propietario o celular…" aria-label="Buscar expedientes Retify" className="h-10 rounded-xl bg-background/45 pl-9" />
         </div>
         <Popover>
           <PopoverTrigger render={<Button variant="outline" className="h-10 rounded-xl bg-background/45" aria-label="Filtros"><ListFilter /> Filtros</Button>} />
           <PopoverContent>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5"><Label htmlFor="visual-status-filter">Estado</Label><Select value={statusFilter} onValueChange={(value) => setStatusFilter(value ?? "all")}><SelectTrigger id="visual-status-filter"><SelectValue>{(value: string | null) => !value || value === "all" ? "Todos los estados" : formatRenovaStatus(value)}</SelectValue></SelectTrigger><SelectContent><SelectItem value="all">Todos los estados</SelectItem>{RENOVA_STATUSES.map((value) => <SelectItem key={value} value={value}>{formatRenovaStatus(value)}</SelectItem>)}</SelectContent></Select></div>
-              {!renovaOnly && (
+              {canSeeTeam && (
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="visual-advisor-filter">Asesor</Label>
                   <Select value={advisorFilter} onValueChange={(value) => setAdvisorFilter(value ?? "all")}>
@@ -240,8 +240,8 @@ export function RenovaLeadsBoard({
       {bucket === "closed" && counts && <p className="text-xs text-muted-foreground">Total: <span className="font-medium text-foreground">{counts.closed}</span> · Rechazados: <span className="font-medium text-foreground">{counts.rejected}</span> · Cancelados: <span className="font-medium text-foreground">{counts.cancelled}</span></p>}
       {error && <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2"><FormError message={error} /></div>}
 
-      {items === null && !error && <div className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 py-20"><Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" /><p className="text-sm text-muted-foreground">Cargando expedientes Renova…</p></div>}
-      {items?.length === 0 && <div className="rounded-2xl border border-border/70"><EmptyState icon={bucket === "closed" ? Ban : bucket === "archived" ? Archive : Building2} title={emptyTitle} description={debouncedQuery ? "Prueba con otro nombre o número." : bucket === "closed" ? "Los casos que salgan del proceso aparecerán aquí sin perder sus datos." : bucket === "archived" ? "Los expedientes archivados pueden restaurarse cuando quieras." : "Registra el primero con Nuevo prospecto Renova."} /></div>}
+      {items === null && !error && <div className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 py-20"><Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" /><p className="text-sm text-muted-foreground">Cargando expedientes Retify…</p></div>}
+      {items?.length === 0 && <div className="rounded-2xl border border-border/70"><EmptyState icon={bucket === "closed" ? Ban : bucket === "archived" ? Archive : Building2} title={emptyTitle} description={debouncedQuery ? "Prueba con otro nombre o número." : bucket === "closed" ? "Los casos que salgan del proceso aparecerán aquí sin perder sus datos." : bucket === "archived" ? "Los expedientes archivados pueden restaurarse cuando quieras." : "Registra el primero con Nuevo prospecto Retify."} /></div>}
 
       {items && items.length > 0 && (
         <div className="flex flex-col gap-3">

@@ -177,7 +177,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
   return (
     <>
       <Link href="/leads?view=renova" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden="true" /> Volver a Renova
+        <ArrowLeft className="size-4" aria-hidden="true" /> Volver a Retify
       </Link>
 
       {load.status === "loading" && (
@@ -275,7 +275,7 @@ export function RenovaCaseDetail({ caseId }: { caseId: string }) {
                     {proposal!.state === "classified" ? (
                       <>
                         <DataItem label="Modalidad de la propuesta">{formatRenovaProposalType(proposal!.proposalType)}</DataItem>
-                        <DataItem label="Deuda que cubre Renova">{money(proposal!.debtCoverageAmount)}</DataItem>
+                        <DataItem label="Deuda que cubre Retify">{money(proposal!.debtCoverageAmount)}</DataItem>
                         <DataItem label="Efectivo para el propietario">{money(proposal!.ownerCashOffer)}</DataItem>
                         <DataItem label="Valor total de la propuesta">{money(proposal!.totalProposalValue)}</DataItem>
                       </>

@@ -16,7 +16,7 @@ export const DEFAULT_PIPELINE_VIEW: PipelineView = "crm";
 
 export const PIPELINE_VIEW_LABELS: Record<PipelineView, string> = {
   crm: "Operaciones inmobiliarias",
-  renova: "Renova",
+  renova: "Retify",
 };
 
 /** Anything missing or unrecognized (`?view=bogus`) falls back to "crm" rather than breaking the page. */

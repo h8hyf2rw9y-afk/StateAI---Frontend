@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormError } from "@/features/auth/components/form-error";
 import { ROLE_LABELS } from "@/features/auth/access";
+import { useCurrentUser } from "@/features/auth/current-user-context";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
   createOrganizationInvitation,
@@ -21,11 +22,11 @@ import {
 } from "@/lib/api/organization";
 import { cn } from "@/lib/utils";
 
-const INVITABLE_ROLES: InvitableRole[] = ["renova_agent", "agent", "admin"];
+const OWNER_INVITABLE_ROLES: InvitableRole[] = ["renova_agent", "admin", "agent"];
 const ROLE_HINTS: Record<InvitableRole, string> = {
-  renova_agent: "Solo usa Renova y solo ve sus propios expedientes.",
+  renova_agent: "Solo usa Retify y solo ve los expedientes que tiene asignados.",
   agent: "Usa todo el CRM compartido de la organización.",
-  admin: "Todo el CRM, más invitar y desactivar usuarios.",
+  admin: "Supervisa todo Retify y administra asesores, sin acceso a tu CRM general.",
 };
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -52,6 +53,7 @@ function roleLabel(role: string): string {
  * isn't enough. Defaults to "Asesor Renova", the role this is mostly used for.
  */
 export function TeamInvitations() {
+  const { me } = useCurrentUser();
   const [invitations, setInvitations] = useState<OrganizationInvitation[] | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [email, setEmail] = useState("");
@@ -60,6 +62,7 @@ export function TeamInvitations() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const invitableRoles: InvitableRole[] = me?.role === "owner" ? OWNER_INVITABLE_ROLES : ["renova_agent"];
 
   useEffect(() => {
     let cancelled = false;
@@ -131,13 +134,13 @@ export function TeamInvitations() {
               <Label htmlFor="invite-role">Rol</Label>
               <Select
                 value={role}
-                onValueChange={(v) => setRole(INVITABLE_ROLES.includes(v as InvitableRole) ? (v as InvitableRole) : "renova_agent")}
+                onValueChange={(v) => setRole(invitableRoles.includes(v as InvitableRole) ? (v as InvitableRole) : "renova_agent")}
               >
                 <SelectTrigger id="invite-role">
                   <SelectValue>{(v: string | null) => roleLabel(v ?? "renova_agent")}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {INVITABLE_ROLES.map((value) => (
+                  {invitableRoles.map((value) => (
                     <SelectItem key={value} value={value}>
                       {ROLE_LABELS[value]}
                     </SelectItem>

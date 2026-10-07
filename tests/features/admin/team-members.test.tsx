@@ -4,11 +4,13 @@ import { TeamMembers } from "@/features/admin/components/team-members";
 
 const getOrganizationMembersMock = vi.fn();
 const setOrganizationMemberActiveMock = vi.fn();
+const setOrganizationMemberRoleMock = vi.fn();
 let currentMe: { id: string; role: string } | null = { id: "owner-1", role: "owner" };
 
 vi.mock("@/lib/api/organization", () => ({
   getOrganizationMembers: () => getOrganizationMembersMock(),
   setOrganizationMemberActive: (...args: unknown[]) => setOrganizationMemberActiveMock(...args),
+  setOrganizationMemberRole: (...args: unknown[]) => setOrganizationMemberRoleMock(...args),
 }));
 vi.mock("@/features/auth/current-user-context", () => ({
   useCurrentUser: () => ({ me: currentMe, error: null, isLoading: false }),
@@ -47,7 +49,7 @@ describe("TeamMembers", () => {
     render(<TeamMembers />);
     await screen.findByText("ana@gmail.com");
     const row = rowOf("ana@gmail.com");
-    expect(within(row).getByText("Asesor Renova")).toBeInTheDocument();
+    expect(within(row).getByText("Asesor Retify")).toBeInTheDocument();
     expect(within(row).getByText("Activo")).toBeInTheDocument();
     expect(within(row).getByText("4")).toBeInTheDocument();
     expect(within(row).getByText("2")).toBeInTheDocument();
@@ -67,6 +69,25 @@ describe("TeamMembers", () => {
     await screen.findByText("ana@gmail.com");
     expect(screen.queryByRole("button", { name: /desactivar a admin@gmail.com/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /desactivar a ana@gmail.com/i })).toBeInTheDocument();
+  });
+
+  it("only the owner can change a teammate's role and must confirm it", async () => {
+    setOrganizationMemberRoleMock.mockResolvedValue({ ok: true, data: member({ role: "admin" }) });
+    render(<TeamMembers />);
+    await screen.findByText("ana@gmail.com");
+
+    fireEvent.change(screen.getByRole("combobox", { name: /rol de ana@gmail.com/i }), { target: { value: "admin" } });
+    expect(screen.getByText(/quedará registrado en la bitácora/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /confirmar cambio/i }));
+
+    await waitFor(() => expect(setOrganizationMemberRoleMock).toHaveBeenCalledWith("ana", "admin"));
+  });
+
+  it("does not offer role controls to a normal admin", async () => {
+    currentMe = { id: "other-admin", role: "admin" };
+    render(<TeamMembers />);
+    await screen.findByText("ana@gmail.com");
+    expect(screen.queryByRole("combobox", { name: /rol de ana@gmail.com/i })).not.toBeInTheDocument();
   });
 
   it("deactivates after confirming and updates the row", async () => {

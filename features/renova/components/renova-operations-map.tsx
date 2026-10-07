@@ -173,7 +173,7 @@ export function RenovaOperationsMap({
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-border/70 py-20 text-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">Cargando operaciones Renova…</p>
+        <p className="text-sm text-muted-foreground">Cargando operaciones Retify…</p>
       </div>
     );
   }
@@ -219,7 +219,7 @@ export function RenovaOperationsMap({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cliente, dirección o colonia…" aria-label="Buscar operaciones Renova" className="h-10 rounded-xl bg-background/45 pl-9" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cliente, dirección o colonia…" aria-label="Buscar operaciones Retify" className="h-10 rounded-xl bg-background/45 pl-9" />
         </div>
         <p className="text-xs text-muted-foreground sm:ml-auto">{visibleTotal === total ? `${total} propiedades` : `${visibleTotal} de ${total} propiedades`}</p>
       </div>

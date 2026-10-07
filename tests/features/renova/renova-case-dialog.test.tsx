@@ -73,7 +73,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
     renderCreate();
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Nuevo prospecto Renova")).toBeInTheDocument();
+    expect(within(dialog).getByText("Nuevo prospecto Retify")).toBeInTheDocument();
     expect(within(dialog).getByText("Cliente, contexto, números y propiedad en una sola vista.")).toBeInTheDocument();
     expect(within(dialog).getByText("Datos del expediente")).toBeInTheDocument();
   });
@@ -110,7 +110,7 @@ describe("RenovaCaseDialog — structure (one continuous form, not a wizard)", (
       "Asesor responsable",
       /fecha de ingreso/i,
       "Estado del expediente",
-      "Deuda que cubrirá Renova",
+      "Deuda que cubrirá Retify",
       "Efectivo para el propietario",
       "Valor de mercado",
       "Cuánto espera recibir",
@@ -339,7 +339,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     expect(screen.getByTestId("proposal-total")).toHaveTextContent("Valor total de la propuesta (solo lectura)—");
 
     fireEvent.click(screen.getByRole("radio", { name: "Deuda más efectivo" }));
-    type("Deuda que cubrirá Renova", "320000");
+    type("Deuda que cubrirá Retify", "320000");
     type("Efectivo para el propietario", "140000");
 
     expect(screen.getByTestId("proposal-total")).toHaveTextContent("$460,000 MXN");
@@ -355,7 +355,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     expect(await screen.findByText("Indica cuánta deuda cubrirá Renova.")).toBeInTheDocument();
     expect(createRenovaCaseMock).not.toHaveBeenCalled();
 
-    type("Deuda que cubrirá Renova", "320000");
+    type("Deuda que cubrirá Retify", "320000");
     type("Efectivo para el propietario", "1");
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
     expect(await screen.findByText("Una propuesta de solo deuda no incluye efectivo.")).toBeInTheDocument();
@@ -366,7 +366,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     await screen.findByRole("dialog");
     fillRequired();
     fireEvent.click(screen.getByRole("radio", { name: "Deuda más efectivo" }));
-    type("Deuda que cubrirá Renova", "320000");
+    type("Deuda que cubrirá Retify", "320000");
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
 
@@ -384,7 +384,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     expect(await screen.findByText("Indica el efectivo para el propietario.")).toBeInTheDocument();
 
     type("Efectivo para el propietario", "150000");
-    type("Deuda que cubrirá Renova", "1");
+    type("Deuda que cubrirá Retify", "1");
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
     expect(await screen.findByText("Una propuesta de solo efectivo no cubre deuda.")).toBeInTheDocument();
   });
@@ -394,7 +394,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     await screen.findByRole("dialog");
     fillRequired();
     fireEvent.click(screen.getByRole("radio", { name: "Solo liquidación de deuda" }));
-    type("Deuda que cubrirá Renova", "320000");
+    type("Deuda que cubrirá Retify", "320000");
     type("Efectivo para el propietario", "0");
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar prospecto" }));
@@ -413,7 +413,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
     fillRequired();
     type("Deuda predial", "12000");
     fireEvent.click(screen.getByRole("radio", { name: "Solo liquidación de deuda" }));
-    type("Deuda que cubrirá Renova", "200000");
+    type("Deuda que cubrirá Retify", "200000");
 
     expect(screen.getByText(/no coincide con la deuda total conocida/i)).toBeInTheDocument();
 
@@ -426,7 +426,7 @@ describe("RenovaCaseDialog — structured proposal", () => {
 
     expect(screen.getByText(/propuesta histórica registrada/i)).toBeInTheDocument();
     expect(screen.getByText(/\$275,000/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Deuda que cubrirá Renova")).toHaveValue("");
+    expect(screen.getByLabelText("Deuda que cubrirá Retify")).toHaveValue("");
     expect(screen.getByLabelText("Efectivo para el propietario")).toHaveValue("");
   });
 
@@ -676,7 +676,7 @@ describe("RenovaCaseDialog — saving", () => {
     await screen.findByRole("dialog");
     fillRequired();
     fireEvent.click(screen.getByRole("radio", { name: "Deuda más efectivo" }));
-    type("Deuda que cubrirá Renova", "320000");
+    type("Deuda que cubrirá Retify", "320000");
     type("Efectivo para el propietario", "140000");
     type("Valor de mercado", "1400000.50");
     type("Calle y número", "Av. Constitución 123");
@@ -964,7 +964,7 @@ describe("RenovaCaseDialog — edit mode (same popup, real data)", () => {
     // already-selected option again clears it, same as dwelling_type) AND
     // clear the amount — clearing only one would fail the modality check.
     fireEvent.click(screen.getByRole("radio", { name: "Solo liquidación de deuda" }));
-    type("Deuda que cubrirá Renova", "");
+    type("Deuda que cubrirá Retify", "");
     type("Colonia", "Obispado");
 
     fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
