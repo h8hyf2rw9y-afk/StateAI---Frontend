@@ -7,8 +7,8 @@ import { RegisterForm } from "@/features/auth/components/register-form";
 export default function RegisterPage() {
   return (
     <AuthShell
-      title="Create your workspace"
-      description="Start your PropPilot trial — no credit card required."
+      title="Únete a Retify"
+      description="Usa el código que te compartió tu administrador y entra de forma segura con Google."
       footer={
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}

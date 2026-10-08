@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Loader2, Users } from "lucide-react";
+import { CheckCircle2, KeyRound, Loader2, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,26 @@ import { FormError } from "@/features/auth/components/form-error";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthErrorMessage } from "@/features/auth/lib";
 import { validateRegisterForm, type RegisterFormErrors } from "@/features/auth/validation";
-import { provisionMyOrganization } from "@/lib/api/me";
 import { joinOrganization, previewOrganizationInvitation } from "@/lib/api/organization";
 
 export function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
+  const inviteError = searchParams.get("invite_error");
 
+  const [inviteCode, setInviteCode] = useState(inviteToken ?? "");
+  const [validatedInvite, setValidatedInvite] = useState<string | null>(null);
+  const [isCheckingInvite, setIsCheckingInvite] = useState(Boolean(inviteToken));
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<RegisterFormErrors>({});
-  const [formError, setFormError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>(
+    inviteError ? "La invitación no pudo completarse. Verifica el código y que estés usando el correo invitado." : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
@@ -42,27 +47,45 @@ export function RegisterForm() {
     let cancelled = false;
     previewOrganizationInvitation(inviteToken).then((response) => {
       if (cancelled) return;
-      setInvitePreview(
-        response.ok
-          ? { valid: response.data.valid, organizationName: response.data.organization_name }
-          : { valid: false, organizationName: null }
-      );
+      const preview = response.ok
+        ? { valid: response.data.valid, organizationName: response.data.organization_name }
+        : { valid: false, organizationName: null };
+      setInvitePreview(preview);
+      setValidatedInvite(preview.valid ? inviteToken : null);
+      if (!preview.valid) setFormError("Este código de invitación ya no es válido o expiró.");
+      setIsCheckingInvite(false);
     });
     return () => {
       cancelled = true;
     };
   }, [inviteToken]);
 
-  /** Joins the inviter's organization when the link is still valid; otherwise falls back to the normal self-service "create my own workspace" path (same call every other sign-up already makes). */
-  async function provisionAfterSignIn() {
-    if (inviteToken && invitePreview?.valid) {
-      const response = await joinOrganization(inviteToken);
-      if (response.ok) return;
-      // The link died between preview and submit (e.g. someone else just
-      // used it) — degrade gracefully rather than stranding a real,
-      // already-created account with no organization at all.
+  async function validateInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const credential = inviteCode.trim();
+    if (!credential) {
+      setFormError("Escribe el código que te compartió tu administrador.");
+      return;
     }
-    await provisionMyOrganization();
+    setIsCheckingInvite(true);
+    setFormError(undefined);
+    const response = await previewOrganizationInvitation(credential);
+    setIsCheckingInvite(false);
+    const preview = response.ok
+      ? { valid: response.data.valid, organizationName: response.data.organization_name }
+      : { valid: false, organizationName: null };
+    setInvitePreview(preview);
+    setValidatedInvite(preview.valid ? credential : null);
+    if (!preview.valid) setFormError("Código inválido, vencido o utilizado. Pide una invitación nueva.");
+  }
+
+  /** The verified Google/email identity must consume this exact one-time invitation; never create a separate workspace as a fallback. */
+  async function joinAfterSignIn(): Promise<boolean> {
+    if (!validatedInvite) return false;
+    const response = await joinOrganization(validatedInvite);
+    if (response.ok) return true;
+    setFormError("No pudimos aplicar la invitación. Confirma que entraste con el mismo correo que fue invitado.");
+    return false;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -83,7 +106,7 @@ export function RegisterForm() {
     setIsSubmitting(true);
     const supabase = createClient();
     const callbackUrl = new URL("/auth/callback", window.location.origin);
-    if (inviteToken && invitePreview?.valid) callbackUrl.searchParams.set("invite", inviteToken);
+    if (validatedInvite) callbackUrl.searchParams.set("invite", validatedInvite);
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -119,7 +142,10 @@ export function RegisterForm() {
     // real sign-in makes (see LoginForm) — this is the one path where a
     // session goes active without ever touching LoginForm or the
     // /auth/callback route.
-    await provisionAfterSignIn();
+    if (!(await joinAfterSignIn())) {
+      setIsSubmitting(false);
+      return;
+    }
 
     router.push("/dashboard");
     router.refresh();
@@ -140,11 +166,39 @@ export function RegisterForm() {
     );
   }
 
+  if (!validatedInvite) {
+    return (
+      <form onSubmit={validateInvitation} className="flex flex-col gap-4">
+        <FormError message={formError} />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="invite-code">Código de invitación</Label>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="invite-code"
+              value={inviteCode}
+              onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
+              placeholder="ABCDE-FG234"
+              autoComplete="one-time-code"
+              className="pl-9 font-mono uppercase tracking-wider"
+              disabled={isCheckingInvite}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">El código es personal, dura 7 días y define si entrarás como asesor o administrador.</p>
+        </div>
+        <Button type="submit" disabled={isCheckingInvite || !inviteCode.trim()} className="w-full">
+          {isCheckingInvite && <Loader2 className="size-4 animate-spin" />}
+          Verificar código
+        </Button>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <FormError message={formError} />
 
-      {inviteToken && invitePreview && (
+      {invitePreview?.valid && (
         <div
           role="status"
           className={
@@ -154,15 +208,13 @@ export function RegisterForm() {
           }
         >
           <Users className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {invitePreview.valid ? (
-            <span>
-              You&apos;ve been invited to join <span className="font-medium">{invitePreview.organizationName}</span>.
-            </span>
-          ) : (
-            <span>This invitation link is no longer valid. You can still create your own workspace below.</span>
-          )}
+          <span>Invitación verificada para <span className="font-medium">{invitePreview.organizationName}</span>.</span>
         </div>
       )}
+
+      <GoogleButton onError={setFormError} inviteToken={validatedInvite} />
+
+      <AuthDivider />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
@@ -242,12 +294,8 @@ export function RegisterForm() {
 
       <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
         {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-        {inviteToken && invitePreview?.valid ? "Join workspace" : "Create account"}
+        Unirme con correo
       </Button>
-
-      <AuthDivider />
-
-      <GoogleButton onError={setFormError} inviteToken={inviteToken && invitePreview?.valid ? inviteToken : undefined} />
     </form>
   );
 }

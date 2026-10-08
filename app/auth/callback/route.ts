@@ -19,6 +19,9 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const inviteToken = searchParams.get("invite");
   let next = searchParams.get("next") ?? "/dashboard";
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const isLocalEnv = process.env.NODE_ENV === "development";
+  const publicOrigin = isLocalEnv || !forwardedHost ? origin : `https://${forwardedHost}`;
   if (!next.startsWith("/")) {
     next = "/dashboard";
   }
@@ -43,14 +46,9 @@ export async function GET(request: Request) {
       } = await supabase.auth.getSession();
       if (session) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-        // An invite token (set by RegisterForm/GoogleButton, only ever
-        // after confirming the link was still valid) joins the inviter's
-        // EXISTING organization; everyone else gets the normal
-        // self-service "create my own" path. If joining fails here (the
-        // link died in the meantime — someone else just used it, it
-        // expired mid-flow), fall back to provisioning a new organization
-        // rather than stranding a real, already-created account with none
-        // at all.
+        // A verified invitation joins the existing Retify organization. It
+        // never falls back to creating a private workspace: role and tenant
+        // are chosen by the inviter, not by the person signing up.
         const joined = inviteToken
           ? await fetch(`${apiBaseUrl}/api/v1/me/organization/join`, {
               method: "POST",
@@ -63,7 +61,13 @@ export async function GET(request: Request) {
               .then((res) => res.ok)
               .catch(() => false)
           : false;
-        if (!joined) {
+        if (inviteToken && !joined) {
+          const registerUrl = new URL("/register", publicOrigin);
+          registerUrl.searchParams.set("invite", inviteToken);
+          registerUrl.searchParams.set("invite_error", "invalid");
+          return NextResponse.redirect(registerUrl);
+        }
+        if (!inviteToken) {
           await fetch(`${apiBaseUrl}/api/v1/me/organization`, {
             method: "POST",
             headers: {
@@ -77,9 +81,6 @@ export async function GET(request: Request) {
 
       // Behind a load balancer/proxy (e.g. in production), prefer the
       // original host so the redirect doesn't point at an internal address.
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
-
       if (isLocalEnv || !forwardedHost) {
         return NextResponse.redirect(`${origin}${next}`);
       }
@@ -89,7 +90,7 @@ export async function GET(request: Request) {
 
   // Don't leak provider/exchange error details into the URL or UI — just
   // send the user back to login with a generic, safe error flag.
-  const loginUrl = new URL("/login", origin);
+  const loginUrl = new URL("/login", publicOrigin);
   loginUrl.searchParams.set("error", "oauth_failed");
   return NextResponse.redirect(loginUrl);
 }

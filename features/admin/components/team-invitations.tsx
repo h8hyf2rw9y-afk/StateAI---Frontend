@@ -60,6 +60,7 @@ export function TeamInvitations() {
   const [role, setRole] = useState<InvitableRole>("renova_agent");
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [newInviteCode, setNewInviteCode] = useState<string | null>(null);
   const [newInviteLink, setNewInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const invitableRoles: InvitableRole[] = me?.role === "owner" ? OWNER_INVITABLE_ROLES : ["renova_agent"];
@@ -78,6 +79,8 @@ export function TeamInvitations() {
     event.preventDefault();
     if (!email.trim() || isInviting) return;
     setInviteError(null);
+    setNewInviteCode(null);
+    setNewInviteLink(null);
     setIsInviting(true);
     const response = await createOrganizationInvitation(email.trim(), role);
     setIsInviting(false);
@@ -85,7 +88,8 @@ export function TeamInvitations() {
       setInviteError(getApiErrorMessage(response.error));
       return;
     }
-    setNewInviteLink(`${window.location.origin}/register?invite=${response.data.token}`);
+    setNewInviteCode(response.data.token);
+    setNewInviteLink(`${window.location.origin}/register?invite=${encodeURIComponent(response.data.token)}`);
     setEmail("");
     setCopied(false);
     setRefresh((n) => n + 1);
@@ -158,7 +162,13 @@ export function TeamInvitations() {
 
           {newInviteLink && (
             <div role="status" className="flex flex-col gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Invitación creada — comparte este enlace:</p>
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Invitación creada — comparte el código o el enlace:</p>
+              {newInviteCode && (
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Código de un solo uso</p>
+                  <Input readOnly value={newInviteCode} className="font-mono text-base font-medium tracking-wider" onFocus={(e) => e.target.select()} />
+                </div>
+              )}
               <div className="flex gap-2">
                 <Input readOnly value={newInviteLink} className="font-mono text-xs" onFocus={(e) => e.target.select()} />
                 <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={copyLink}>

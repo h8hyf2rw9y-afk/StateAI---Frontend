@@ -39,8 +39,8 @@ beforeEach(() => {
 });
 
 describe("TeamInvitations", () => {
-  it("invites as Asesor Retify by default and shows a copyable link", async () => {
-    createOrganizationInvitationMock.mockResolvedValue({ ok: true, data: { ...invitation(), token: "tok-abc123" } });
+  it("invites as Asesor Retify by default and shows the one-time code plus a copyable link", async () => {
+    createOrganizationInvitationMock.mockResolvedValue({ ok: true, data: { ...invitation(), token: "ABCDE-FG234" } });
     render(<TeamInvitations />);
     await screen.findByText(/aún no hay invitaciones/i);
 
@@ -49,7 +49,8 @@ describe("TeamInvitations", () => {
     fireEvent.click(screen.getByRole("button", { name: /^invitar$/i }));
 
     await waitFor(() => expect(createOrganizationInvitationMock).toHaveBeenCalledWith("colega@example.com", "renova_agent"));
-    expect(await screen.findByDisplayValue(/invite=tok-abc123/)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("ABCDE-FG234")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/invite=ABCDE-FG234/)).toBeInTheDocument();
   });
 
   it("can invite a CRM agent instead", async () => {
