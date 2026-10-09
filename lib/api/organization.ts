@@ -67,6 +67,16 @@ export interface MemberRenovaCaseCounts {
   archived: number;
 }
 
+export type RetifyDashboardPeriod = "7d" | "30d" | "90d" | "all";
+export interface RetifyPerformanceMetrics { received: number; active: number; closed: number; archived: number; contacted: number; no_answer: number; follow_ups_overdue: number; proposals_sent: number; negotiating: number; accepted: number; operations_open: number; operations_closed: number; conversion_rate: number; }
+export interface RetifyAdvisorPerformance { user_id: string; email: string | null; role: UserRole; is_active: boolean; metrics: RetifyPerformanceMetrics; }
+export interface RetifyAttentionItem { case_id: string; owner_name: string; assigned_user_id: string | null; advisor_email: string | null; status: string; priority: "urgent" | "high"; reason: string; next_follow_up_at: string | null; }
+export interface RetifyDashboard { period: RetifyDashboardPeriod; assigned_user_id: string | null; summary: RetifyPerformanceMetrics; advisors: RetifyAdvisorPerformance[]; attention: RetifyAttentionItem[]; }
+
+export function getRetifyDashboard(period: RetifyDashboardPeriod = "30d", assignedUserId?: string): Promise<ApiResult<RetifyDashboard>> {
+  return apiRequest<RetifyDashboard>("/api/v1/organization/retify-dashboard", { cache: "no-store", params: { period, assigned_user_id: assignedUserId } });
+}
+
 /** One row of the admin "Usuarios" list — mirrors app/schemas/organization_member.py. */
 export interface OrganizationMember {
   id: string;
