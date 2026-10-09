@@ -63,12 +63,12 @@ describe("TeamMembers", () => {
     expect(screen.getByRole("button", { name: /desactivar a admin@gmail.com/i })).toBeInTheDocument();
   });
 
-  it("an admin can't deactivate another admin", async () => {
+  it("an admin can't deactivate any teammate", async () => {
     currentMe = { id: "other-admin", role: "admin" };
     render(<TeamMembers />);
     await screen.findByText("ana@gmail.com");
     expect(screen.queryByRole("button", { name: /desactivar a admin@gmail.com/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /desactivar a ana@gmail.com/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /desactivar a ana@gmail.com/i })).not.toBeInTheDocument();
   });
 
   it("only the owner can change a teammate's role and must confirm it", async () => {

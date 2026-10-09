@@ -15,8 +15,8 @@ import { getMyOrganization, type Organization } from "@/lib/api/organization";
 
 /**
  * The organization's name and the caller's role. Managing people (members,
- * invitations, deactivating) lives in one place — the Administración page —
- * so owners/admins get a link there instead of a second copy of it here.
+ * invitations, deactivating) lives in one place — the Administración page.
+ * Admins can inspect the team there, while only the owner manages access.
  */
 export function OrganizationSettingsTab() {
   const [me, setMe] = useState<CurrentUser | null>(null);
@@ -73,7 +73,7 @@ export function OrganizationSettingsTab() {
 
       <Card>
         <CardContent className="flex flex-col items-start gap-3">
-          {canManageTeam(me.role) ? (
+          {me.role === "owner" ? (
             <>
               <p className="text-sm text-muted-foreground">
                 Invita asesores, revisa quién tiene acceso y desactiva cuentas desde Administración.
@@ -82,9 +82,18 @@ export function OrganizationSettingsTab() {
                 Ir a Administración <ArrowRight />
               </Link>
             </>
+          ) : canManageTeam(me.role) ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Supervisa resultados y carga de trabajo desde Administración. Solo el Administrador supremo puede invitar o modificar accesos.
+              </p>
+              <Link href="/admin" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Ir a Administración <ArrowRight />
+              </Link>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Only the organization&apos;s owner or an admin can invite teammates.
+              Solo el Administrador supremo puede invitar integrantes al equipo.
             </p>
           )}
         </CardContent>

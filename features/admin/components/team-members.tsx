@@ -28,9 +28,7 @@ function formatDate(iso: string): string {
 
 /** Mirrors the backend's rules (OrganizationMemberService.update) so the UI never offers an action that would be refused. */
 function canToggle(member: OrganizationMember, me: { id: string; role: string } | null): boolean {
-  if (!me || member.id === me.id || member.role === "owner") return false;
-  if (member.role === "admin") return me.role === "owner";
-  return true;
+  return Boolean(me?.role === "owner" && member.id !== me.id && member.role !== "owner");
 }
 
 function canChangeRole(member: OrganizationMember, me: { id: string; role: string } | null): boolean {
@@ -99,7 +97,7 @@ export function TeamMembers() {
         <div>
           <h3 className="text-sm font-medium">Usuarios</h3>
           <p className="text-xs text-muted-foreground">
-            Cada asesor Retify solo ve los expedientes que tiene asignados; tú ves los de todo el equipo y puedes filtrar por asesor.
+            Cada asesor Retify solo ve los expedientes que tiene asignados. Solo el Administrador supremo puede cambiar roles o desactivar accesos.
           </p>
         </div>
         {actionError && <FormError message={actionError} />}

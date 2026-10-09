@@ -13,6 +13,7 @@ vi.mock("@/lib/api/organization", () => ({
 }));
 
 const owner = { id: "u1", email: "owner@example.com", organization_id: "o1", role: "owner", provider: "email" };
+const admin = { id: "u4", email: "admin@example.com", organization_id: "o1", role: "admin", provider: "email" };
 const agent = { id: "u2", email: "agent@example.com", organization_id: "o1", role: "agent", provider: "email" };
 const renovaAgent = { ...agent, id: "u3", role: "renova_agent" };
 const org = { id: "o1", name: "Reyes Realty" };
@@ -39,11 +40,19 @@ describe("OrganizationSettingsTab", () => {
     expect(screen.queryByLabelText(/^correo$/i)).not.toBeInTheDocument();
   });
 
-  it("tells a plain agent only an owner or admin can invite", async () => {
+  it("lets an admin open supervision without offering access management", async () => {
+    getMeMock.mockResolvedValue({ ok: true, data: admin });
+    render(<OrganizationSettingsTab />);
+
+    expect(await screen.findByText(/solo el administrador supremo puede invitar/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir a administración/i })).toHaveAttribute("href", "/admin");
+  });
+
+  it("tells a plain agent only the owner can invite", async () => {
     getMeMock.mockResolvedValue({ ok: true, data: agent });
     render(<OrganizationSettingsTab />);
 
-    expect(await screen.findByText(/only the organization's owner or an admin/i)).toBeInTheDocument();
+    expect(await screen.findByText(/solo el administrador supremo puede invitar/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /administración/i })).not.toBeInTheDocument();
   });
 });

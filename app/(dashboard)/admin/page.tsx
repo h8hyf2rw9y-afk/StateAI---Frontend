@@ -4,7 +4,7 @@ import { TeamMembers } from "@/features/admin/components/team-members";
 import { RetifyCommandCenter } from "@/features/admin/components/retify-command-center";
 import { RoleAccessPreview } from "@/features/admin/components/role-access-preview";
 
-/** Owner/admin only. The owner controls every role; a normal admin can manage Retify advisors only. */
+/** Owner/admin read access. Only the owner may change roles or revoke/deactivate access. */
 export default function AdminPage() {
   return (
     <>

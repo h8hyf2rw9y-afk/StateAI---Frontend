@@ -26,7 +26,7 @@ const OWNER_INVITABLE_ROLES: InvitableRole[] = ["renova_agent", "admin", "agent"
 const ROLE_HINTS: Record<InvitableRole, string> = {
   renova_agent: "Solo usa Retify y solo ve los expedientes que tiene asignados.",
   agent: "Usa todo el CRM compartido de la organización.",
-  admin: "Supervisa todo Retify y administra asesores, sin acceso a tu CRM general.",
+  admin: "Supervisa todo Retify e invita asesores, sin poder cambiar o revocar accesos.",
 };
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -54,6 +54,7 @@ function roleLabel(role: string): string {
  */
 export function TeamInvitations() {
   const { me } = useCurrentUser();
+  const isOwner = me?.role === "owner";
   const [invitations, setInvitations] = useState<OrganizationInvitation[] | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [email, setEmail] = useState("");
@@ -66,6 +67,7 @@ export function TeamInvitations() {
   const invitableRoles: InvitableRole[] = me?.role === "owner" ? OWNER_INVITABLE_ROLES : ["renova_agent"];
 
   useEffect(() => {
+    if (!isOwner) return;
     let cancelled = false;
     getOrganizationInvitations().then((response) => {
       if (!cancelled && response.ok) setInvitations(response.data);
@@ -73,7 +75,7 @@ export function TeamInvitations() {
     return () => {
       cancelled = true;
     };
-  }, [refresh]);
+  }, [isOwner, refresh]);
 
   async function handleInvite(event: FormEvent) {
     event.preventDefault();
@@ -110,6 +112,8 @@ export function TeamInvitations() {
       // Clipboard access can be denied (permissions, non-HTTPS context) — the link stays visible and selectable either way.
     }
   }
+
+  if (!isOwner) return null;
 
   return (
     <div className="flex flex-col gap-6">

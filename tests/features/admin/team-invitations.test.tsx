@@ -65,15 +65,12 @@ describe("TeamInvitations", () => {
     await waitFor(() => expect(createOrganizationInvitationMock).toHaveBeenCalledWith("crm@example.com", "agent"));
   });
 
-  it("lets a normal admin invite advisors but not administrators or CRM agents", async () => {
+  it("hides all invitation controls from a normal admin", () => {
     currentRole = "admin";
-    render(<TeamInvitations />);
-    await screen.findByText(/aún no hay invitaciones/i);
+    const { container } = render(<TeamInvitations />);
 
-    const role = screen.getByLabelText(/^rol$/i);
-    expect(role).toHaveTextContent("Asesor Retify");
-    expect(role).not.toHaveTextContent("Administrador");
-    expect(role).not.toHaveTextContent("Agente CRM");
+    expect(container).toBeEmptyDOMElement();
+    expect(getOrganizationInvitationsMock).not.toHaveBeenCalled();
   });
 
   it("keeps the email and shows the error when creating fails", async () => {

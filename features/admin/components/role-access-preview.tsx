@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 type PreviewRole = "owner" | "admin" | "renova_agent";
 const PREVIEWS = {
   owner: { label: "Administrador supremo", icon: Crown, modules: ["Dashboard CRM", "Leads", "Propiedades", "Pipeline", "Retify", "IA", "Administración"], permissions: ["Control total del equipo", "Cambia roles y estados", "Ve cartera propia y del equipo"] },
-  admin: { label: "Administrador", icon: ShieldCheck, modules: ["Expedientes Retify", "Pipeline Retify", "Operaciones", "Chat Retify", "Administración"], permissions: ["Supervisa todos los asesores", "Invita y desactiva asesores", "No accede al CRM general ni controla al owner"] },
+  admin: { label: "Administrador", icon: ShieldCheck, modules: ["Expedientes Retify", "Pipeline Retify", "Operaciones", "Chat Retify", "Administración"], permissions: ["Supervisa todos los asesores", "Consulta resultados y expedientes", "No invita ni modifica accesos"] },
   renova_agent: { label: "Asesor Retify", icon: UserRound, modules: ["Mis expedientes", "Mi pipeline", "Mis operaciones", "Chat Retify", "Configuración"], permissions: ["Solo ve expedientes asignados", "Registra llamadas y seguimientos", "No ve administración ni otros asesores"] },
 } satisfies Record<PreviewRole, { label: string; icon: typeof Crown; modules: string[]; permissions: string[] }>;
 
